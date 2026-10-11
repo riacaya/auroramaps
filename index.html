@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="AuroraMaps"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#0a0a1a"/>
+<title>AuroraMaps - GIS Viewer</title>
+<link rel="apple-touch-icon" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjnh-IT8PsV6xuVkev5Wva6KMDEXDegNwM8uqyxBrF7eKOgMjSdmAZTrp-t54jWhH2LuVdMHfHM0UI_Vdz0UGFA5zBYtAx7gMOSOCLQRw_O6dtnKfenOSXhYjWdVNUR47k_FQI5_sRr2Sxvm56W2uCxb7WsRPjhtpvIF07/s320/auroramaps.png"/>
+<link rel="icon" type="image/png" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjnh-IT8PsV6xuVkev5Wva6KMDEXDegNwM8uqyxBrF7eKOgMjSdmAZTrp-t54jWhH2LuVdMHfHM0UI_Vdz0UGFA5zBYtAx7gMOSOCLQRw_O6dtnKfenOSXhYjWdVNUR47k_FQI5_sRr2Sxvm56W2uCxb7WsRPjhtpvIF07/s320/auroramaps.png"/>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
+<!-- Font -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"/>
+<link rel="stylesheet" href="./src/styles/base.css?v=57" />
+<style>
+.login-branding-logo svg, .logo-icon svg, .about-logo svg { display:none !important; }
+.login-gate{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:var(--bg-base,#0d0f13)}
+.login-card{width:min(560px,calc(100vw - 32px));display:grid;grid-template-columns:42% 58%;align-items:center;padding:24px;border:1px solid var(--border);border-radius:12px;background:var(--bg-panel);box-shadow:0 12px 40px #0008;color:var(--text-primary);font-family:var(--font,Arial,sans-serif)}
+.login-branding{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 20px 8px 4px;text-align:center}.login-branding-logo{width:78px;height:78px;margin-bottom:10px}.login-branding-logo img{display:block;width:100%;height:100%}.login-branding-title{font-size:20px;font-weight:700;color:var(--text-accent)}.login-branding-subtitle{margin-top:4px;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;background:linear-gradient(90deg,var(--accent),#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.login-form-content{padding-left:20px;border-left:1px solid var(--border)}
+.login-contact{display:flex;flex-direction:column;gap:4px;margin-top:16px;font-size:10px;color:var(--text-secondary)}.login-contact a{color:var(--text-secondary);text-decoration:none}.login-contact a:hover{color:var(--text-accent)}
+.login-card label{display:block;margin:12px 0;font-size:11px;color:var(--text-secondary)}.login-password-wrap{position:relative;margin-top:5px}.login-password-wrap input{margin-top:0;padding-right:36px}.login-password-toggle{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:24px;height:24px;padding:0;border:0;background:transparent;color:var(--text-secondary);cursor:pointer;font-size:14px;line-height:1}.login-password-toggle:hover{color:var(--text-primary)}.login-card input{display:block;box-sizing:border-box;width:100%;margin-top:5px;padding:9px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-surface);color:var(--text-primary)}.login-card .btn{display:block;width:auto;min-width:54px;margin:14px 0 0 auto;padding:6px 14px;font-size:11px}.login-error{min-height:16px;margin-top:10px;text-align:right;color:#f87171;font-size:11px}
+.login-error.is-ok{color:#22c55e}
+.login-actions{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.login-actions .btn{display:block;width:100%;margin-top:0;padding:9px 12px;font-size:12px}
+.login-register-btn{background:transparent;border:1px solid var(--border);color:var(--text-secondary)}
+.login-register-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
+.login-register-btn:disabled{opacity:.6;cursor:wait}
+@media(max-width:520px){.login-card{display:block;padding:20px}.login-branding{padding:0 0 16px}.login-branding-logo{width:60px;height:60px;margin-bottom:7px}.login-branding-title{font-size:18px}.login-form-content{padding:12px 0 0;border-top:1px solid var(--border);border-left:0}}
+</style>
+</head>
+<body>
+<div id="login-gate" class="login-gate"><form id="login-form" class="login-card"><div class="login-branding"><div class="login-branding-logo"><svg viewBox="0 0 120 120" role="img" aria-label="AuroraMaps logo"><defs><linearGradient id="login-aurora-gradient" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#00f5d4"/><stop offset=".33" stop-color="#00bbf9"/><stop offset=".66" stop-color="#9b5de5"/><stop offset="1" stop-color="#f15bb5"/></linearGradient></defs><circle cx="60" cy="60" r="58" fill="#0a0a1a" stroke="url(#login-aurora-gradient)" stroke-width="2"/><g fill="none" stroke="url(#login-aurora-gradient)" stroke-width="3" opacity=".85"><path d="M12 45q18-12 36-5t36-5t24 5"/><path d="M10 56q18-12 36-5t36-5t28 5"/><path d="M14 68q18-12 36-5t36-5t24 5"/></g><path d="M60 22c-16 0-24 11-24 23 0 16 24 39 24 39s24-23 24-39c0-12-8-23-24-23z" fill="url(#login-aurora-gradient)"/><circle cx="60" cy="45" r="8" fill="#0a0a1a"/><circle cx="60" cy="45" r="5" fill="url(#login-aurora-gradient)"/></svg></div><div class="login-branding-title">AuroraMaps</div><div class="login-branding-subtitle">RiaCaya GIS Viewer</div><div class="login-contact"><a href="tel:+6282338013610">☎ +62 823-3801-3610</a><a href="mailto:riacaya99@gmail.com">✉ riacaya99@gmail.com</a></div></div><div class="login-form-content"><label>Nomor HP<input id="login-user" type="tel" inputmode="tel" autocomplete="username" placeholder="08xxxxxxxxxx" pattern="(?:\+?62|0)8[0-9 .()-]{8,16}" title="Masukkan nomor HP Indonesia, misalnya 081234567890" required></label><label>Password<div class="login-password-wrap"><input id="login-pass" type="password" autocomplete="current-password" required><button type="button" id="login-password-toggle" class="login-password-toggle" aria-label="Tampilkan password" title="Tampilkan password">👁</button></div></label><div class="login-actions"><button type="submit" class="btn btn-primary">Login</button><button type="button" id="login-register" class="btn login-register-btn">Daftar</button></div><div id="login-error" class="login-error"></div></div></form></div>
+<!-- ===== LOADER ===== -->
+<div id="loader">
+  <div class="loader-spinner"></div>
+  <div class="loader-text">Loading AuroraMaps…</div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app" style="display:none">
+
+  <!-- HEADER -->
+  <div id="header">
+    <div class="header-logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="aurora-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#00f5d4"/>
+              <stop offset="33%" stop-color="#00bbf9"/>
+              <stop offset="66%" stop-color="#9b5de5"/>
+              <stop offset="100%" stop-color="#f15bb5"/>
+            </linearGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+          <circle cx="60" cy="60" r="58" fill="#0a0a1a" stroke="url(#aurora-grad)" stroke-width="2"/>
+          <g filter="url(#glow)">
+            <path d="M15,45 Q30,35 45,40 T75,35 T105,45" stroke="#00f5d4" stroke-width="3" fill="none" opacity="0.8"/>
+            <path d="M10,55 Q25,45 40,50 T70,45 T110,55" stroke="#00bbf9" stroke-width="3" fill="none" opacity="0.8"/>
+            <path d="M15,65 Q30,55 45,60 T75,55 T105,65" stroke="#9b5de5" stroke-width="3" fill="none" opacity="0.8"/>
+            <path d="M20,75 Q35,65 50,70 T80,65 T100,75" stroke="#f15bb5" stroke-width="3" fill="none" opacity="0.8"/>
+          </g>
+          <g transform="translate(60,52)">
+            <path d="M0,-30 C-16,-30 -24,-18 -24,-8 C-24,8 0,32 0,32 C0,32 24,8 24,-8 C24,-18 16,-30 0,-30 Z" fill="url(#aurora-grad)"/>
+            <circle cx="0" cy="-10" r="8" fill="#0a0a1a"/>
+            <circle cx="0" cy="-10" r="5" fill="url(#aurora-grad)"/>
+          </g>
+        </svg>
+      </div>
+      <div>
+        <div class="header-title">AuroraMaps</div>
+        <div class="header-subtitle">RiaCaya GIS Viewer</div>
+      </div>
+    </div>
+
+    <div class="header-spacer"></div>
+    <div class="header-search">
+      <input type="text" id="search-input" placeholder="Cari fitur, lokasi, atau koordinat (lat, lng)…" autocomplete="off" enterkeyhint="search"/>
+      <span id="search-clear" class="header-search-clear">✕</span>
+      <span class="header-search-icon">🔍</span>
+    </div>
+    <button type="button" id="header-search-menu" class="header-search-menu" title="Pencarian ATR/BPN">🔍 Cari Bidang</button>
+    <div class="header-actions">
+      <button class="btn-icon lang-toggle" id="btn-lang-pc" title="Toggle language" onclick="window.toggleAuroraLanguage?.()">ID</button>
+      <button class="btn-icon btn-icon-strong legacy-pc-setting" id="btn-about-pc" title="About AuroraMaps"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
+      <button class="btn-icon" id="btn-theme" title="Toggle Theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
+      <div id="sep-pc-end" class="header-sep"></div>
+      <button class="btn-icon" id="btn-bottom-toggle" title="Toggle Bottom Panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/></svg></button>
+      <button class="btn-icon btn-icon-large" id="btn-sidebar-left-toggle" title="Toggle Left Sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
+      <button class="btn-icon" id="btn-sidebar-right-toggle" title="Toggle Right Sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg></button>
+      <!-- project-name kept in DOM for save/load compatibility but hidden on PC -->
+      <div class="project-name-display hidden-inline" id="project-name-display" title="Klik untuk ganti nama">AuroraMaps001</div>
+      <button class="btn-icon mh-btn" id="mh-search" title="Cari">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+      <button class="btn-icon mh-btn" id="mh-menu" title="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <button class="btn-icon" id="btn-admin-pc" title="Administrator" aria-label="Panel Administrator"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></button>
+      <button class="btn-icon" id="btn-logout-pc" title="Logout" aria-label="Logout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+    </div>
+  </div>
+
+  <!-- MOBILE SEARCH PANEL (slide down from header) -->
+  <div id="mh-search-backdrop" class="mobile-search-backdrop"></div>
+  <div id="mh-search-panel" class="mobile-search-panel">
+    <div class="mobile-search-row">
+      <span class="mobile-search-icon">🔍</span>
+      <input type="text" id="mh-search-input" class="mobile-search-input" placeholder="Cari fitur, lokasi, atau koordinat (lat, lng)…" autocomplete="off" enterkeyhint="search"/>
+      <button id="mh-search-close" class="mobile-search-close">✕</button>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div id="toolbar">
+    <button class="toolbar-btn" id="tb-open" title="Open File (Ctrl+O)">
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> Open
+    </button>
+    <button class="toolbar-btn" id="tb-open-project" title="Buka Proyek AuroraMaps">
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span> Proyek
+    </button>
+    <button class="toolbar-btn" id="tb-img-overlay" title="Overlay Gambar Peta (JPG/PNG sebagai acuan)">
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span> Overlay
+    </button>
+    <button class="toolbar-btn" id="tb-import-url" title="Import from URL">
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span> URL
+    </button>
+    <button class="toolbar-btn" id="btn-atrbpn" title="ATRBPN (LSD & RTRW)" aria-label="ATRBPN">
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span> ATRBPN
+    </button>
+    <button class="toolbar-btn" id="tb-save-project" title="Simpan Proyek AuroraMaps">
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></span> Simpan
+    </button>
+    <button class="toolbar-btn" id="tb-export" title="Export Data" aria-label="Export Data">
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Export
+    </button>
+    <button class="toolbar-btn" id="tb-screenshot" title="Ekspor Peta sebagai Gambar JPG/PNG" aria-label="Screenshot">
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span> Screenshot
+    </button>
+    <button class="toolbar-btn" id="tb-gps-record" title="Rekam GPS" aria-label="Rekam GPS">📍 Rekam GPS</button>
+    <button class="toolbar-btn" id="tb-offline-download" title="Download area peta offline">⬇ Peta Offline</button>
+    <div class="toolbar-sep"></div>
+    <button class="toolbar-btn" id="tb-zoom-all" title="Zoom to All Layers">
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg></span> Fit All
+    </button>
+    <div class="toolbar-sep"></div>
+    <button class="toolbar-btn" id="btn-undo" title="Undo (Ctrl+Z)">
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg></span> Undo
+    </button>
+    <button class="toolbar-btn" id="btn-redo" title="Redo (Ctrl+Y)">
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg></span> Redo
+    </button>
+    <div class="toolbar-spacer"></div>
+  </div>
+
+  <!-- WORKSPACE -->
+  <div id="workspace">
+
+    <!-- LEFT SIDEBAR -->
+    <div class="sidebar collapsed" id="sidebar-left">
+      <div class="sidebar-tabs">
+        <button class="sidebar-tab active" data-target="panel-layers">Layers</button>
+        <button class="sidebar-tab" data-target="panel-files">Files</button>
+        <button class="sidebar-tab" data-target="panel-bookmarks">Bookmarks</button>
+      </div>
+
+      <!-- Layers Panel -->
+      <div class="sidebar-panel active" id="panel-layers">
+        <div class="panel-header">
+          <span class="panel-title">Layer Manager</span>
+          <div class="panel-actions">
+            <button class="panel-action-btn" id="btn-add-draw-layer" title="Add Draw Layer">+</button>
+            <button class="panel-action-btn" id="btn-collapse-layers" title="Collapse All">−</button>
+          </div>
+        </div>
+        <div id="layer-list">
+          <div class="empty-state">
+            <div class="empty-state-icon">🗺</div>
+            <div class="empty-state-text">No layers yet.<br>Open a file or draw on the map.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Files Panel -->
+      <div class="sidebar-panel" id="panel-files">
+        <div class="panel-header">
+          <span class="panel-title">File Explorer</span>
+          <div class="panel-actions">
+            <button class="panel-action-btn" id="btn-open-file-panel" title="Open File">+</button>
+          </div>
+        </div>
+        <div class="panel-scroll">
+          <div class="file-drop-zone" id="drop-zone">
+            <div class="drop-icon">📁</div>
+            <div>Drop files here or <span class="panel-file-browse" id="drop-browse">browse</span></div>
+            <div class="panel-file-note">GeoJSON · KML · KMZ · GPX · JSON</div>
+          </div>
+          <div id="file-history-list" class="panel-scroll-tight"></div>
+        </div>
+      </div>
+
+      <!-- Bookmarks Panel -->
+      <div class="sidebar-panel" id="panel-bookmarks">
+        <div class="panel-header">
+          <span class="panel-title">Bookmarks</span>
+          <div class="panel-actions">
+            <button class="panel-action-btn" id="btn-add-bookmark" title="Add Bookmark (current view)">+</button>
+          </div>
+        </div>
+        <div id="bookmark-list" class="panel-scroll">
+          <div class="empty-state">
+            <div class="empty-state-icon">🔖</div>
+            <div class="empty-state-text">No bookmarks.<br>Right-click on map or click + to save current view.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- MAP AREA -->
+    <div id="map-container">
+      <div id="map"></div>
+
+      <!-- Draw tools (floating, icon-only) -->
+      <div class="draw-tools" id="draw-tools">
+        <button class="draw-tools-btn" id="dt-point" title="Gambar Titik" aria-label="Gambar Titik"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></button>
+        <button class="draw-tools-btn" id="dt-line" title="Gambar Garis" aria-label="Gambar Garis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 17 9 11 13 15 21 7"/></svg></button>
+        <button class="draw-tools-btn" id="dt-poly" title="Gambar Polygon" aria-label="Gambar Polygon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg></button>
+        <button class="draw-tools-btn" id="dt-rect" title="Gambar Rectangle" aria-label="Gambar Rectangle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/></svg></button>
+        <button class="draw-tools-btn" id="dt-circle" title="Gambar Circle" aria-label="Gambar Circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg></button>
+      </div>
+
+      <!-- Zoom + lokasi (stack kanan atas, gaya sama dengan draw tools) -->
+      <div class="zoom-tools" id="zoom-tools">
+        <button class="zoom-tools-btn" id="btn-zoom-in" type="button" title="Perbesar" aria-label="Perbesar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        <button class="zoom-tools-btn" id="btn-zoom-out" type="button" title="Perkecil" aria-label="Perkecil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        <button class="zoom-tools-btn" id="btn-my-location" type="button" title="Tampilkan lokasi saya" aria-label="Tampilkan lokasi saya">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3"></path><path d="M12 19v3"></path><path d="M2 12h3"></path><path d="M19 12h3"></path><circle cx="12" cy="12" r="8"></circle></svg>
+        </button>
+        <button class="zoom-tools-btn" id="btn-3d" type="button" title="Tampilan 3D" aria-label="Tampilan 3D"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></button>
+        <!-- Kompas 3D: hanya tampil di mode 3D, jarum mengikuti heading kamera, klik → arah utara -->
+        <button class="zoom-tools-btn compass-3d" id="compass-3d" type="button" title="Kembalikan arah utara" aria-label="Kembalikan arah utara">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9.5"/>
+            <path d="M12 3.5 L14.2 10.4 L12 9.1 L9.8 10.4 Z" fill="var(--accent)" stroke="none"/>
+            <path d="M12 20.5 L9.8 13.6 L12 14.9 L14.2 13.6 Z" fill="currentColor" stroke="none" opacity="0.45"/>
+            <path d="M3.5 12 L10.4 9.8 L9.1 12 L10.4 14.2 Z" fill="currentColor" stroke="none" opacity="0.3"/>
+            <path d="M20.5 12 L13.6 9.8 L14.9 12 L13.6 14.2 Z" fill="currentColor" stroke="none" opacity="0.3"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Image DOM overlay (tidak terikat koordinat, tidak ikut zoom) -->
+      <div id="img-overlay-wrap">
+        <img id="img-overlay-img" draggable="false" alt=""/>
+        <div class="ioc-handle" id="ioc-nw"></div>
+        <div class="ioc-handle" id="ioc-ne"></div>
+        <div class="ioc-handle" id="ioc-sw"></div>
+        <div class="ioc-handle" id="ioc-se"></div>
+      </div>
+
+      <!-- Image Overlay floating panel -->
+      <div id="img-overlay-panel">
+        <div class="iop-row">
+          <span class="iop-label">Overlay:</span>
+          <span class="iop-name" id="iop-filename">—</span>
+        </div>
+        <div class="iop-row">
+          <span class="iop-label">Opacity</span>
+          <input type="range" class="iop-slider" id="iop-opacity" min="0" max="100" value="50"/>
+          <span class="iop-val" id="iop-opacity-val">50%</span>
+        </div>
+        <div class="iop-row" style="gap:5px;flex-wrap:wrap">
+          <button class="iop-btn active" id="iop-btn-visible" title="Sembunyikan/Tampilkan overlay">👁</button>
+          <button class="iop-btn" id="iop-btn-handles" title="Aktifkan handle sudut untuk geser/resize">⤢ Edit</button>
+          <button class="iop-btn" id="iop-btn-lock" title="Kunci overlay ke koordinat peta agar ikut bergerak saat zoom/geser">🔗 Kunci</button>
+          <button class="iop-btn danger" id="iop-btn-remove" title="Hapus overlay">✕</button>
+        </div>
+      </div>
+
+      <!-- Mobile crosshair (selalu tampil) -->
+      <div id="mobile-crosshair">
+        <div class="mc-ring"></div>
+        <div class="mc-h"></div>
+        <div class="mc-v"></div>
+      </div>
+
+      <!-- Basemap switcher -->
+      <div class="basemap-switcher">
+        <button class="basemap-btn active" data-layer="street" aria-label="Street Map (Voyager)" title="Street Map (Voyager)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg></button>
+        <button class="basemap-btn" data-layer="satellite" aria-label="Satellite" title="Satellite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49"/><path d="M7.76 16.24a6 6 0 0 1 0-8.49"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 19.07a10 10 0 0 1 0-14.14"/></svg></button>
+        <button class="basemap-btn" data-layer="topo" aria-label="Topographic" title="Topographic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20 10 8l4 7 3-5 4 10H3z"/><line x1="3" y1="20" x2="21" y2="20"/></svg></button>
+        <button class="basemap-btn" data-layer="dark" aria-label="Dark map" title="Dark map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
+      </div>
+
+      <!-- 3D globe (Cesium) di kanvas yang sama, menutupi peta Leaflet -->
+      <div id="cesium-container" class="cesium-container"></div>
+    </div>
+
+    <!-- RIGHT SIDEBAR -->
+    <div class="sidebar collapsed" id="sidebar-right">
+      <div class="sidebar-tabs">
+        <button class="sidebar-tab active" data-target="panel-props">Edit</button>
+        <button class="sidebar-tab" data-target="panel-style">Style</button>
+        <button class="sidebar-tab" data-target="panel-geom">Geom</button>
+        <button class="sidebar-tab" data-target="panel-stats">Stats</button>
+        <button class="sidebar-tab" data-target="panel-meta">Meta</button>
+      </div>
+
+      <!-- Edit Panel (unified edit+props) -->
+      <div class="sidebar-panel active" id="panel-props">
+        <div class="panel-header">
+          <span class="panel-title">Edit</span>
+          <div class="panel-actions">
+            <button class="panel-action-btn" id="btn-copy-props" title="Copy as JSON">⧉</button>
+          </div>
+        </div>
+        <div id="props-content" style="flex:1;overflow-y:auto;display:flex;flex-direction:column">
+          <div class="empty-state">
+            <div class="empty-state-icon">🖱</div>
+            <div class="empty-state-text">Tap/klik bidang di peta untuk mengedit.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Style Editor -->
+      <div class="sidebar-panel" id="panel-style">
+        <div class="panel-header">
+          <span class="panel-title">Style Editor</span>
+        </div>
+        <div style="flex:1;overflow-y:auto">
+          <div class="style-section">
+            <div class="style-row">
+              <div class="style-label">Fill Color</div>
+              <input type="color" class="style-input" id="style-fill-color" value="#3b82f6"/>
+            </div>
+            <div class="style-row">
+              <div class="style-label">Fill Opacity</div>
+              <input type="range" class="style-input" id="style-fill-opacity" min="0" max="1" step="0.05" value="0.3"/>
+              <span id="style-fill-opacity-val" style="font-size:11px;color:var(--text-muted);width:28px">0.3</span>
+            </div>
+            <div class="style-row">
+              <div class="style-label">Stroke Color</div>
+              <input type="color" class="style-input" id="style-stroke-color" value="#1d4ed8"/>
+            </div>
+            <div class="style-row">
+              <div class="style-label">Stroke Width</div>
+              <input type="range" class="style-input" id="style-stroke-width" min="0.5" max="10" step="0.5" value="2"/>
+              <span id="style-stroke-width-val" style="font-size:11px;color:var(--text-muted);width:28px">2</span>
+            </div>
+            <div class="style-row">
+              <div class="style-label">Stroke Opacity</div>
+              <input type="range" class="style-input" id="style-stroke-opacity" min="0" max="1" step="0.05" value="1"/>
+              <span id="style-stroke-opacity-val" style="font-size:11px;color:var(--text-muted);width:28px">1</span>
+            </div>
+            <div class="style-row">
+              <div class="style-label">Dash Pattern</div>
+              <select class="style-input" id="style-dash">
+                <option value="">Solid</option>
+                <option value="5,5">Dashed</option>
+                <option value="2,6">Dotted</option>
+                <option value="10,5,2,5">Dash-dot</option>
+              </select>
+            </div>
+          </div>
+          <div class="style-section">
+            <div style="font-size:10px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Label Settings</div>
+            <div class="style-row">
+              <div class="style-label">Show Labels</div>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                <input type="checkbox" id="style-show-labels"/>
+                <span style="font-size:11px;color:var(--text-secondary)">Enabled</span>
+              </label>
+            </div>
+             <div class="style-row">
+               <div class="style-label">Label Based On</div>
+               <select class="style-input" id="style-label-source">
+                 <option value="name">Nama Bidang</option>
+                 <option value="shm">SHM</option>
+                 <option value="luas">Luas</option>
+                 <option value="deskripsi">Deskripsi</option>
+                 <option value="nib">NIB</option>
+                 <option value="keterangan">Keterangan</option>
+                 <option value="none">Tidak Ada</option>
+               </select>
+             </div>
+             <div class="style-row">
+               <div class="style-label">Panjang Sisi (meter)</div>
+               <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                 <input type="checkbox" id="style-show-edge-lengths" checked/>
+                 <span style="font-size:11px;color:var(--text-secondary)">Tampilkan</span>
+               </label>
+             </div>
+          </div>
+          <div class="style-section">
+            <button class="btn btn-primary" id="btn-apply-style-main" style="width:100%">Apply to Selected Layer</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Geometry Info -->
+      <div class="sidebar-panel" id="panel-geom">
+        <div class="panel-header"><span class="panel-title">Geometry Info</span></div>
+        <div id="geom-content" style="flex:1;overflow-y:auto">
+          <div class="empty-state">
+            <div class="empty-state-icon">📐</div>
+            <div class="empty-state-text">Click a feature to see geometry details.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Statistics -->
+      <div class="sidebar-panel" id="panel-stats">
+        <div class="panel-header">
+          <span class="panel-title">Statistics</span>
+          <div class="panel-actions">
+            <button class="panel-action-btn" id="btn-refresh-stats" title="Refresh">↻</button>
+          </div>
+        </div>
+        <div id="stats-content" style="flex:1;overflow-y:auto;padding:4px">
+          <div class="stat-card">
+            <div class="stat-title">Total Layers</div>
+            <div class="stat-val" id="stat-layers">0</div>
+            <div class="stat-sub">in project</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-title">Total Features</div>
+            <div class="stat-val" id="stat-features">0</div>
+            <div class="stat-sub">across all layers</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-title">Selected</div>
+            <div class="stat-val" id="stat-selected">0</div>
+            <div class="stat-sub">features</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-title">Visible Layers</div>
+            <div class="stat-val" id="stat-visible">0</div>
+            <div class="stat-sub">currently shown</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metadata -->
+      <div class="sidebar-panel" id="panel-meta">
+        <div class="panel-header"><span class="panel-title">Metadata</span></div>
+        <div id="meta-content" class="panel-scroll">
+          <div class="empty-state">
+            <div class="empty-state-icon">📋</div>
+            <div class="empty-state-text">Select a layer to view metadata.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM PANEL -->
+  <div class="bp-resize" id="bp-resize-handle"></div>
+  <div id="bottom-panel" class="collapsed">
+    <div class="bottom-header">
+      <button class="bottom-tab active" data-target="bp-attrtable">Attribute Table</button>
+      <button class="bottom-tab" data-target="bp-json">JSON Viewer</button>
+      <button class="bottom-tab" data-target="bp-console">Console</button>
+      <button class="bottom-tab" data-target="bp-coords">Coordinates</button>
+      <div class="bottom-fill"></div>
+      <button class="bottom-header-close" id="btn-attr-maximize" title="Tabel layar penuh (edit manual)">⛶</button>
+      <button class="bottom-header-close" id="btn-bottom-close" title="Close Bottom Panel">✕</button>
+    </div>
+    <div class="bottom-content">
+      <div class="bottom-panel-content active" id="bp-attrtable">
+        <div id="attr-table-container" class="attr-container">
+          <div class="attr-table-search">
+            <button class="attr-excel-btn" id="btn-attr-save-xlsx" title="Simpan tabel ke file Excel">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+              <span>Excel</span>
+            </button>
+            <span class="attr-search-spacer"></span>
+            <span id="attr-row-count" class="attr-row-count">0 rows</span>
+            <span class="attr-search-box">
+              <span class="attr-search-icon">🔍</span>
+              <input type="text" id="attr-search" placeholder="Filter rows…"/>
+            </span>
+          </div>
+          <div id="attr-table-wrap">
+            <div class="empty-state attr-empty">
+              <div class="empty-state-icon">📊</div>
+              <div class="empty-state-text">Buka file atau gambar fitur untuk melihat semua atribut.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="bottom-panel-content" id="bp-json">
+        <div id="json-viewer" class="json-pad">// Click a feature to see its GeoJSON here</div>
+      </div>
+      <div class="bottom-panel-content" id="bp-console">
+        <div class="console-header">
+          <span class="console-title">Console</span>
+          <button class="panel-action-btn" id="btn-clear-console" title="Clear Console">🧹 Clear</button>
+        </div>
+        <div id="console-log"></div>
+      </div>
+      <div class="bottom-panel-content" id="bp-coords">
+        <div id="coord-list">
+          <div class="empty-state">
+            <div class="empty-state-icon">📌</div>
+            <div class="empty-state-text">Click on the map to record coordinates.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div id="statusbar">
+    <div class="status-item">
+      <div class="status-dot online"></div>
+      <span class="status-val" id="status-ready">Ready</span>
+    </div>
+    <div class="status-sep"></div>
+    <div class="status-item">
+      <span class="status-label">CRS:</span>
+      <span class="status-val">EPSG:4326</span>
+    </div>
+    <div class="status-sep"></div>
+    <div class="status-item">
+      <span class="status-label">Zoom:</span>
+      <span class="status-val" id="status-zoom">4</span>
+    </div>
+    <div class="status-sep"></div>
+    <div class="status-item">
+      <span class="status-label">Scale:</span>
+      <span class="status-val" id="status-scale">—</span>
+    </div>
+    <div class="status-sep"></div>
+    <div class="status-item">
+      <span class="status-label">Basemap:</span>
+      <span class="status-val" id="status-basemap">OSM · native 19 / max 22</span>
+    </div>
+    <div class="status-sep"></div>
+    <div class="status-item">
+      <span class="status-label">Cursor:</span>
+      <span class="status-val" id="status-cursor">—</span>
+    </div>
+    <div class="status-sep"></div>
+    <div class="status-item">
+      <span class="status-label">Selected:</span>
+      <span class="status-val" id="status-selected">0 features</span>
+    </div>
+    <div style="flex:1"></div>
+    <div class="status-item">
+      <span class="status-label">Layers:</span>
+      <span class="status-val" id="status-layers">0</span>
+    </div>
+    <div class="status-sep"></div>
+    <div class="status-item">
+      <span class="status-val" id="status-fps">—</span>
+    </div>
+  </div>
+
+
+  <!-- MOBILE BOTTOM BAR (hidden on PC) -->
+  <div id="mobile-bar" style="display:none">
+    <button class="mb-btn" id="mb-edit" title="Edit Bidang">
+      <span class="mb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></span>
+    </button>
+    <button class="mb-btn mb-disabled" id="mb-undo" title="Undo">
+      <span class="mb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13A9 9 0 1 0 5.6 6.1"/></svg></span>
+    </button>
+    <button id="mb-add-point">
+      <span style="font-size:26px;line-height:1;font-weight:300">+</span>
+    </button>
+    <button class="mb-btn mb-disabled" id="mb-redo" title="Redo">
+      <span class="mb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13A9 9 0 1 1 18.4 6.1"/></svg></span>
+    </button>
+    <button class="mb-btn" id="mb-style" title="Style Bidang">
+      <span class="mb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 9 9c0-1.1-.9-2-2-2h-2.5a1.5 1.5 0 0 1-1.4-2A3 3 0 0 0 12 3Z"/><circle cx="7.5" cy="11" r="1"/><circle cx="9" cy="7.5" r="1"/><circle cx="13" cy="6.5" r="1"/></svg></span>
+    </button>
+  </div>
+
+  <!-- MOBILE HAMBURGER MENU -->
+  <div id="mh-menu-backdrop"></div>
+  <!-- MOBILE LAYER MANAGER OVERLAY backdrop -->
+  <div id="mh-layers-backdrop"></div>
+  <div id="mh-right-backdrop"></div>
+  <div id="mobile-menu">
+    <div class="mm-header">
+      <span class="mm-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>Menu</span>
+      <button class="mm-close" id="mm-close">✕</button>
+    </div>
+    <div class="mm-body">
+
+      <!-- Administrator paling atas (hanya terlihat saat login sbg Administrator) -->
+      <button class="mm-item" id="mm-admin">
+        <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></span>
+        <span class="mm-item-text">Administrator</span>
+      </button>
+
+      <div class="mm-divider"></div>
+      <button class="mm-item" id="mm-atr-search">
+        <span class="mm-item-icon">🔎</span>
+        <span class="mm-item-text">Cari Bidang</span>
+      </button>
+      <button class="mm-item" id="mm-open">
+        <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span>
+        <span class="mm-item-text">Open</span>
+      </button>
+      <button class="mm-item" id="mm-open-project">
+        <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>
+        <span class="mm-item-text">Open Project</span>
+      </button>
+      <button class="mm-item" id="mm-overlay">
+        <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>
+        <span class="mm-item-text">Overlay</span>
+      </button>
+      <button class="mm-item" id="mm-atrbpn">
+        <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>
+        <span class="mm-item-text">ATRBPN</span>
+      </button>
+      <button class="mm-item" id="mm-save-project">
+        <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></span>
+        <span class="mm-item-text">Save Project</span>
+      </button>
+      <button class="mm-item" id="mm-export">
+        <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+        <span class="mm-item-text">Export</span>
+      </button>
+      <button class="mm-item" id="mm-gps-record"><span class="mm-item-icon">📍</span><span class="mm-item-text">Rekam GPS</span></button>
+      <button class="mm-item" id="mm-offline-download"><span class="mm-item-icon">⬇</span><span class="mm-item-text">Download Peta Offline</span></button>
+      <button class="mm-item" id="mm-layers">
+        <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span>
+        <span class="mm-item-text">Layer Manager</span>
+      </button>
+      <button class="mm-item" id="mm-attr">
+        <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg></span>
+        <span class="mm-item-text">Atribut</span>
+      </button>
+
+      <div class="mm-divider"></div>
+      <div class="mm-draw-row">
+        <button class="mm-draw-item" id="mm-draw-point">
+          <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+        </button>
+        <button class="mm-draw-item" id="mm-draw-line">
+          <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/></svg></span>
+        </button>
+        <button class="mm-draw-item" id="mm-draw-poly">
+          <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg></span>
+        </button>
+        <button class="mm-draw-item" id="mm-draw-rect">
+          <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/></svg></span>
+        </button>
+        <button class="mm-draw-item" id="mm-draw-circle">
+          <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span>
+        </button>
+      </div>
+      <div class="mm-divider"></div>
+
+      <button class="mm-item" id="mm-lang">
+        <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
+        <span class="mm-item-text">Bahasa</span>
+        <span class="mm-item-badge" id="mm-lang-badge">ID</span>
+      </button>
+      <button class="mm-item" id="mm-theme">
+        <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+        <span class="mm-item-text">Theme</span>
+        <span class="mm-item-badge" id="mm-theme-badge">Dark</span>
+      </button>
+
+      <div class="mm-divider"></div>
+      <button class="mm-item" id="mm-about">
+        <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>
+        <span class="mm-item-text">About</span>
+      </button>
+
+      <div class="mm-divider"></div>
+      <!-- Logout — mantan isi panel Pengaturan (tombol ⚙ sudah dihapus) -->
+      <button class="mm-item" id="mm-logout">
+        <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>
+        <span class="mm-item-text">Logout</span>
+      </button>
+
+    </div>
+
+      </div>
+  </div>
+
+  <!-- ABOUT MODAL FRAME -->
+  <div id="about-modal" class="about-modal">
+    <div class="about-card">
+      <button id="about-modal-close" class="about-close">✕</button>
+      <div class="about-logo">
+        <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="aurora-about" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#00f5d4"/>
+              <stop offset="33%" stop-color="#00bbf9"/>
+              <stop offset="66%" stop-color="#9b5de5"/>
+              <stop offset="100%" stop-color="#f15bb5"/>
+            </linearGradient>
+            <filter id="glow-about">
+              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+          <circle cx="60" cy="60" r="58" fill="#0a0a1a" stroke="url(#aurora-about)" stroke-width="2"/>
+          <g filter="url(#glow-about)">
+            <path d="M15,45 Q30,35 45,40 T75,35 T105,45" stroke="#00f5d4" stroke-width="3" fill="none" opacity="0.8"/>
+            <path d="M10,55 Q25,45 40,50 T70,45 T110,55" stroke="#00bbf9" stroke-width="3" fill="none" opacity="0.8"/>
+            <path d="M15,65 Q30,55 45,60 T75,55 T105,65" stroke="#9b5de5" stroke-width="3" fill="none" opacity="0.8"/>
+            <path d="M20,75 Q35,65 50,70 T80,65 T100,75" stroke="#f15bb5" stroke-width="3" fill="none" opacity="0.8"/>
+          </g>
+          <g transform="translate(60,52)">
+            <path d="M0,-30 C-16,-30 -24,-18 -24,-8 C-24,8 0,32 0,32 C0,32 24,8 24,-8 C24,-18 16,-30 0,-30 Z" fill="url(#aurora-about)"/>
+            <circle cx="0" cy="-10" r="8" fill="#0a0a1a"/>
+            <circle cx="0" cy="-10" r="5" fill="url(#aurora-about)"/>
+          </g>
+        </svg>
+      </div>
+      <div class="about-title">AuroraMaps</div>
+      <div class="about-subtitle">RiaCaya GIS Viewer</div>
+      <div class="about-desc">Aplikasi GIS berbasis web untuk melihat, mengelola, dan mengedit data geospasial.</div>
+      <div class="about-meta">
+        <div class="about-meta-row">
+          <span>📞</span><span>+6282338013610</span>
+        </div>
+        <div class="about-meta-row">
+          <span>✉</span><span>riacaya99@gmail.com</span>
+        </div>
+      </div>
+      <div class="about-version">v1.0.0</div>
+    </div>
+  </div>
+
+  <!-- Tabel atribut layar penuh (maximize untuk edit manual) -->
+  <div id="attr-fullscreen" class="attr-fullscreen">
+    <div class="attr-fullscreen-header">
+      <span class="attr-fullscreen-title">📊 Tabel Atribut — Edit Langsung</span>
+      <button class="bottom-header-close" id="btn-attr-max-close" title="Kembali ke panel bawah">✕</button>
+    </div>
+    <div id="attr-fullscreen-body"></div>
+  </div>
+
+</div><!-- #app -->
+
+<!-- HIDDEN -->
+<input type="file" id="file-input" accept=".geojson,.json,.kml,.kmz,.gpx" class="hidden-file" multiple/>
+<input type="file" id="project-input" accept=".auroramaps,.senjamaps,application/json" class="hidden-file"/>
+<input type="file" id="img-overlay-input" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden-file"/>
+<div id="modal-container">
+  <div class="modal" id="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Modal</div>
+      <button class="modal-close" id="modal-close">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+<div id="toast-container"></div>
+<div id="context-menu"></div>
+
+<!-- Libraries -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<!-- App modules (load order = dependency order) -->
+<script src="./src/js/config.js?v=57"></script>
+<script src="./src/js/utils.js?v=50"></script>
+<script src="./src/js/storage.js?v=50"></script>
+<script src="./src/js/project.js?v=50"></script>
+<script src="./src/js/feedback.js?v=52"></script>
+<script src="./src/js/offline.js?v=1"></script>
+<script src="./src/js/map.js?v=51"></script>
+<script src="./src/js/layers.js?v=51"></script>
+<script src="./src/js/parser.js?v=50"></script>
+<script src="./src/js/features.js?v=50"></script>
+<script src="./src/js/exporter.js?v=50"></script>
+<script src="./src/js/search.js?v=50"></script>
+<script src="./src/js/attrTable.js?v=50"></script>
+<script src="./src/js/history.js?v=50"></script>
+<script src="./src/js/theme.js?v=50"></script>
+<script src="./src/js/bookmarks.js?v=50"></script>
+<script src="./src/js/ui.js?v=50"></script>
+<script src="./src/js/mobile.js?v=51"></script>
+<script src="./src/js/imageOverlay.js?v=50"></script>
+<script src="./src/js/atrbpnLayers.js?v=60"></script>
+<script src="./src/js/mapPopup.js?v=50"></script>
+<script src="./src/js/bhumiIdentify.js?v=63"></script>
+<script src="./src/js/adminPanel.js?v=3"></script>
+<script src="./src/js/app.js?v=66"></script>
+</body>
+</html>
