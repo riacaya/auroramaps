@@ -8,6 +8,9 @@
 <meta name="apple-mobile-web-app-title" content="AuroraMaps"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="theme-color" content="#0a0a1a"/>
+<link rel="manifest" href="./manifest.webmanifest"/>
+<link rel="icon" type="image/png" sizes="192x192" href="./assets/auroramaps-192.png"/>
+<link rel="apple-touch-icon" href="./assets/auroramaps-192.png"/>
 <title>AuroraMaps - GIS Viewer</title>
 <link rel="apple-touch-icon" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjnh-IT8PsV6xuVkev5Wva6KMDEXDegNwM8uqyxBrF7eKOgMjSdmAZTrp-t54jWhH2LuVdMHfHM0UI_Vdz0UGFA5zBYtAx7gMOSOCLQRw_O6dtnKfenOSXhYjWdVNUR47k_FQI5_sRr2Sxvm56W2uCxb7WsRPjhtpvIF07/s320/auroramaps.png"/>
 <link rel="icon" type="image/png" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjnh-IT8PsV6xuVkev5Wva6KMDEXDegNwM8uqyxBrF7eKOgMjSdmAZTrp-t54jWhH2LuVdMHfHM0UI_Vdz0UGFA5zBYtAx7gMOSOCLQRw_O6dtnKfenOSXhYjWdVNUR47k_FQI5_sRr2Sxvm56W2uCxb7WsRPjhtpvIF07/s320/auroramaps.png"/>
@@ -33,8 +36,12 @@
 .login-register-btn:disabled{opacity:.6;cursor:wait}
 @media(max-width:520px){.login-card{display:block;padding:20px}.login-branding{padding:0 0 16px}.login-branding-logo{width:60px;height:60px;margin-bottom:7px}.login-branding-title{font-size:18px}.login-form-content{padding:12px 0 0;border-top:1px solid var(--border);border-left:0}}
 </style>
+
+<style>.pwa-install-btn{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:99998;border:1px solid #00f5d4;border-radius:999px;padding:11px 16px;background:#14171d;color:#00f5d4;font:600 13px Inter,Arial,sans-serif;box-shadow:0 4px 18px #0009;cursor:pointer}.pwa-install-btn[hidden]{display:none!important}</style>
 </head>
 <body>
+<button type="button" id="pwa-install-btn" class="pwa-install-btn" hidden>Pasang AuroraMaps</button>
+
 <div id="login-gate" class="login-gate"><form id="login-form" class="login-card"><div class="login-branding"><div class="login-branding-logo"><svg viewBox="0 0 120 120" role="img" aria-label="AuroraMaps logo"><defs><linearGradient id="login-aurora-gradient" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#00f5d4"/><stop offset=".33" stop-color="#00bbf9"/><stop offset=".66" stop-color="#9b5de5"/><stop offset="1" stop-color="#f15bb5"/></linearGradient></defs><circle cx="60" cy="60" r="58" fill="#0a0a1a" stroke="url(#login-aurora-gradient)" stroke-width="2"/><g fill="none" stroke="url(#login-aurora-gradient)" stroke-width="3" opacity=".85"><path d="M12 45q18-12 36-5t36-5t24 5"/><path d="M10 56q18-12 36-5t36-5t28 5"/><path d="M14 68q18-12 36-5t36-5t24 5"/></g><path d="M60 22c-16 0-24 11-24 23 0 16 24 39 24 39s24-23 24-39c0-12-8-23-24-23z" fill="url(#login-aurora-gradient)"/><circle cx="60" cy="45" r="8" fill="#0a0a1a"/><circle cx="60" cy="45" r="5" fill="url(#login-aurora-gradient)"/></svg></div><div class="login-branding-title">AuroraMaps</div><div class="login-branding-subtitle">RiaCaya GIS Viewer</div><div class="login-contact"><a href="tel:+6282338013610">☎ +62 823-3801-3610</a><a href="mailto:riacaya99@gmail.com">✉ riacaya99@gmail.com</a></div></div><div class="login-form-content"><label>Nomor HP<input id="login-user" type="tel" inputmode="tel" autocomplete="username" placeholder="08xxxxxxxxxx" pattern="(?:\+?62|0)8[0-9 .()-]{8,16}" title="Masukkan nomor HP Indonesia, misalnya 081234567890" required></label><label>Password<div class="login-password-wrap"><input id="login-pass" type="password" autocomplete="current-password" required><button type="button" id="login-password-toggle" class="login-password-toggle" aria-label="Tampilkan password" title="Tampilkan password">👁</button></div></label><div class="login-actions"><button type="submit" class="btn btn-primary">Login</button><button type="button" id="login-register" class="btn login-register-btn">Daftar</button></div><div id="login-error" class="login-error"></div></div></form></div>
 <!-- ===== LOADER ===== -->
 <div id="loader">
@@ -805,5 +812,27 @@
 <script src="./src/js/bhumiIdentify.js?v=63"></script>
 <script src="./src/js/adminPanel.js?v=3"></script>
 <script src="./src/js/app.js?v=66"></script>
+<script>
+(() => {
+  const button = document.getElementById('pwa-install-btn');
+  let installPrompt = null;
+  const installed = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  if (installed()) return;
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    installPrompt = event;
+    if (button) button.hidden = false;
+  });
+  button?.addEventListener('click', async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    installPrompt = null;
+    button.hidden = true;
+  });
+  window.addEventListener('appinstalled', () => { if (button) button.hidden = true; });
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js').catch(err => console.warn('Service worker tidak terdaftar:', err));
+})();
+</script>
 </body>
 </html>
