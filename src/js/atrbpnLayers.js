@@ -1,0 +1,673 @@
+// =====================================================
+// AuroraMaps · atrbpnLayers.js — Layer referensi ATR/BPN
+// LSD (Lahan Sawah Dilindungi) · RTR Provinsi (Jawa) · RTRW Kabupaten/Kota
+// Bidang Tanah / persil (bhumi mprx via proxy lokal /bhumi-proxy)
+// Sumber: gisliner.atrbpn.go.id (tile XYZ publik), gistaru-app WMS (RTR)
+// & bhumi.atrbpn.go.id/mprx/service (WMS TILED 512, via /bhumi-proxy)
+// Klik peta → popup baca layer ATR/BPN aktif (GetFeatureInfo gistaru-app).
+// =====================================================
+'use strict';
+
+// Retry otomatis untuk tile yang gagal/gantung (server gisliner sering lambat).
+// Event tileerror hanya terpicu untuk kegagalan sungguhan (network error /
+// timeout / 404) — tile 200 tapi kosong (data memang tidak ada di kabupaten
+// itu) tidak memicu error, jadi tidak ikut di-retry.
+// Jeda naik: 1.2s lalu 2.4s (maxRetries 2) agar tidak menghantam server.
+// PENTING: request ulang memakai cache-buster (&r=ts), BUKAN reset src='' —
+// reset src='' memicu event error lagi yang bikin loop retry tak terbatas
+// untuk tile yang gagal permanen (terbukti: 310 error dalam 4 detik).
+function attachTileRetry(layer, maxRetries = 2, baseDelay = 1200) {
+  const attempts = new Map(); // tile element -> jumlah percobaan
+  layer.on('tileerror', (e) => {
+    const tile = e.tile;
+    if (!tile || !tile.src) return;
+    const n = (attempts.get(tile) || 0) + 1;
+    if (n > maxRetries) { attempts.delete(tile); return; }
+    attempts.set(tile, n);
+    const url = tile.src; // masih URL asli saat event tileerror (Leaflet belum menimpa)
+    setTimeout(() => {
+      if (!tile.isConnected) { attempts.delete(tile); return; } // tile sudah dibuang saat geser
+      tile.src = url + (url.includes('?') ? '&' : '?') + 'r=' + Date.now();
+    }, baseDelay * n);
+  });
+  layer.on('tileload', (e) => { if (e.tile) attempts.delete(e.tile); });
+  layer.on('remove', () => attempts.clear());
+  return layer;
+}
+
+// ── GISTARU WMS (acuan data/bhumi.atrbpn.go.id.har) ──
+// Dipakai untuk GetMap (tile) dan GetFeatureInfo (klik → popup).
+// GetFeatureInfo memakai info_format=text/html: GeoServer mengirim tabel
+// atribut TANPA geometri (±2–3 KB, instan), sedangkan application/json ikut
+// membawa geometri lengkap fitur (terukur 14–21 MB dan >60 detik per klik).
+// CORS server terbuka: Access-Control-Allow-Origin: * (GET/POST/OPTIONS).
+const GISTARU_WMS = 'https://gistaru-app.atrbpn.go.id/interoppublic/api/wms/';
+const RTRP_UUID = 'ed3223bb-7a26-408f-9b55-3fd39c1b901f';
+const RTRP_LAYER = 'rtr-online:rtrw_provinsi_1_indonesia';
+const RTRW_UUID = '78abbda6-8c02-403e-baa9-2c470e647e6b';
+const RTRW_LAYER = 'rtr-online:rtrw_kabkot_1_indonesia';
+
+// ── Sumber tile Bidang Tanah (persil) — rantai fallback ─────────────────────
+// Urut prioritas (riset 5 Okt 2026, rincian di endpoint.md §Sentuh Tanahku):
+//   1) /expapi/bhumigeos/umum/wms + umum:Persil — TERVERIFIKASI LIVE:
+//      200 PNG konten nyata (Jakarta 144 KB, Yogyakarta 139 KB per tile 512px;
+//      md5 stabil & beda antar lokasi, layer lain di path sama = kosong).
+//      Wajib WMS 1.3.0 + CRS=EPSG:3857 (hanya SRS → "InvalidCRS undefined")
+//      dan Referer .atrbpn.go.id (tanpa itu 403) → lewat proxy bhumi.
+//   2) /mprx/service + bhumi_persil — pola asli rekaman situs BHUMI (HAR);
+//      5 Okt pagi backend-nya 503 "Application is not available" (pods mati).
+//   3) /expapi/bhumigs/umum/wms + umum:Persil — katalog resmi Directus
+//      (panel/items/layers: map_service_url=/bhumigs/umum, vendor Geoserver);
+//      GetMap sempat error "Can't obtain the schema" (backend data bermasalah),
+//      legend & identik tetap jalan.
+// Bila sumber aktif gagal terus-menerus, _attachBidangFallback otomatis
+// berganti ke sumber berikutnya (mirip fallback basemap dark).
+const BIDANG_SOURCES = [
+  { path: '/expapi/bhumigeos/umum/wms', layers: 'umum:Persil' },
+  { path: '/mprx/service',              layers: 'bhumi_persil' },
+  { path: '/expapi/bhumigs/umum/wms',   layers: 'umum:Persil' }
+];
+
+const AtrbpnLayers = {
+  _map: null,
+  _layers: null,   // { lsd: {...}, rtrp: {...}, rtrw: {...} }
+
+  init() {
+    this._map = MapManager.map;
+    const G = 'https://gisliner.atrbpn.go.id';
+    const xyz = (c, ts) => G + '/layers/tms/public/' + c + '/{z}/{x}/{y}/?tileSize=' + ts;
+
+    // WMS RTR Provinsi sesuai pola HAR (bhumi.atrbpn.go.id.har): 243x 200,
+    // tanpa Referer/proxy (diuji curl langsung → 200 image/png 512x512).
+    const RTRP_URL = GISTARU_WMS + RTRP_UUID;
+
+    // Pane terpisah per layer agar urutannya stabil (belakang → depan):
+    //   LSD (300) < RTR Provinsi (305) < RTRW (310) < Bidang Tanah (320)
+    // Semua di atas overlay JPG (250) & basemap (200), di bawah data import
+    // (400) dan hasil gambar manual (500).
+    this._map.createPane('atrbpnLsdPane');
+    this._map.getPane('atrbpnLsdPane').style.zIndex = 300;
+    this._map.createPane('atrbpnRtrpPane');
+    this._map.getPane('atrbpnRtrpPane').style.zIndex = 305;
+    this._map.createPane('atrbpnRtrwPane');
+    this._map.getPane('atrbpnRtrwPane').style.zIndex = 310;
+    this._map.createPane('atrbpnHutanPane');
+    this._map.getPane('atrbpnHutanPane').style.zIndex = 318;
+    this._map.createPane('atrbpnShguPane');
+    this._map.getPane('atrbpnShguPane').style.zIndex = 315;
+
+    // Ringan: tileSize 1024 (tipe native layer gisliner = 'zxy1024', bukan 256)
+    // → request berkurang ±16x (mis. z15: 75 tile 256px → 4 tile 1024px), yang
+    // penting karena server gisliner sering lambat/gantung di bawah beban.
+    // PENTING: tile 1024px Wajib zoomOffset -2 (map z15 → minta grid z13):
+    // tanpa offset, Leaflet minta koordinat grid z15 untuk tile 1024px =
+    // lokasi salah (kosong/laut). Dengan offset, tile 1024px @zN-2 persis
+    // menutupi grid 256px @zN, dan detail 1024px @zN-2 = 256px @zN.
+    // maxNativeZoom (terverifikasi 18 Agu, tileSize 1024): data LSD & RTRW
+    // ada s/d z16@1024 (Wonosobo; Wonogiri lebih dalam), z17@1024 kosong.
+    // Leaflet memakai maxNativeZoom PADA MAP ZOOM SEBELUM zoomOffset
+    // (clamp(mapZoom) lalu + offset) — jadi untuk membatasi grid request di
+    // z16, set maxNativeZoom = 18 (16 + offset 2). Map z18 → request z16,
+    // map z19-22 → tetap z16 (upscale). RTR Provinsi = 21 (WMS gistaru-app
+    // dirender on-demand; HAR merekam request z8–z21 semua 200, tileSize 512,
+    // tanpa offset).
+    // Di atas maxNativeZoom, Leaflet otomatis MENG-UPSACALE tile terakhir
+    // sampai maxZoom 22 (seperti basemap) — tanpa request tile tambahan.
+    // updateWhenIdle=false + tile 1024: hanya 4-9 tile per viewport, langsung
+    // termuat saat digeser (tidak lagi menunggu selesai bergerak).
+    const LIGHT = (pane, maxNative = 17, opts = {}) => ({
+      tileSize: 256, pane,
+      keepBuffer: 1, updateWhenIdle: true,
+      maxZoom: 22, maxNativeZoom: maxNative, minZoom: 7,
+      attribution: 'ATR/BPN (gisliner)',
+      ...opts
+    });
+
+    // Bidang Tanah (persil): WMS TILED 512px lewat rantai sumber BIDANG_SOURCES
+    // (lihat konstanta di atas — #1 terverifikasi live 5 Okt 2026). WAF bhumi
+    // butuh Referer .atrbpn.go.id → tile harus lewat proxy server-side (browser
+    // tak bisa spoof Referer). Basis URL dipilih otomatis, prioritas:
+    //   1) proxy lokal static-server (index.html normal) → /bhumi-proxy
+    //   2) URL param ?bhumiWorker=<url>     (single-file/blog, contoh di README)
+    //   3) window.BHUMI_WORKER_URL           (di-set config.js setelah deploy worker)
+    //   4) localStorage 'bhumiWorkerUrl'
+    //   5) tanpa semua → layer dinonaktifkan + catatan di panel.
+    // Opsi 2-4 = URL Cloudflare Worker yang di-deploy user
+    // (.freebuff/bhumi-tile-worker.js) agar tile jalan dari blog mana pun
+    // (origin non-localhost). Prioritas lokal dulu supaya index.html tetap
+    // ringan & tidak bergantung internet ke worker. Pane: bidangPane (z 320,
+    // dibuat map.js) — di atas layer ATR/BPN lain, di bawah data import (400).
+    const bhumiBase = this._resolveBhumiBase();
+    const bidang = (pane) => ({
+      layers: BIDANG_SOURCES[0].layers, crs: L.CRS.EPSG3857, version: '1.3.0',
+      tiled: true, tileSize: 512, uppercase: true,
+      format: 'image/png', transparent: true,
+      pane, maxZoom: 22, maxNativeZoom: 20, minZoom: 8,
+      attribution: 'Persil ATR/BPN'
+    });
+
+    const bidangEntry = {
+      label: 'Bidang Tanah (persil)',
+      on: false, opacity: 0.8,
+      note: bhumiBase ? '' : 'perlu proxy — lihat README (deploy worker)'
+    };
+    if (bhumiBase) {
+      bidangEntry.layer = attachTileRetry(L.tileLayer.wms(bhumiBase + BIDANG_SOURCES[0].path, bidang('bidangPane')));
+      this._attachBidangFallback(bidangEntry, bhumiBase);
+    } else {
+      bidangEntry.layer = null;
+    }
+
+    const hutanEntry = {
+      label: 'Kawasan Hutan', on: false, opacity: 0.7,
+      note: bhumiBase ? '' : 'perlu proxy — lihat README'
+    };
+    if (bhumiBase) {
+      hutanEntry.layer = attachTileRetry(L.tileLayer.wms(bhumiBase + '/expapi/bhumigeos/umum/wms', {
+        layers: 'umum:penunjukan_kawasan_hutan', format: 'image/png',
+        transparent: true, version: '1.3.0', uppercase: true, tiled: true,
+        tileSize: 512, crs: L.CRS.EPSG3857, maxZoom: 22, maxNativeZoom: 18,
+        minZoom: 5, pane: 'atrbpnHutanPane', attribution: 'ATR/BPN — Kawasan Hutan'
+      }));
+    } else hutanEntry.layer = null;
+    const shguEntry = { label: 'SHGU / HGU (WMS)', on: false, opacity: 0.75, layer: null };
+    let shguKey = '';
+    try { shguKey = new URLSearchParams(location.search).get('shguAuthKey') || localStorage.getItem('shguAuthKey') || '63e53df2-c66b-436a-aef4-01e8d547008b'; } catch (e) {}
+    if (shguKey) shguEntry.layer = attachTileRetry(L.tileLayer.wms('https://api-interop.atrbpn.go.id/api/internal/internal-pusdatin/gisliner-WMSHGU/pptr', {
+      layers: 'workspacehgu:layer_hgu', format: 'image/png', transparent: true, version: '1.1.1',
+      uppercase: true, authkey: shguKey, crs: L.CRS.EPSG3857, tileSize: 512, maxZoom: 22,
+      maxNativeZoom: 18, minZoom: 5, pane: 'atrbpnShguPane', attribution: 'ATR/BPN GISLINER — HGU'
+    }));
+    else shguEntry.note = 'perlu auth key — gunakan ?shguAuthKey=...';
+
+    this._layers = {
+      bidang: bidangEntry,
+      lsd:  { label: 'LSD Nasional',      on: false, opacity: 0.8, layer: attachTileRetry(L.tileLayer(xyz('269_lsd_', 1024), LIGHT('atrbpnLsdPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false }))) },
+      rtrp: { label: 'RTR Provinsi Jawa', on: false, opacity: 0.7, layer: attachTileRetry(L.tileLayer.wms(RTRP_URL, LIGHT('atrbpnRtrpPane', 21, {
+              layers: RTRP_LAYER, version: '1.3.0',
+              crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true,
+              format: 'image/png', transparent: true, attribution: 'RTR (gistaru-app)'
+            }))) },
+      rtrw: { label: 'RTRW Kab/Kota',     on: false, opacity: 0.7, layer: attachTileRetry(L.tileLayer(xyz('212_rtrwkbpt', 1024), LIGHT('atrbpnRtrwPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false }))) },
+      hutan: hutanEntry
+      ,shgu: shguEntry
+    };
+
+    // Klik peta → baca layer ATR/BPN yang aktif (lihat _onMapClick).
+    this._map.on('click', (e) => this._onMapClick(e));
+    // Klik fitur poligon manual DIBLOKIR dari map-click (stopPropagation), jadi
+    // hasil GetFeatureInfo yang masih lewat harus dibatalkan dari fase capture
+    // di document — termasuk klik tombol ✕ popup (bukan bagian kontainer peta).
+    document.addEventListener('click', () => {
+      this._clickSeq = (this._clickSeq || 0) + 1;
+    }, true);
+  },
+
+  // ── Klik peta → popup baca layer ATR/BPN ──
+  // Aturan (5 Okt 2026):
+  //   • Ada layer ATR/BPN aktif → klik membaca layer tsb (GetFeatureInfo
+  //     GISTARU, pola acuan HAR) dan popup menampilkan keterangan zona
+  //     RTR Provinsi & RTRW Kab/Kota.
+  //   • Tidak ada yang aktif → klik dibiarkan; yang dibaca adalah poligon
+  //     manual / layer fitur (handler fitur berhenti di sini via stopPropagation).
+  //   • Layer Bidang Tanah aktif → klik DISERAHKAN ke BhumiIdentify
+  //     (_clickIdentifyEnabled, POST /expapi/getPersil sesuai rekaman situs
+  //     bidang.har 5 Okt 2026) supaya dua popup tidak balapan. Zona RTR/RW
+  //     tetap dibaca bila layer bidang tidak aktif.
+  //   • Kawasan hutan masih DIABAIKAN (server sumbernya mati).
+  _onMapClick(e) {
+    if (State.activeDrawType) return;   // mode menggambar → klik dipakai vertex
+    if (MapManager.isMeasuring) return; // mode pengukuran
+    const active = this._activeKeys();
+    if (!active.length) {
+      MapPopup.hide();
+      return; // klik baca poligon manual (perilaku lama)
+    }
+    // Bidang aktif → BhumiIdentify yang mengelola popup (fitur ditemukan →
+    // popup bidang; tidak ada / gagal → dia yang menutup/Memberi toast).
+    const bidangEntry = this._layers && this._layers.bidang;
+    if (bidangEntry && bidangEntry.on && bidangEntry.layer && this._map.hasLayer(bidangEntry.layer) &&
+        typeof BhumiIdentify !== 'undefined' && BhumiIdentify._clickIdentifyEnabled) return;
+
+    const { lat, lng } = e.latlng;
+    // Zona RTR Provinsi & RTRW Kab/Kota SELALU ikut dibaca (GFI text/html
+    // ringan, ±2 KB, instan) — inilah "keterangan zona" yang kemarin belum ada
+    // di popup event klik, meski layer rtrp/rtrw sendiri nonaktif.
+    const seq = (this._clickSeq = (this._clickSeq || 0) + 1);
+    MapPopup.show(this._zonePopupHtml(active, { pending: true }, lat, lng));
+    Promise.all([
+      this._gfiZone(RTRP_UUID, RTRP_LAYER, lat, lng),
+      this._gfiZone(RTRW_UUID, RTRW_LAYER, lat, lng)
+    ]).then(([prov, kab]) => {
+      // Buang hasil lama HANYA bila kartu pending sudah tidak tampil / sudah
+      // diganti pihak lain (klik koordinat baru, klik fitur, atau ✕ tutup).
+      // Klik UI lain tidak boleh membuang hasil — popup jangan nyangkut di
+      // "membaca…" selamanya (tanpa auto-hide lagi).
+      if (seq !== this._clickSeq) {
+        const el = MapPopup._el;
+        // Kartu pending lama kini bertuliskan "Load ATRBPN……" (bukan "membaca").
+        const stillOurs = el && el.style.display === '' &&
+          el.textContent.includes(lat.toFixed(6)) &&
+          (el.textContent.includes('membaca') || el.textContent.includes('Load ATRBPN'));
+        if (!stillOurs) return;
+      }
+      try {
+        MapPopup.show(this._zonePopupHtml(active, { prov, kab }, lat, lng));
+      } catch (err) {
+        // Gagal menyusun popup (data tak terduga) → tetap tampilkan kartu tanpa crash.
+        MapPopup.show(`
+          <div class="mp-header">
+            <span class="mp-title">🧭 ATRBPN</span>
+            <button class="mp-close" onclick="MapPopup.hide()" title="Tutup">✕</button>
+          </div>
+          <div class="mp-cand">⚠ Data tidak tersedia</div>
+          <div class="mp-coord">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
+        `);
+      }
+    });
+  },
+
+  // Layer yang sedang tampil (on + benar-benar menempel di peta).
+  _activeKeys() {
+    return Object.keys(this._layers || {}).filter(k => {
+      const e = this._layers[k];
+      return e.on && e.layer && this._map.hasLayer(e.layer);
+    });
+  },
+
+  // GetFeatureInfo GISTARU — pola acuan HAR, tetapi info_format=text/html
+  // (ringan, lihat catatan konstanta di atas). bbox = kotak kecil ±55 m di
+  // sekitar titik klik, CRS 4326 seperti di HAR.
+  async _gfiZone(uuid, layerName, lat, lng) {
+    const span = 0.0005;
+    const url = GISTARU_WMS + uuid +
+      '?version=1.1.1&request=GetFeatureInfo&info_format=text/html' +
+      '&layers=' + encodeURIComponent(layerName) +
+      '&query_layers=' + encodeURIComponent(layerName) +
+      '&CRS=EPSG:4326&srs=EPSG:4326&width=256&height=256&x=128&y=128' +
+      '&bbox=' + [lng - span, lat - span, lng + span, lat + span].map(v => v.toFixed(6)).join(',') +
+      '&FEATURE_COUNT=5';
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 20000);
+    try {
+      const res = await fetch(url, { signal: ctrl.signal });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return this._parseGfiHtml(await res.text());
+    } catch (err) {
+      return { rows: [], count: 0,
+               error: err && err.name === 'AbortError' ? 'timeout (20 dtk)' : ((err && err.message) || 'gagal') };
+    } finally {
+      clearTimeout(timer);
+    }
+  },
+
+  // Parsing tabel default GeoServer (table.featureInfo): baris <th> = nama
+  // field, baris <td> = nilai. Respons tanpa fitur → tabel tidak ada → [].
+  _parseGfiHtml(html) {
+    try {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const table = doc.querySelector('table.featureInfo');
+      if (!table) return { rows: [], count: 0 };
+      const trs = Array.from(table.querySelectorAll('tr'));
+      const headTr = trs.find(tr => tr.querySelector('th'));
+      const heads = headTr ? Array.from(headTr.querySelectorAll('th')).map(th => th.textContent.trim()) : [];
+      const rows = [];
+      for (const tr of trs) {
+        const tds = Array.from(tr.querySelectorAll('td'));
+        if (!tds.length) continue;
+        const o = {};
+        heads.forEach((h, i) => {
+          const v = tds[i] ? tds[i].textContent.trim() : '';
+          if (v) o[h] = v;
+        });
+        rows.push(o);
+      }
+      return { rows, count: rows.length };
+    } catch (err) {
+      return { rows: [], count: 0, error: err.message };
+    }
+  },
+
+  // Susun HTML popup. zoneRes: null = tanpa query zona;
+  // { pending } = sedang membaca; { prov, kab } = hasil perintah GetFeatureInfo.
+  // Layout DUA KOLOM (.mp-zones): kiri = RTRW Kab/Kota, kanan = RTR Provinsi
+  // (5 Okt 2026) + font kecil non-tebal (lihat CSS .mp-zones) supaya popup
+  // tidak terlalu tinggi.
+  _zonePopupHtml(active, zoneRes, lat, lng) {
+    const esc = (v) => Utils.escapeHtml(String(v));
+    const section = (title, res, fields) => {
+      if (!res) return '';
+      // Pesan tunggal untuk semua kasus kosong/gagal — hindari crash & tabel
+      // kosong saat kabupaten/tsb tidak punya data atau server tak merespons.
+      const unavailable = (why) => `<div class="mp-cand">${title}</div><table><tr><td>⚠ ${why}</td></tr></table>`;
+      if (res.pending) return `<div class="mp-cand">${title} — membaca…</div>`;
+      if (res.error) return unavailable(`Gagal membaca: ${esc(res.error)}`);
+      const f = (res.rows || [])[0];
+      if (!f) return unavailable('Data tidak tersedia di titik ini');
+      const rows = fields
+        .filter(([key]) => f[key])
+        .map(([key, label]) => `<tr><th>${esc(label)}</th><td>${esc(f[key])}</td></tr>`)
+        .join('');
+      if (!rows) return unavailable('Data tidak tersedia di titik ini');
+      const more = res.count > 1 ? `<tr><th>Zona lain</th><td>+${res.count - 1}</td></tr>` : '';
+      return `<div class="mp-cand">${title}</div><table>${rows}${more}</table>`;
+    };
+
+    // Kedua zona selalu ditampilkan (field diverifikasi via curl GFI text/html,
+    // 5 Okt 2026: prov = namobj/wadmpr/nothpr/meta, kab = + jnsrpr/wadmkk/wadmkc).
+    const provSection = section('Zona RTR Provinsi', zoneRes && (zoneRes.pending ? zoneRes : zoneRes.prov),
+      [['namobj', 'Jenis Kawasan'], ['wadmpr', 'Provinsi'], ['nothpr', 'Dasar Perda'], ['meta', 'Wilayah']]);
+    const kabSection = section('Zona RTRW Kab/Kota', zoneRes && (zoneRes.pending ? zoneRes : zoneRes.kab),
+      [['namobj', 'Jenis Kawasan'], ['jnsrpr', 'Kategori'], ['wadmpr', 'Provinsi'],
+       ['wadmkk', 'Kab/Kota'], ['wadmkc', 'Kecamatan'], ['nothpr', 'Dasar Perda'], ['meta', 'Wilayah']]);
+
+    // Endpoint kawasan hutan sengaja tidak dipanggil (server mati);
+    // bidang tidak muncul di sini lagi — bila aktif, klik ditangani BhumiIdentify.
+    const dead = active.filter(k => k === 'hutan');
+    const notes = dead.length
+      ? '<div class="mp-coord">⚠ Kawasan Hutan: server sedang mati — tidak ikut dibaca (sementara).</div>'
+      : '';
+
+    // "Aktif: …" kini menempel di baris header (bukan baris terpisah sendiri)
+    // — hemat satu baris tinggi popup (permintaan 5 Okt 2026).
+    const aktifList = esc(active.map(k => this._layers[k].label).join(' · '));
+    const header = `
+      <div class="mp-header">
+        <span class="mp-title">🧭 ATRBPN</span>
+        <span class="mp-aktif" title="${aktifList}">Aktif: ${aktifList}</span>
+        <button class="mp-close" onclick="MapPopup.hide()" title="Tutup">✕</button>
+      </div>`;
+
+    // Preview sebelum data benar-benar tampil: satu baris loading penuh
+    // "Load ATRBPN……" (berkedip, lihat CSS .mp-loading) — dua kolom hanya
+    // muncul setelah hasil GFI provinsi & kabupaten masuk.
+    if (zoneRes && zoneRes.pending) {
+      return `
+        ${header}
+        <div class="mp-cand mp-loading">Load ATRBPN……</div>
+        ${notes}
+        <div class="mp-coord">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
+      `;
+    }
+
+    return `
+      ${header}
+      <div class="mp-zones">
+        <div class="mp-zone-col">${kabSection}</div>
+        <div class="mp-zone-col">${provSection}</div>
+      </div>
+      ${notes}
+      <div class="mp-coord">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
+    `;
+  },
+
+  // Pilih basis URL tile Bidang Tanah (lihat komentar di init).
+  _resolveBhumiBase() {
+    const h = location.hostname;
+    // Prefer the configured worker. The local static server does not proxy
+    // /bhumi-proxy, while the worker already handles Bhumi WAF requirements.
+    try {
+      const q = new URLSearchParams(location.search).get('bhumiWorker');
+      if (q) return q.replace(/\/$/, '');
+      if (window.BHUMI_WORKER_URL) return String(window.BHUMI_WORKER_URL).replace(/\/$/, '');
+      const ls = localStorage.getItem('bhumiWorkerUrl');
+      if (ls) return ls.replace(/\/$/, '');
+    } catch (e) { /* abaikan */ }
+    if (location.protocol === 'http:' && (h === 'localhost' || h === '127.0.0.1')) return '/bhumi-proxy';
+    return '';
+  },
+
+  // ── Fallback sumber Bidang Tanah ───────────────────────────────────
+  // Maju ke sumber berikutnya (BIDANG_SOURCES) bila sumber aktif benar-benar
+  // mati: ≥6 tileerror tanpa tile sukses di antaranya (tiap tile sudah
+  // di-retry 2x oleh attachTileRetry). Setelah sumber terakhir, PUTAR BALIK
+  // ke sumber #1 (cooldown 20 dtk) supaya rantai tidak macet di sumber
+  // terburuk saat backend bhumi flaky (500 sesaat lalu pulih). Tile
+  // 200-tapi-kosong TIDAK memicu tileerror, jadi sumber yang sehat tidak
+  // akan tergantikan selama masih memuat tile.
+  _bidangSourceIdx: 0,
+  _bidangErrCount: 0,
+  _bidangLastWrap: 0,
+  _attachBidangFallback(entry, bhumiBase) {
+    const layer = entry.layer;
+    const applySource = (idx) => {
+      const src = BIDANG_SOURCES[idx];
+      layer.wmsParams.layers = src.layers;
+      layer.setUrl(bhumiBase + src.path); // setUrl → redraw dengan sumber baru
+      entry.note = 'sumber: ' + src.path + ' (' + src.layers + ')';
+      AppConsole.log(`Sumber tile Bidang Tanah → ${src.path} [${src.layers}]`, 'warn');
+      Toast.show('Sumber data bidang berganti (endpoint sebelumnya gagal)', 'info');
+    };
+    layer.on('tileload', () => { this._bidangErrCount = 0; });
+    layer.on('tileerror', () => {
+      this._bidangErrCount++;
+      if (this._bidangErrCount < 6) return;
+      this._bidangErrCount = 0;
+      const next = (this._bidangSourceIdx + 1) % BIDANG_SOURCES.length;
+      if (next === 0) { // baru saja keliling penuh → jeda dulu
+        if (Date.now() - this._bidangLastWrap < 20000) return;
+        this._bidangLastWrap = Date.now();
+      }
+      this._bidangSourceIdx = next;
+      applySource(next);
+    });
+  },
+
+  _apply(key) {
+    const entry = this._layers[key];
+    if (!entry.layer) return; // layer tak tersedia (tanpa proxy)
+    entry.layer.setOpacity(entry.opacity);
+    if (entry.on && !this._map.hasLayer(entry.layer)) this._map.addLayer(entry.layer);
+    if (!entry.on && this._map.hasLayer(entry.layer)) this._map.removeLayer(entry.layer);
+  },
+
+  showPanel(includeSearch = true, searchMode = 'shm') {
+    // Cari bidang → panel tab (Sertifikat Analok · NIB · NIBEL), gaya Sentuh.
+    if (includeSearch) { this.showCariBidang(searchMode === 'nib' ? 'nib' : searchMode === 'nibel' ? 'nibel' : 'analok'); return; }
+    const rows = Object.keys(this._layers).map(k => {
+      const e = this._layers[k];
+      const pct = Math.round(e.opacity * 100);
+      if (!e.layer) {
+        // Layer tak tersedia (Bidang Tanah tanpa proxy): tampilkan disabled + catatan.
+        return `
+        <label class="atrbpn-row atrbpn-disabled" data-key="${k}">
+          <input type="checkbox" disabled/>
+          <span class="atrbpn-name">${e.label} <span class="atrbpn-note">(${e.note || 'tak tersedia'})</span></span>
+        </label>`;
+      }
+      return `
+        <label class="atrbpn-row" data-key="${k}">
+          <input type="checkbox" id="atrbpn-ck-${k}" class="modal-check"${e.on ? ' checked' : ''}/>
+          <span class="atrbpn-name">${e.label}</span>
+          <input type="range" id="atrbpn-op-${k}" min="10" max="100" value="${pct}"${e.on ? '' : ' disabled'}/>
+          <span class="atrbpn-val" id="atrbpn-val-${k}">${pct}%</span>
+        </label>`;
+    }).join('');
+
+    Modal.open('🧭 ATRBPN',
+      `<div class="modal-stack">
+        ${rows}
+        <div class="exp-actions"><button class="btn btn-primary" data-export-action="ok">OK</button></div>
+      </div>`,
+      []
+    );
+    document.querySelector('#modal-container .modal')?.classList.add('modal-narrow');
+
+    let body = document.getElementById('modal-body');
+    if (!body) return;
+    // Modal reuses the same DOM node. Clone it so every opening gets clean
+    // listeners and fresh autocomplete state after a previous search.
+    const freshBody = body.cloneNode(true);
+    body.replaceWith(freshBody);
+    body = freshBody;
+    body.dataset.boundAtrbpn = 'false';
+    body.addEventListener('click', e => {
+      if (e.target.closest('[data-export-action="ok"]')) Modal.close();
+    });
+    body.addEventListener('change', e => {
+      const row = e.target.closest('.atrbpn-row'); if (!row) return;
+      const key = row.dataset.key, entry = this._layers[key]; if (!entry?.layer) return;
+      if (e.target.id === 'atrbpn-ck-' + key) { entry.on = e.target.checked; document.getElementById('atrbpn-op-' + key).disabled = !entry.on; this._apply(key); }
+    });
+    body.addEventListener('input', e => {
+      const row = e.target.closest('.atrbpn-row'); if (!row) return;
+      const key = row.dataset.key, entry = this._layers[key]; if (!entry?.layer || e.target.id !== 'atrbpn-op-' + key) return;
+      entry.opacity = +e.target.value / 100; document.getElementById('atrbpn-val-' + key).textContent = e.target.value + '%'; this._apply(key);
+    });
+  },
+
+  // ── Panel "Cari Bidang": SATU modal berisi 3 tab (gaya Sentuh Tanahku) ──
+  // 1) Sertifikat Analok (SHM/HGU) 2) NIB 3) Sertifikat Elektronik (NIBEL).
+  // Semua pane tetap di DOM → state tiap tab (kantor, nomor) tersimpan sendiri.
+  showCariBidang(tab = 'analok') {
+    if (tab !== 'nib' && tab !== 'nibel') tab = 'analok';
+    const tabs = [
+      ['analok', 'Sertifikat Analok', 'SHM & HGU (sertifikat analok)'],
+      ['nib', 'NIB', 'Pencarian Nomor Identifikasi Bidang'],
+      ['nibel', 'Sertifikat Elektronik', 'NIBEL (sertifikat elektronik)']
+    ];
+    const tabBar = tabs.map(([id, label, title]) =>
+      `<button type="button" class="atrbpn-tab${tab === id ? ' active' : ''}" data-atrbpn-tab="${id}" title="${title}">${label}</button>`).join('');
+    const html = `
+        <div class="atrbpn-search-box">
+          <div class="atrbpn-tabs">${tabBar}</div>
+          <div class="atrbpn-tabpane" data-atrbpn-pane="analok"${tab === 'analok' ? '' : ' hidden'}>${this._cariFormHtml('atrbpn-shm', 'shm')}</div>
+          <div class="atrbpn-tabpane" data-atrbpn-pane="nib"${tab === 'nib' ? '' : ' hidden'}>${this._cariFormHtml('atrbpn-nib', 'nib')}</div>
+          <div class="atrbpn-tabpane" data-atrbpn-pane="nibel"${tab === 'nibel' ? '' : ' hidden'}>
+            <strong>Cari bidang dengan NIBEL</strong>
+            <label class="prop-label">NIBEL</label>
+            <input id="atrbpn-nibel-value" class="prop-edit-val" inputmode="numeric" placeholder="Masukkan NIBEL"/>
+            <button class="btn btn-primary" id="atrbpn-nibel-search">Cari NIBEL</button>
+          </div>
+        </div>`;
+    Modal.open('🔎 Cari Bidang', `<div class="modal-stack">${html}</div>`, []);
+    document.querySelector('#modal-container .modal')?.classList.add('modal-narrow');
+
+    let body = document.getElementById('modal-body');
+    if (!body) return;
+    // Clone node agar tiap buka bersih dari listener tersemat sebelumnya.
+    const freshBody = body.cloneNode(true);
+    body.replaceWith(freshBody);
+    body = freshBody;
+    body.dataset.boundAtrbpn = 'search';
+    const showTab = id => {
+      body.querySelectorAll('.atrbpn-tab').forEach(b => b.classList.toggle('active', b.dataset.atrbpnTab === id));
+      body.querySelectorAll('.atrbpn-tabpane').forEach(p => { p.hidden = p.dataset.atrbpnPane !== id; });
+    };
+    body.querySelectorAll('.atrbpn-tab').forEach(b => b.addEventListener('click', () => showTab(b.dataset.atrbpnTab)));
+    this._bindCariForm('atrbpn-shm', 'shm');
+    this._bindCariForm('atrbpn-nib', 'nib');
+    document.getElementById('atrbpn-nibel-search')?.addEventListener('click', () => {
+      const value = document.getElementById('atrbpn-nibel-value')?.value.trim();
+      Modal.close();
+      BhumiIdentify.searchNibel(value).then(features => Toast.show(features.length ? `${features.length} bidang ditemukan` : 'NIBEL tidak ditemukan', features.length ? 'success' : 'warn')).catch(err => Toast.show(err.message, 'error'));
+    });
+  },
+
+  // Form cari dgn id ber-prefix (tab Sertifikat Analok & NIB isinya sama,
+  // beda label & endpoint). Prefix dipisah per tab supaya state tak bercampur.
+  _cariFormHtml(p, mode) {
+    const isNib = mode === 'nib';
+    return `
+          <strong id="${p}-title">Cari bidang berdasarkan ${isNib ? 'NIB' : 'SHM'}</strong>
+          <label class="prop-label">Status Hak</label>
+          <select id="${p}-tipe" class="prop-edit-val"><option value="1">Hak Milik</option><option value="2">Hak Guna Usaha</option><option value="3">Hak Guna Bangunan</option><option value="4">Hak Pakai</option><option value="5">Hak Pengelolaan</option><option value="6">Hak Wakaf</option></select>
+          <label class="prop-label">Kabupaten/Kota</label>
+          <input id="${p}-kab" class="prop-edit-val" list="${p}-kab-list" placeholder="Ketik nama kabupaten..." autocomplete="off"/>
+          <datalist id="${p}-kab-list"></datalist>
+          <div id="${p}-desa-wrap"><label class="prop-label">Desa/Kelurahan</label><input id="${p}-desa" class="prop-edit-val" list="${p}-desa-list" placeholder="Pilih kabupaten dulu..." autocomplete="off" disabled/><datalist id="${p}-desa-list"></datalist></div>
+          <label class="prop-label" id="${p}-nomor-label">5 digit ${isNib ? 'NIB' : 'terakhir nomor SHM'}</label>
+          <input id="${p}-nomor" class="prop-edit-val" inputmode="numeric" maxlength="5" placeholder="Contoh: ${isNib ? '01889' : '02329'}"/>
+          <button class="btn btn-primary" id="${p}-search">Cari ${isNib ? 'NIB' : 'SHM'}</button>`;
+  },
+
+  _bindCariForm(p, mode) {
+    const isNib = mode === 'nib';
+    const kabSelect = document.getElementById(p + '-kab');
+    if (!kabSelect) return;
+    const kabList = document.getElementById(p + '-kab-list');
+    const desaSelect = document.getElementById(p + '-desa');
+    const desaList = document.getElementById(p + '-desa-list');
+    const desaWrap = document.getElementById(p + '-desa-wrap');
+    let kabRows = [];
+    let desaRows = [];
+    const namaKab = x => x.nama || x.name || x.nama_kabkot || x.nam_kabkot || x.label || x.id || x.value;
+
+    // listKabupaten tries the reference endpoint first, then local JS snapshots.
+    BhumiIdentify.listKabupaten().then(data => {
+      kabRows = Array.isArray(data) ? data : (data?.data || data?.rows || []);
+      kabList.innerHTML = kabRows.map(x => `<option value="${Utils.escapeHtml(namaKab(x))}"></option>`).join('');
+    }).catch(err => { kabSelect.placeholder = err.message; });
+
+    const syncTipe = () => {
+      const v = document.getElementById(p + '-tipe')?.value || '1';
+      const tanpaDesa = v === '2' || v === '5';
+      if (desaWrap) desaWrap.hidden = tanpaDesa;
+      if (tanpaDesa && desaSelect) desaSelect.value = '';
+      if (isNib) return;
+      const judul = v === '2' ? 'nomor HGU' : v === '5' ? 'nomor Hak Pengelolaan' : 'SHM';
+      const kata = v === '2' ? 'nomor HGU' : v === '5' ? 'nomor Hak Pengelolaan' : 'terakhir nomor SHM';
+      const singkat = v === '2' ? 'HGU' : v === '5' ? 'Hak Pengelolaan' : 'SHM';
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      set(p + '-title', 'Cari bidang berdasarkan ' + judul);
+      set(p + '-nomor-label', '5 digit ' + kata);
+      set(p + '-search', 'Cari ' + singkat);
+      const nomorInput = document.getElementById(p + '-nomor');
+      if (nomorInput) nomorInput.placeholder = 'Contoh: ' + (tanpaDesa ? '01889' : '02329');
+    };
+    document.getElementById(p + '-tipe')?.addEventListener('change', () => {
+      syncTipe();
+      if (!desaWrap?.hidden && kabSelect.value) kabSelect.dispatchEvent(new Event('change'));
+    });
+    syncTipe();
+
+    kabSelect.addEventListener('change', async () => {
+      const kab = kabRows.find(x => namaKab(x) === kabSelect.value.trim());
+      desaRows = [];
+      if (desaList) desaList.innerHTML = '';
+      if (desaSelect) {
+        desaSelect.value = '';
+        desaSelect.disabled = true;
+      }
+      if (!kab || !desaSelect || desaWrap?.hidden) return;
+      try {
+        const kabId = kab.id || kab.kabkotId || kab.value;
+        // listDesa tries /api/desa first, then the local JS snapshots on failure.
+        const data = await BhumiIdentify.listDesa(kabId);
+        desaRows = Array.isArray(data) ? data : (data?.data || data?.rows || []);
+        desaList.innerHTML = desaRows.map(x => `<option value="${Utils.escapeHtml(x.nama || x.name || x.label || x.id || x.value)}"></option>`).join('');
+        desaSelect.placeholder = desaRows.length ? 'Ketik nama desa...' : 'Daftar desa tidak tersedia';
+        desaSelect.disabled = false;
+      } catch (err) {
+        desaSelect.placeholder = err.message;
+      }
+    });
+
+    document.getElementById(p + '-search')?.addEventListener('click', () => {
+      const k = kabRows.find(x => namaKab(x) === kabSelect.value.trim());
+      if (!k) { Toast.show('Pilih kabupaten/kota dari daftar', 'warn'); return; }
+      const tipeVal = document.getElementById(p + '-tipe')?.value || '1';
+      const tanpaDesa = tipeVal === '2' || tipeVal === '5';
+      const desaName = desaSelect?.value.trim();
+      const desaRow = tanpaDesa ? null : desaRows.find(x => (x.nama || x.name || x.label) === desaName);
+      const wilayahId = tanpaDesa
+        ? (k.id || k.kabkotId || k.value)
+        : (desaRow?.id || desaRow?.desaId || desaRow?.value);
+      if (!wilayahId) { Toast.show('Pilih desa dari daftar', 'warn'); return; }
+      const nomor = document.getElementById(p + '-nomor')?.value.trim();
+      if (!/^\d{5}$/.test(nomor || '')) { Toast.show('Isi 5 digit nomornya dulu', 'warn'); return; }
+      const tipe = tanpaDesa ? 'hgu_hpl' : tipeVal;
+      Modal.close();
+      const search = (isNib || tanpaDesa) ? BhumiIdentify.searchNib : BhumiIdentify.searchCertificate;
+      search.call(BhumiIdentify, wilayahId, nomor, tipe).then(features => {
+        if (features.length) Toast.show(`${features.length} bidang ditemukan`, 'success');
+        else Toast.show(`${tanpaDesa ? (tipeVal === '5' ? 'Hak Pengelolaan' : 'HGU') : (isNib ? 'NIB' : 'Bidang')} tidak ditemukan`, 'warn');
+      }).catch(err => Toast.show(err.message, 'error'));
+    });
+  },
+
+  showSearchPanel(type) {
+    // Semua jenis pencarian kini membuka panel tab yang sama.
+    this.showCariBidang(type === 'nib' ? 'nib' : type === 'nibel' ? 'nibel' : 'analok');
+  }
+};
