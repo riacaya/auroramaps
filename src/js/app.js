@@ -431,6 +431,11 @@ const LoginGate = {
     if (digits.startsWith('62')) digits = '0' + digits.slice(2);
     return /^08\d{8,11}$/.test(digits) ? digits : '';
   },
+  // Satu-satunya ID non-nomor HP yang boleh login adalah akun administrator utama.
+  _normalizeLoginId(value) {
+    const id = String(value || '').trim().toLowerCase();
+    return id === 'riacaya' ? id : this._normalizePhone(id);
+  },
   // Terima link sheet Google apa pun (edit / gviz / pub) → URL CSV siap fetch.
   _csvUrl(u) {
     if (u.includes('/gviz/tq')) return u;
@@ -706,11 +711,11 @@ const LoginGate = {
     document.getElementById('login-form').addEventListener('submit', async e => {
       e.preventDefault();
       const userEl = document.getElementById('login-user');
-      const user = this._normalizePhone(userEl.value);
+      const user = this._normalizeLoginId(userEl.value);
       const pass = document.getElementById('login-pass').value;
       const errEl = document.getElementById('login-error');
       if (!user) {
-        if (errEl) { errEl.textContent = 'Masukkan nomor HP Indonesia yang valid, misalnya 081234567890.'; errEl.classList.remove('is-ok'); }
+        if (errEl) { errEl.textContent = 'Masukkan nomor HP Indonesia yang valid atau ID administrator riacaya.'; errEl.classList.remove('is-ok'); }
         userEl.focus();
         return;
       }
