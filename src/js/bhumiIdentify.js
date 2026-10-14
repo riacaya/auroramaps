@@ -27,7 +27,7 @@ const BhumiIdentify = {
       const ls = localStorage.getItem('bhumiWorkerUrl');
       if (ls) return ls.replace(/\/+$/, '');
     } catch (e) { /* ignore */ }
-    return 'https://bhumi-tile-proxy.riacaya99.workers.dev';
+    return 'https://orange-smoke-f6f5.riacaya99.workers.dev';
   },
 
   // ── Token Management ──
@@ -555,7 +555,7 @@ const BhumiIdentify = {
     const features = Array.isArray(featureOrFeatures) ? featureOrFeatures : [featureOrFeatures];
     if (!features.length) return;
     const map = MapManager.map;
-    const workerBase = this._proxyBase || 'https://bhumi-tile-proxy.riacaya99.workers.dev';
+    const workerBase = this._proxyBase || 'https://orange-smoke-f6f5.riacaya99.workers.dev';
     this._hlLayers = [];
 
     // WMS tiles are visual-only, so add an invisible hit-test polygon above

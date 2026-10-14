@@ -16,7 +16,7 @@
 // (Alternatif tanpa edit file: tambah ?bhumiWorker=<url> di URL halaman, atau
 // localStorage.setItem('bhumiWorkerUrl', '<url>'). Lihat atrbpn.md.)
 // ✅ Ter-deploy 18 Agu 2026 — aktif untuk semua versi (blog pakai ini).
-window.BHUMI_WORKER_URL = 'https://bhumi-tile-proxy.riacaya99.workers.dev';
+window.BHUMI_WORKER_URL = 'https://orange-smoke-f6f5.riacaya99.workers.dev';
 
 // ── Login dari Google Spreadsheet (opsional) ───────────────────────────
 // Daftar user/password disimpan di Google Drive Spreadsheet, dan app
