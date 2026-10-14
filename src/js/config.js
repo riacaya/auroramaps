@@ -33,6 +33,14 @@ window.BHUMI_WORKER_URL = 'https://orange-smoke-f6f5.riacaya99.workers.dev';
 // (Alternatif tanpa edit file: localStorage.setItem('auroramapsLoginSheet', '<url>').)
 window.LOGIN_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1wI0ENl2RzrmvprzVyaomIsNmCJzYNJR9KqpWbjTg8kA/edit?usp=sharing';
 
+// ── Batas sesi idle (login ulang otomatis) ─────────────────────────────
+// Berapa MENIT tanpa aktivitas (klik/geser/ketik) sebelum sesi berakhir
+// dan pengguna harus login ulang ke sheet. 0 = nonaktif (sesi selamanya).
+// Timer di-reset otomatis tiap ada aktivitas di peta/aplikasi.
+// Override per perangkat tanpa ubah kode:
+//   localStorage.setItem('auroramapsSessionMinutes', '15')  // atau '0' utk mati
+window.LOGIN_SESSION_MINUTES = 60;
+
 // ── Endpoint Apps Script: manajemen user ──────────────────────────────
 // Panel "Administrator" (tombol header PC / baris menu HP #mm-admin) memakai
 // endpoint ini untuk membaca daftar user, reset password jadi 0000,

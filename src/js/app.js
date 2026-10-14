@@ -419,6 +419,7 @@ const LoginGate = {
   authKey: 'auroramaps-authenticated',
   sheetCacheKey: 'auroramaps-sheet-users',
   sheetUrlKey: 'auroramapsLoginSheet',
+  lastActiveKey: 'auroramaps-last-active',
   _sheetUrl() {
     try { const ls = localStorage.getItem(this.sheetUrlKey); if (ls) return ls.trim(); } catch (e) { /* ignore */ }
     return String(window.LOGIN_SHEET_URL || '').trim();
@@ -632,10 +633,50 @@ const LoginGate = {
     } catch (e) { /* ignore */ }
     return null;
   },
+  // ── Sesi idle: keluar otomatis bila lama tanpa aktivitas ──────────────
+  // Durasi dari window.LOGIN_SESSION_MINUTES (menit; 0 = nonaktif),
+  // bisa dioverride per perangkat: localStorage 'auroramapsSessionMinutes'.
+  _sessionMinutes() {
+    try {
+      const raw = localStorage.getItem('auroramapsSessionMinutes');
+      if (raw != null) { const v = Number(raw); return Number.isFinite(v) && v >= 0 ? v : 0; }
+    } catch (e) { /* ignore */ }
+    const v = Number(window.LOGIN_SESSION_MINUTES);
+    return Number.isFinite(v) && v >= 0 ? v : 0;
+  },
+  // Stempel "terakhir aktif" — dipanggil saat login & tiap ada aktivitas
+  // (ditulis paling cepat tiap 20 detik supaya localStorage tak banjir tulis).
+  _touchSession() {
+    try { localStorage.setItem(this.lastActiveKey, String(Date.now())); } catch (e) { /* ignore */ }
+  },
+  _sessionExpired() {
+    const min = this._sessionMinutes();
+    if (!(min > 0)) return false;
+    const last = Number(localStorage.getItem(this.lastActiveKey) || 0);
+    return !!last && (Date.now() - last) > min * 60000;
+  },
+  // Pasang penjaga: reset stempel tiap aktivitas, cek kedaluwarsa tiap 30 detik.
+  _watchSession() {
+    if (this._watchTimer) return;
+    this._watchTimer = setInterval(() => {
+      if (this._sessionExpired()) {
+        try { sessionStorage.setItem('auroramaps-session-expired', String(this._sessionMinutes())); } catch (e) { /* ignore */ }
+        this.logout();
+      }
+    }, 30000);
+    let last = 0;
+    const touch = () => {
+      const now = Date.now();
+      if (now - last >= 20000) { last = now; this._touchSession(); }
+    };
+    ['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll', 'mousemove'].forEach(ev =>
+      window.addEventListener(ev, touch, { passive: true }));
+  },
   // Keluar sesi: hapus penanda auth + identitas/peran admin — database lokal (user) tetap utuh.
   logout() {
     try {
       localStorage.removeItem(this.authKey);
+      localStorage.removeItem(this.lastActiveKey);
       localStorage.removeItem('auroramaps-user-role');
       localStorage.removeItem('auroramaps-current-user');
       sessionStorage.removeItem('auroramaps-admin-ctx');
@@ -695,10 +736,28 @@ const LoginGate = {
     let users; try { users = JSON.parse(localStorage.getItem(this.key) || 'null'); } catch { users = null; }
     if (!users || typeof users !== 'object') { users = { riacaya: 'rcmaps99' }; localStorage.setItem(this.key, JSON.stringify(users)); }
     if (localStorage.getItem(this.authKey) === 'true') {
+      // Sesi idle sudah kedaluwarsa saat app dibuka → kembali ke layar login.
+      if (this._sessionExpired()) {
+        try { sessionStorage.setItem('auroramaps-session-expired', String(this._sessionMinutes())); } catch (e) { /* ignore */ }
+        this.logout();
+        return;
+      }
+      if (!localStorage.getItem(this.lastActiveKey)) this._touchSession();
+      this._watchSession();
       document.getElementById('login-gate')?.remove();
       App.init();
       return;
-    }    const passwordInput = document.getElementById('login-pass');
+    }
+    // Pesan bila sesi berakhir (lewat batas idle / kedaluwarsa saat app dibuka)
+    try {
+      const exp = sessionStorage.getItem('auroramaps-session-expired');
+      if (exp) {
+        sessionStorage.removeItem('auroramaps-session-expired');
+        const errEl = document.getElementById('login-error');
+        if (errEl) { errEl.textContent = 'Sesi ' + exp + ' menit tanpa aktivitas telah berakhir — silakan login ulang.'; errEl.classList.remove('is-ok'); }
+      }
+    } catch (e) { /* ignore */ }
+    const passwordInput = document.getElementById('login-pass');
     const passwordToggle = document.getElementById('login-password-toggle');
     passwordToggle?.addEventListener('click', () => {
       const visible = passwordInput.type === 'text';
@@ -737,7 +796,9 @@ const LoginGate = {
           try { users[user] = await this._sha256hex(pass) || String(pass); localStorage.setItem(this.key, JSON.stringify(users)); } catch (e) { /* penuh */ }
         }
         localStorage.setItem(this.authKey, 'true');
+        this._touchSession();          // mulai hitungan idle dari detik ini
         this._saveSession_(user, pass, sheet);
+        this._watchSession();
         document.getElementById('login-gate').remove();
         App.init();
       }
