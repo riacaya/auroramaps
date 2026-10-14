@@ -697,6 +697,16 @@ const LoginGate = {
       window.AdminPanel?.sync();
     } catch (e) { /* storage penuh/diblokir */ }
   },
+  // Catat login terakhir ke sheet (kolom "Login Terakhir") — fire-and-forget:
+  // gagal jaringan/dibiarkan; login tetap sukses tanpa menunggu respons.
+  _pingLogin_(user) {
+    const base = String(window.USER_ADMIN_API_URL || '').trim();
+    if (!base) return;
+    try {
+      const q = new URLSearchParams({ action: 'loglogin', id: user });
+      fetch(base + '?' + q.toString(), { cache: 'no-store', redirect: 'follow' }).catch(() => {});
+    } catch (e) { /* ignore */ }
+  },
   // ── Daftar: tambah nomor HP/password baru ke sheet login ────────────
   // Memanggil Apps Script action "register" (tanpa auth admin, tapi hanya
   // boleh membuat user Status "User" — lihat apps-script/AuroraMapsUsers.gs).
@@ -799,6 +809,7 @@ const LoginGate = {
         this._touchSession();          // mulai hitungan idle dari detik ini
         this._saveSession_(user, pass, sheet);
         this._watchSession();
+        this._pingLogin_(user);        // catat "Login Terakhir" di sheet (tanpa blok UI)
         document.getElementById('login-gate').remove();
         App.init();
       }
