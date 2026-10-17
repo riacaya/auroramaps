@@ -451,6 +451,13 @@ const UI = {
     document.querySelector('#modal-container .modal')?.classList.add('modal-narrow');
     const modalBody = document.getElementById('modal-body');
     if (!modalBody) return;
+    // Modal.open() selalu menulis ulang isi #modal-body, jadi .modal-stack di
+    // dalamnya adalah elemen BARU setiap kali panel dibuka. Ikat aksi ke elemen
+    // segar ini tanpa flag "sudah terikat": flag data-bound-* pada #modal-body
+    // ikut tersalin saat panel ATRBPN meng-clone node-nya (listener TIDAK ikut
+    // tersalin), sehingga tombol Export mati pada buka kedua dan seterusnya.
+    const root = modalBody.querySelector('.modal-stack');
+    if (!root) return;
     const updateExportSummary = () => {
       const formats = ['geojson', 'kml', 'kmz', 'xlsx', 'kml-poly']
         .filter(f => document.getElementById(`exp-format-${f}`)?.checked);
@@ -460,25 +467,22 @@ const UI = {
       const el = document.getElementById('exp-sum-files');
       if (el) el.textContent = files;
       // sync chip/radio active class
-      modalBody.querySelectorAll('.exp-chip input').forEach(inp => {
+      root.querySelectorAll('.exp-chip input').forEach(inp => {
         inp.closest('.exp-chip').classList.toggle('on', inp.checked);
       });
-      modalBody.querySelectorAll('.exp-radio input').forEach(inp => {
+      root.querySelectorAll('.exp-radio input').forEach(inp => {
         inp.closest('.exp-radio').classList.toggle('on', inp.checked);
       });
     };
-    if (!modalBody.dataset.boundExportActions) {
-      modalBody.dataset.boundExportActions = '1';
-      modalBody.addEventListener('click', (e) => {
-        const cancelBtn = e.target.closest('[data-export-action="cancel"]');
-        if (cancelBtn) { Modal.close(); return; }
-        const runBtn = e.target.closest('[data-export-action="run"]');
-        if (runBtn) Exporter.runBatchFromModal();
-        // click on label triggers radio/checkbox, update after
-        requestAnimationFrame(updateExportSummary);
-      });
-      modalBody.addEventListener('change', updateExportSummary);
-    }
+    root.addEventListener('click', (e) => {
+      const cancelBtn = e.target.closest('[data-export-action="cancel"]');
+      if (cancelBtn) { Modal.close(); return; }
+      const runBtn = e.target.closest('[data-export-action="run"]');
+      if (runBtn) Exporter.runBatchFromModal();
+      // click on label triggers radio/checkbox, update after
+      requestAnimationFrame(updateExportSummary);
+    });
+    root.addEventListener('change', updateExportSummary);
     updateExportSummary();
   },
 

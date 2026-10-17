@@ -617,6 +617,14 @@ const AtrbpnLayers = {
     if (!entry.on && this._map.hasLayer(entry.layer)) this._map.removeLayer(entry.layer);
   },
 
+  // #modal-body di-clone agar listener lama ikut hilang — tapi clone juga ikut
+  // menyalin atribut data-bound-* milik komponen lain (panel Export, editor
+  // fitur) yang menyimpan flag "sudah terikat" tanpa listener-nya. Akibatnya
+  // tombol komponen itu mati saat modal dibuka lagi. Buang semua flag itu.
+  _dropStaleBindingFlags(el) {
+    Object.keys(el.dataset).forEach(k => { if (k.startsWith('bound')) delete el.dataset[k]; });
+  },
+
   showPanel(includeSearch = true, searchMode = 'shm') {
     // Cari bidang → panel tab (Sertifikat Analok · NIB · NIBEL), gaya Sentuh.
     if (includeSearch) { this.showCariBidang(searchMode === 'nib' ? 'nib' : searchMode === 'nibel' ? 'nibel' : 'analok'); return; }
@@ -656,6 +664,7 @@ const AtrbpnLayers = {
     const freshBody = body.cloneNode(true);
     body.replaceWith(freshBody);
     body = freshBody;
+    this._dropStaleBindingFlags(body);
     body.dataset.boundAtrbpn = 'false';
     body.addEventListener('click', e => {
       if (e.target.closest('[data-export-action="ok"]')) Modal.close();
@@ -705,6 +714,7 @@ const AtrbpnLayers = {
     const freshBody = body.cloneNode(true);
     body.replaceWith(freshBody);
     body = freshBody;
+    this._dropStaleBindingFlags(body);
     body.dataset.boundAtrbpn = 'search';
     const showTab = id => {
       body.querySelectorAll('.atrbpn-tab').forEach(b => b.classList.toggle('active', b.dataset.atrbpnTab === id));
