@@ -54,7 +54,6 @@ const LanguageUI = {
   labels: {
     ID: {
       'tb-open': 'File',
-      'tb-open-project': 'Buka Proyek',
       'tb-save-project': 'Simpan Proyek',
       'tb-img-overlay': 'Overlay',
       'tb-import-url': 'URL',
@@ -113,7 +112,6 @@ const LanguageUI = {
       'tb-img-overlay': 'Overlay',
       'tb-import-url': 'URL',
       'tb-save-project': 'Simpan',
-      'tb-open-project': 'Buka',
       'mm-settings': 'Pengaturan',
       'set-title': 'Pengaturan',
       'set-appearance': 'Tampilan',
@@ -139,7 +137,6 @@ const LanguageUI = {
     },
     EN: {
       'tb-open': 'File',
-      'tb-open-project': 'Open Project',
       'tb-save-project': 'Save Project',
       'tb-img-overlay': 'Overlay',
       'tb-import-url': 'URL',
@@ -241,7 +238,7 @@ const LanguageUI = {
     });
     const titles = lang === 'EN'
       ? {
-          'tb-open': 'File (buka data)',
+          'tb-open': 'File — GIS data / project (.auroramaps)',
           'tb-img-overlay': 'Image overlay reference',
           'tb-import-url': 'Import from URL',
           'tb-screenshot': 'Print / save map image',
@@ -251,7 +248,7 @@ const LanguageUI = {
           'mm-lang': 'Toggle language',
         }
       : {
-          'tb-open': 'File (buka data)',
+          'tb-open': 'File — data GIS atau proyek (.auroramaps)',
           'tb-img-overlay': 'Overlay gambar referensi',
           'tb-import-url': 'Impor dari URL',
           'tb-screenshot': 'Cetak / simpan gambar peta',

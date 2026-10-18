@@ -132,7 +132,7 @@
   <!-- TOOLBAR — hanya tombol kerja harian; fitur jarang pakai pindah ke
        dropdown (Impor/Proyek) dan panel Pengaturan -->
   <div id="toolbar">
-    <button class="toolbar-btn" id="tb-open" title="File (Ctrl+O)">
+    <button class="toolbar-btn" id="tb-open" title="File — buka data GIS atau proyek AuroraMaps (.auroramaps) (Ctrl+O)">
       <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> File
     </button>
     <button class="toolbar-btn" id="tb-img-overlay" title="Overlay Gambar Peta (JPG/PNG sebagai acuan)">
@@ -146,9 +146,6 @@
     </button>
     <button class="toolbar-btn" id="tb-save-project" title="Simpan Proyek AuroraMaps">
       <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></span> Simpan
-    </button>
-    <button class="toolbar-btn" id="tb-open-project" title="Buka Proyek AuroraMaps">
-      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span> Buka
     </button>
     <button class="toolbar-btn" id="tb-export" title="Export Data" aria-label="Export Data">
       <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Export
@@ -755,7 +752,7 @@
 </div><!-- #app -->
 
 <!-- HIDDEN -->
-<input type="file" id="file-input" accept=".geojson,.json,.kml,.kmz,.gpx" class="hidden-file" multiple/>
+<input type="file" id="file-input" accept=".geojson,.json,.kml,.kmz,.gpx,.auroramaps,.senjamaps" class="hidden-file" multiple/>
 <input type="file" id="project-input" accept=".auroramaps,.senjamaps,application/json" class="hidden-file"/>
 <input type="file" id="img-overlay-input" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden-file"/>
 <div id="modal-container">
@@ -793,7 +790,7 @@
 <script src="https://riacaya.github.io/auroramaps/src/js/search.js?v=50"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/attrTable.js?v=50"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/history.js?v=50"></script>
-<script src="https://riacaya.github.io/auroramaps/src/js/theme.js?v=58"></script>
+<script src="https://riacaya.github.io/auroramaps/src/js/theme.js?v=59"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/bookmarks.js?v=50"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/ui.js?v=54"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/settings.js?v=3"></script>
@@ -803,7 +800,7 @@
 <script src="https://riacaya.github.io/auroramaps/src/js/mapPopup.js?v=50"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/bhumiIdentify.js?v=64"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/adminPanel.js?v=3"></script>
-<script src="https://riacaya.github.io/auroramaps/src/js/app.js?v=73"></script>
+<script src="https://riacaya.github.io/auroramaps/src/js/app.js?v=74"></script>
 <script>
 (() => {
   const button = document.getElementById('login-install-link');

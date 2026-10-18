@@ -153,7 +153,6 @@ const App = {
     };
 
     bindClick('tb-open', () => document.getElementById('file-input').click());
-    bindClick('tb-open-project', () => document.getElementById('project-input').click());
     bindClick('tb-save-project', () => ProjectManager.save());
     bindClick('tb-export', () => UI.showExportModal());
     bindClick('tb-import-url', () => UI.showImportURLModal());
