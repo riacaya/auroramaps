@@ -445,26 +445,32 @@ const UI = {
 
   showExportModal() {
     const featureCount = State.layers.reduce((n, l) => n + (l.featureCount || 0), 0);
-    const fmt = (id, label, checked) => `<label class="exp-chip${checked ? ' on' : ''}"><input type="checkbox" id="exp-format-${id}" class="modal-check"${checked ? ' checked' : ''}/>${label}</label>`;
+    // Pilihan ganda (format) ditampilkan sebagai daftar centang vertikal;
+    // pilihan tunggal (cakupan) memakai dropdown.
+    const fmt = (id, label, help, checked) => `
+      <label class="exp-check">
+        <input type="checkbox" id="exp-format-${id}" class="modal-check"${checked ? ' checked' : ''}/>
+        <span class="exp-check-text"><span>${label}</span><span class="exp-check-help">${help}</span></span>
+      </label>`;
 
     Modal.open('📥 ' + LanguageUI.t('modal-export-title'),
       `<div class="modal-stack">
         <div class="exp-field">
-          <span class="exp-field-label">Cakupan</span>
-          <div class="exp-radios">
-            <label class="exp-radio on" data-scope="all"><input type="radio" name="exp-scope" id="exp-scope-all" checked/>Semua</label>
-            <label class="exp-radio" data-scope="layer"><input type="radio" name="exp-scope" id="exp-scope-layer"/>Per layer</label>
-            <label class="exp-radio" data-scope="feature"><input type="radio" name="exp-scope" id="exp-scope-feature"/>Per fitur</label>
-          </div>
+          <span class="exp-field-label">${LanguageUI.t('modal-export-scope')}</span>
+          <select id="exp-scope" class="exp-select">
+            <option value="all" selected>${LanguageUI.t('modal-export-all-scope')} — ${LanguageUI.t('modal-export-all-scope-help')}</option>
+            <option value="layer">${LanguageUI.t('modal-export-layer-scope')} — ${LanguageUI.t('modal-export-layer-scope-help')}</option>
+            <option value="feature">${LanguageUI.t('modal-export-feature-scope')} — ${LanguageUI.t('modal-export-feature-scope-help')}</option>
+          </select>
         </div>
         <div class="exp-field">
-          <span class="exp-field-label">Format</span>
-          <div class="exp-chips">
-            ${fmt('geojson', 'GeoJSON', true)}
-            ${fmt('kml', 'KML')}
-            ${fmt('kmz', 'KMZ')}
-            ${fmt('xlsx', 'Excel')}
-            ${fmt('kml-poly', 'KML Poly')}
+          <span class="exp-field-label">${LanguageUI.t('modal-export-formats')} (boleh lebih dari satu)</span>
+          <div class="exp-check-list">
+            ${fmt('geojson', LanguageUI.t('modal-export-json'), LanguageUI.t('modal-export-json-help'), true)}
+            ${fmt('kml', 'KML', LanguageUI.t('modal-export-kml-help'))}
+            ${fmt('kmz', 'KMZ', LanguageUI.t('modal-export-kmz-help'))}
+            ${fmt('xlsx', LanguageUI.t('modal-export-excel'), LanguageUI.t('modal-export-excel-help'))}
+            ${fmt('kml-poly', LanguageUI.t('modal-export-kml-poly'), LanguageUI.t('modal-export-kml-poly-help'))}
           </div>
         </div>
         <div class="exp-field exp-output">
@@ -490,18 +496,11 @@ const UI = {
     const updateExportSummary = () => {
       const formats = ['geojson', 'kml', 'kmz', 'xlsx', 'kml-poly']
         .filter(f => document.getElementById(`exp-format-${f}`)?.checked);
-      const all = document.getElementById('exp-scope-all')?.checked === true;
+      const scope = document.getElementById('exp-scope')?.value || 'all';
       const featureCount = State.layers.reduce((n, l) => n + (l.featureCount || 0), 0);
-      const files = State.layers.length === 0 ? 0 : (all ? formats.length : formats.length * featureCount);
+      const files = State.layers.length === 0 ? 0 : (scope === 'all' ? formats.length : formats.length * featureCount);
       const el = document.getElementById('exp-sum-files');
       if (el) el.textContent = files;
-      // sync chip/radio active class
-      root.querySelectorAll('.exp-chip input').forEach(inp => {
-        inp.closest('.exp-chip').classList.toggle('on', inp.checked);
-      });
-      root.querySelectorAll('.exp-radio input').forEach(inp => {
-        inp.closest('.exp-radio').classList.toggle('on', inp.checked);
-      });
     };
     root.addEventListener('click', (e) => {
       const cancelBtn = e.target.closest('[data-export-action="cancel"]');

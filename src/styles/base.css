@@ -591,6 +591,27 @@ body.is-admin #mm-admin { display: flex; }
 }
 .exp-chip input { display: none; }
 .exp-chip.on, .exp-chip:hover { border-color: var(--accent); background: var(--accent-light); color: var(--accent); font-weight: 600; }
+/* Panel export/cetak: pilihan tunggal → dropdown, pilihan ganda → daftar centang vertikal */
+.exp-select {
+  width: 100%; padding: 7px 9px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg-base);
+  color: inherit; font-size: 12px; cursor: pointer;
+  transition: border-color .15s;
+}
+.exp-select:focus { outline: none; border-color: var(--accent); }
+.exp-select:disabled { opacity: .45; cursor: not-allowed; }
+.exp-check-list { display: flex; flex-direction: column; gap: 4px; }
+.exp-check {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 6px 9px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg-base); cursor: pointer; font-size: 12px;
+  transition: border-color .15s, background .15s;
+}
+.exp-check:hover { border-color: var(--accent); background: var(--bg-hover); }
+.exp-check:has(input:checked) { border-color: var(--accent); background: var(--accent-light); }
+.exp-check .modal-check { margin-top: 1px; flex-shrink: 0; }
+.exp-check-text { display: flex; flex-direction: column; gap: 1px; }
+.exp-check-help { font-size: 10px; color: var(--text-muted); }
 .exp-output { margin-bottom: 6px; }
 .exp-file-count { font-size: 12px; color: var(--text-secondary); }
 .exp-file-count strong { color: var(--text-accent); }

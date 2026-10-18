@@ -445,10 +445,11 @@ const Exporter = {
     }
     const formats = ['geojson', 'kml', 'kmz', 'xlsx', 'kml-poly']
       .filter(format => document.getElementById(`exp-format-${format}`)?.checked);
+    const scope = document.getElementById('exp-scope')?.value || 'all';
     this.exportBatch({
-      all: document.getElementById('exp-scope-all')?.checked === true,
-      perLayer: document.getElementById('exp-scope-layer')?.checked === true,
-      perFeature: document.getElementById('exp-scope-feature')?.checked === true,
+      all: scope === 'all',
+      perLayer: scope === 'layer',
+      perFeature: scope === 'feature',
       formats
     });
   },
@@ -601,65 +602,81 @@ const Exporter = {
 
   showPrintPanel() {
     const S = this._printState;
-    const sizes = [['A3', 0.297], ['A2', 0.42], ['A1', 0.594], ['A0', 0.841],
-                   ['2 m', 2], ['3 m', 3], ['4 m', 4], ['5 m', 5]];
-    const dpis  = [30, 50, 75, 100];
-    const fmts  = [['PNG', 'png'], ['JPG', 'jpg']];
-    // Catatan: atribut HTML selalu huruf kecil (data-pp-widthM → dataset.ppWidthm),
-    // jadi pakai satu atribut data-ppval + kunci grup agar tidak ada yang nyasar.
-    const chips = (key, items) => items.map(([label, val]) =>
-      `<button type="button" class="exp-chip${String(S[key]) === String(val) ? ' on' : ''}" data-ppval="${val}">${label}</button>`).join('');
+    // Pilihan tunggal memakai dropdown; pilihan ganda memakai daftar centang.
+    const sizes = [[0.297, 'A3 — 29,7 × 42 cm'], [0.42, 'A2 — 42 × 59,4 cm'],
+                   [0.594, 'A1 — 59,4 × 84,1 cm'], [0.841, 'A0 — 84,1 × 118,9 cm'],
+                   [2, 'Lebar 2 m'], [3, 'Lebar 3 m'], [4, 'Lebar 4 m'], [5, 'Lebar 5 m']];
+    const dpis  = [[30, '30 DPI — spanduk, dilihat dari jauh'], [50, '50 DPI — poster'],
+                   [75, '75 DPI'], [100, '100 DPI — detail dekat']];
+    const fmts  = [['png', 'PNG — kualitas penuh'],
+                   ['jpg', 'JPG — berkas lebih kecil'],
+                   ['svg', 'SVG Vektor — tajam di ukuran berapa pun']];
+    const opts = (items, cur) => items.map(([val, label]) =>
+      `<option value="${val}"${String(cur) === String(val) ? ' selected' : ''}>${label}</option>`).join('');
 
     const html = `
       <div class="modal-stack">
         <div class="exp-field">
           <span class="exp-field-label">Ukuran cetak (lebar)</span>
-          <div class="exp-chips" data-ppgrp="widthM">${chips('widthM', sizes)}</div>
+          <select id="pp-size" class="exp-select">${opts(sizes, S.widthM)}</select>
         </div>
         <div class="exp-field">
           <span class="exp-field-label">Ketajaman (DPI)</span>
-          <div class="exp-chips" data-ppgrp="dpi">${chips('dpi', dpis.map(d => [String(d), d]))}</div>
+          <select id="pp-dpi" class="exp-select">${opts(dpis, S.dpi)}</select>
         </div>
         <div class="exp-field">
           <span class="exp-field-label">Format berkas</span>
-          <div class="exp-chips" data-ppgrp="format">${chips('format', fmts)}</div>
+          <select id="pp-format" class="exp-select">${opts(fmts, S.format)}</select>
         </div>
-        <label class="exp-field" style="flex-direction:row;align-items:center;gap:8px;cursor:pointer">
+        <label class="exp-check">
           <input type="checkbox" id="pp-title" class="modal-check"${S.title ? ' checked' : ''}/>
-          <span>Sertakan pita judul (nama proyek, tanggal, skala)</span>
+          <span class="exp-check-text"><span>Sertakan pita judul</span>
+            <span class="exp-check-help">Nama proyek, tanggal, koordinat pusat, dan skala bar</span></span>
         </label>
-        <div class="mp-cand" style="margin-top:10px">Mencetak plang besar? Pakai
-          <strong>Ekspor Vektor SVG</strong> — tajam di ukuran cetak berapa pun dan filenya kecil.
-          PNG dibatasi memori perangkat (HP ±12 megapiksel).</div>
         <div id="pp-summary" class="exp-file-count" style="margin-top:8px"></div>
       </div>`;
 
     Modal.open('Cetak / Simpan Gambar', html, [
       { label: 'Batal', cls: 'btn-secondary', action: () => Modal.close() },
-      { label: '📄 Vektor SVG', cls: 'btn-secondary', action: () => { Modal.close(); this.exportVectorSVG(); } },
-      { label: '🖨️ Simpan Gambar', cls: 'btn-primary', action: () => this.exportPrintImage() }
+      { label: '🖨️ Simpan / Ekspor', cls: 'btn-primary', action: () => this.runPrintFromPanel() }
     ]);
 
-    const root = document.getElementById('modal-container');
-    for (const grp of root.querySelectorAll('[data-ppgrp]')) {
-      const key = grp.dataset.ppgrp;
-      grp.addEventListener('click', e => {
-        const b = e.target.closest('button[data-ppval]');
-        if (!b || !grp.contains(b)) return;
-        S[key] = (key === 'format') ? b.dataset.ppval : parseFloat(b.dataset.ppval);
-        grp.querySelectorAll('.exp-chip').forEach(c => c.classList.toggle('on', c === b));
-        this._refreshPrintSummary();
-      });
-    }
+    const bind = (id, key, num) => document.getElementById(id)?.addEventListener('change', e => {
+      S[key] = num ? parseFloat(e.target.value) : e.target.value;
+      this._refreshPrintSummary();
+    });
+    bind('pp-size', 'widthM', true);
+    bind('pp-dpi', 'dpi', true);
+    bind('pp-format', 'format', false);
     document.getElementById('pp-title')?.addEventListener('change', e => { S.title = e.target.checked; });
     this._refreshPrintSummary();
+  },
+
+  // Tombol utama panel cetak: PNG/JPG dirender ulang pada resolusi cetak,
+  // SVG diekspor sebagai vektor (tajam di ukuran berapa pun).
+  runPrintFromPanel() {
+    const format = this._printState.format;
+    Modal.close();
+    if (format === 'svg') this.exportVectorSVG();
+    else this.exportPrintImage();
   },
 
   _refreshPrintSummary() {
     const el = document.getElementById('pp-summary');
     if (!el) return;
+    const S = this._printState;
+    // Ukuran & DPI tidak berlaku untuk vektor — redupkan agar tidak menyesatkan.
+    for (const id of ['pp-size', 'pp-dpi']) {
+      const sel = document.getElementById(id);
+      if (sel) sel.disabled = S.format === 'svg';
+    }
+    if (S.format === 'svg') {
+      el.innerHTML = '<strong>SVG vektor</strong> · tajam di ukuran cetak berapa pun '
+        + '(termasuk 4 × 6 m) · tidak dibatasi memori perangkat · berkas kecil';
+      return;
+    }
     const g = this._printGeometry();
-    const bpp = this._printState.format === 'jpg' ? 0.35 : 1.8;   // perkiraan kasar
+    const bpp = S.format === 'jpg' ? 0.35 : 1.8;   // perkiraan kasar
     const mb = (g.w * g.h * bpp) / 1048576;
     const ratio = g.ch / g.cw;
     el.innerHTML = `<strong>${this._fmtId(g.w)} × ${this._fmtId(g.h)} px</strong> · `
@@ -667,7 +684,7 @@ const Exporter = {
       + `±${Math.round(g.effDpi)} DPI · file ±${mb < 1 ? '<1' : mb.toFixed(0)} MB`
       + (g.clamped ? `<div class="mp-cand" style="margin-top:6px">⚠️ ${g.lim.device} membatasi hasil ke `
           + `${this._fmtId(g.w)} × ${this._fmtId(g.h)} px (±${Math.round(g.effDpi)} DPI), `
-          + `jadi maksimal ±${g.printW.toFixed(2)} m. Untuk lebih besar, pakai Vektor SVG.</div>` : '');
+          + `jadi maksimal ±${g.printW.toFixed(2)} m. Untuk ukuran lebih besar, pilih SVG Vektor.</div>` : '');
   },
 
   async exportPrintImage() {
