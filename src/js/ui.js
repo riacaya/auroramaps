@@ -453,24 +453,30 @@ const UI = {
         <span class="exp-check-text"><span>${label}</span><span class="exp-check-help">${help}</span></span>
       </label>`;
 
+    // Pilihan terakhir dipersist agar panel export langsung terisi
+    // format & cakupan yang biasa dipakai.
+    const pref = Storage.load('export-prefs', null);
+    const prefFormats = Array.isArray(pref?.formats) && pref.formats.length ? pref.formats : ['geojson'];
+    const prefScope = pref?.scope || 'all';
+
     Modal.open('📥 ' + LanguageUI.t('modal-export-title'),
       `<div class="modal-stack">
         <div class="exp-field">
           <span class="exp-field-label">${LanguageUI.t('modal-export-scope')}</span>
           <select id="exp-scope" class="exp-select">
-            <option value="all" selected>${LanguageUI.t('modal-export-all-scope')} — ${LanguageUI.t('modal-export-all-scope-help')}</option>
-            <option value="layer">${LanguageUI.t('modal-export-layer-scope')} — ${LanguageUI.t('modal-export-layer-scope-help')}</option>
-            <option value="feature">${LanguageUI.t('modal-export-feature-scope')} — ${LanguageUI.t('modal-export-feature-scope-help')}</option>
+            <option value="all"${prefScope === 'all' ? ' selected' : ''}>${LanguageUI.t('modal-export-all-scope')} — ${LanguageUI.t('modal-export-all-scope-help')}</option>
+            <option value="layer"${prefScope === 'layer' ? ' selected' : ''}>${LanguageUI.t('modal-export-layer-scope')} — ${LanguageUI.t('modal-export-layer-scope-help')}</option>
+            <option value="feature"${prefScope === 'feature' ? ' selected' : ''}>${LanguageUI.t('modal-export-feature-scope')} — ${LanguageUI.t('modal-export-feature-scope-help')}</option>
           </select>
         </div>
         <div class="exp-field">
           <span class="exp-field-label">${LanguageUI.t('modal-export-formats')} (boleh lebih dari satu)</span>
           <div class="exp-check-list">
-            ${fmt('geojson', LanguageUI.t('modal-export-json'), LanguageUI.t('modal-export-json-help'), true)}
-            ${fmt('kml', 'KML', LanguageUI.t('modal-export-kml-help'))}
-            ${fmt('kmz', 'KMZ', LanguageUI.t('modal-export-kmz-help'))}
-            ${fmt('xlsx', LanguageUI.t('modal-export-excel'), LanguageUI.t('modal-export-excel-help'))}
-            ${fmt('kml-poly', LanguageUI.t('modal-export-kml-poly'), LanguageUI.t('modal-export-kml-poly-help'))}
+            ${fmt('geojson', LanguageUI.t('modal-export-json'), LanguageUI.t('modal-export-json-help'), prefFormats.includes('geojson'))}
+            ${fmt('kml', 'KML', LanguageUI.t('modal-export-kml-help'), prefFormats.includes('kml'))}
+            ${fmt('kmz', 'KMZ', LanguageUI.t('modal-export-kmz-help'), prefFormats.includes('kmz'))}
+            ${fmt('xlsx', LanguageUI.t('modal-export-excel'), LanguageUI.t('modal-export-excel-help'), prefFormats.includes('xlsx'))}
+            ${fmt('kml-poly', LanguageUI.t('modal-export-kml-poly'), LanguageUI.t('modal-export-kml-poly-help'), prefFormats.includes('kml-poly'))}
           </div>
         </div>
         <div class="exp-field exp-output">
@@ -506,7 +512,16 @@ const UI = {
       const cancelBtn = e.target.closest('[data-export-action="cancel"]');
       if (cancelBtn) { Modal.close(); return; }
       const runBtn = e.target.closest('[data-export-action="run"]');
-      if (runBtn) Exporter.runBatchFromModal();
+      if (runBtn) {
+        // Ingat pilihan pengguna untuk dibuka kembali di panel berikutnya.
+        const chosen = ['geojson', 'kml', 'kmz', 'xlsx', 'kml-poly']
+          .filter(f => document.getElementById(`exp-format-${f}`)?.checked);
+        Storage.save('export-prefs', {
+          formats: chosen.length ? chosen : ['geojson'],
+          scope: document.getElementById('exp-scope')?.value || 'all'
+        });
+        Exporter.runBatchFromModal();
+      }
       // click on label triggers radio/checkbox, update after
       requestAnimationFrame(updateExportSummary);
     });

@@ -27,7 +27,8 @@ const Theme = {
     const idx = cycle.indexOf(State.theme);
     State.theme = cycle[(idx + 1) % cycle.length];
     document.documentElement.setAttribute('data-theme', State.theme);
-    document.getElementById('btn-theme').innerHTML = this._icon(State.theme);
+    const ico = document.getElementById('btn-theme');
+    if (ico) ico.innerHTML = this._icon(State.theme);
     Storage.save('theme', State.theme);
     AppConsole.log(`Theme: ${State.theme}`, 'info');
     this._syncBadge(State.theme);
@@ -36,7 +37,8 @@ const Theme = {
   apply(theme) {
     State.theme = theme;
     document.documentElement.setAttribute('data-theme', theme);
-    document.getElementById('btn-theme').innerHTML = this._icon(theme);
+    const ico = document.getElementById('btn-theme');
+    if (ico) ico.innerHTML = this._icon(theme);
     this._syncBadge(theme);
   }
 };
@@ -106,6 +108,32 @@ const LanguageUI = {
       'modal-merge-select-all': 'Pilih semua',
       'modal-merge-ok': '⊕ Gabung',
       'modal-merge-cancel': 'Batal',
+
+      'tb-import-menu': 'Impor',
+      'tb-project-menu': 'Proyek',
+      'mm-settings': 'Pengaturan',
+      'set-title': 'Pengaturan',
+      'set-appearance': 'Tampilan',
+      'set-theme': 'Tema',
+      'set-lang': 'Bahasa',
+      'set-storage': 'Penyimpanan',
+      'set-autosave': 'Simpan otomatis (autosave)',
+      'set-autosave-help': 'Menyimpan posisi peta, tema, dan bookmark otomatis tiap 30 detik.',
+      'set-clear-autosave': 'Hapus autosave',
+      'set-clear-tiles': 'Hapus tile offline',
+      'set-import-print': 'Impor & Cetak',
+      'set-remember-note': 'Pilihan format export serta ukuran & DPI cetak terakhir otomatis diingat.',
+      'set-reset-prefs': 'Kembalikan ke bawaan',
+      'set-field': 'Lapangan',
+      'set-gps-nobase': 'Sembunyikan peta dasar saat rekam GPS',
+      'set-gps-nobase-help': 'Berguna saat ingin jejak GPS saja tanpa peta latar.',
+      'set-offline-dl': 'Unduh area peta offline',
+      'set-info': 'Info',
+      'set-layers-count': 'Layer',
+      'set-features-count': 'Fitur',
+      'set-admin': 'Panel Admin',
+      'set-logout': 'Keluar',
+      'set-close': 'Tutup',
     },
     EN: {
       'tb-open': 'Open',
@@ -163,6 +191,32 @@ const LanguageUI = {
       'modal-merge-select-all': 'Select all',
       'modal-merge-ok': '⊕ Merge',
       'modal-merge-cancel': 'Cancel',
+
+      'tb-import-menu': 'Import',
+      'tb-project-menu': 'Project',
+      'mm-settings': 'Settings',
+      'set-title': 'Settings',
+      'set-appearance': 'Appearance',
+      'set-theme': 'Theme',
+      'set-lang': 'Language',
+      'set-storage': 'Storage',
+      'set-autosave': 'Auto-save',
+      'set-autosave-help': 'Automatically saves map position, theme, and bookmarks every 30 seconds.',
+      'set-clear-autosave': 'Delete auto-save',
+      'set-clear-tiles': 'Delete offline tiles',
+      'set-import-print': 'Import & Print',
+      'set-remember-note': 'Last export format and print size/DPI choices are remembered automatically.',
+      'set-reset-prefs': 'Reset to defaults',
+      'set-field': 'Field work',
+      'set-gps-nobase': 'Hide basemap while recording GPS',
+      'set-gps-nobase-help': 'Useful when you only want the GPS track without a background map.',
+      'set-offline-dl': 'Download offline map area',
+      'set-info': 'Info',
+      'set-layers-count': 'Layers',
+      'set-features-count': 'Features',
+      'set-admin': 'Admin Panel',
+      'set-logout': 'Log out',
+      'set-close': 'Close',
     }
   },
   apply(lang) {

@@ -70,6 +70,23 @@ const App = {
 
     bindClick('btn-theme', () => Theme.toggle());
     bindClick('btn-logout-pc', () => LoginGate.logout());
+    bindClick('btn-settings-pc', () => SettingsPanel.open());
+
+    // Dropdown toolbar (Impor ▾ / Proyek ▾): buka/tutup pop, tutup saat
+    // klik di mana pun, dan tutup otomatis setelah item dipilih.
+    document.querySelectorAll('.tb-menu').forEach(menu => {
+      const trigger = menu.querySelector(':scope > button');
+      trigger?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const willOpen = !menu.classList.contains('open');
+        document.querySelectorAll('.tb-menu.open').forEach(m => m.classList.remove('open'));
+        menu.classList.toggle('open', willOpen);
+      });
+      menu.querySelectorAll('.tb-menu-pop button').forEach(item =>
+        item.addEventListener('click', () => menu.classList.remove('open')));
+    });
+    document.addEventListener('click', () =>
+      document.querySelectorAll('.tb-menu.open').forEach(m => m.classList.remove('open')));
     bindClick('btn-atrbpn', () => AtrbpnLayers.showPanel(false));
     bindClick('btn-undo', () => {
       if (State.activeDrawTool && MobileUI._isMobile()) {
@@ -921,12 +938,10 @@ LoginGate.init();
   });
   if (layersBackdrop) layersBackdrop.addEventListener('click', closeLayersOverlay);
 
-  // ── Tampilan: Theme ──
-  syncMenuBadges();
-  const mmThemeBtn = document.getElementById('mm-theme');
-  if (mmThemeBtn) mmThemeBtn.addEventListener('click', () => {
-    Theme.toggle();
-    syncMenuBadges();
+  // ── Pengaturan ──
+  const mmSettingsBtn = document.getElementById('mm-settings');
+  if (mmSettingsBtn) mmSettingsBtn.addEventListener('click', () => {
+    runAfterMenuClose(() => SettingsPanel.open());
   });
 
   // ── Tampilan: Bahasa ──
@@ -941,15 +956,13 @@ LoginGate.init();
     if (shouldCloseMenu) closeMenu();
     Toast.show('Bahasa: ' + currentLang, 'info');
   };
+  // Dipakai panel Pengaturan (select bahasa) — jalur resmi ganti bahasa.
+  window.setAuroraLanguage = (lang) => applyLanguage(lang === 'EN' ? 'EN' : 'ID');
   if (pcLangBtn) {
     pcLangBtn.textContent = currentLang;
     window.toggleAuroraLanguage = () => applyLanguage(currentLang === 'ID' ? 'EN' : 'ID');
     pcLangBtn.onclick = window.toggleAuroraLanguage;
   }
-  const mmLangBtn = document.getElementById('mm-lang');
-  if (mmLangBtn) mmLangBtn.addEventListener('click', () => {
-    applyLanguage(currentLang === 'ID' ? 'EN' : 'ID', true);
-  });
 
   const openAttrPanel = () => {
     AttrTable.load();

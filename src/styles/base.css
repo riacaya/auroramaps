@@ -877,6 +877,32 @@ body.is-admin #mm-admin { display: flex; }
 .toolbar-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
 .toolbar-spacer { flex: 1; }
 
+/* Dropdown toolbar (Impor ▾ / Proyek ▾) — tombol lama pindah ke dalam pop */
+.tb-menu { position: relative; }
+.tb-menu > .toolbar-btn::after { content: '▾'; font-size: 9px; margin-left: 3px; opacity: .7; }
+.tb-menu-pop {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 70;
+  min-width: 210px; padding: 5px;
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 10px; box-shadow: var(--shadow);
+  display: none;
+}
+.tb-menu.open .tb-menu-pop { display: block; }
+.tb-menu-pop .toolbar-btn { width: 100%; justify-content: flex-start; margin-bottom: 3px; }
+.tb-menu-pop .toolbar-btn:last-child { margin-bottom: 0; }
+
+/* Panel Pengaturan (settings.js) */
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.set-row:last-child { margin-bottom: 0; }
+.set-row > span { font-size: 12px; color: var(--text-secondary); }
+.set-row .exp-select { width: auto; min-width: 160px; margin: 0; }
+.set-note { font-size: 12px; line-height: 1.55; color: var(--text-muted); }
+.set-usage { font-size: 11px; line-height: 1.5; color: var(--text-muted); margin-top: 8px; }
+.set-bar { height: 6px; border-radius: 3px; background: var(--bg-hover); overflow: hidden; margin-bottom: 5px; }
+.set-bar-fill { height: 100%; border-radius: 3px; background: var(--accent); }
+.set-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.set-actions .btn { flex: 1; min-width: 130px; }
+
 /* ===== WORKSPACE ===== */
 #workspace {
   flex: 1;
@@ -1847,7 +1873,7 @@ input[type="range"]:focus-visible { outline: none; }
   #toolbar, #sidebar-left, #sidebar-right,
   #bottom-panel, #bp-resize-handle,
   #statusbar, .resize-handle, .draw-tools,
-  #header-search-menu, #btn-logout-pc, #btn-admin-pc { display: none !important; }
+  #header-search-menu, #btn-logout-pc, #btn-admin-pc, #btn-settings-pc { display: none !important; }
 
   /* ── HEADER ── */
   #header { flex-shrink: 0; height: 54px; padding: 0 10px; gap: 6px; }

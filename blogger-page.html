@@ -19,7 +19,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
 <!-- Font -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"/>
-<link rel="stylesheet" href="https://riacaya.github.io/auroramaps/src/styles/base.css?v=62" />
+<link rel="stylesheet" href="https://riacaya.github.io/auroramaps/src/styles/base.css?v=63" />
 <style>
 .login-branding-logo svg, .logo-icon svg, .about-logo svg { display:none !important; }
 .login-gate{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:var(--bg-base,#0d0f13)}
@@ -100,9 +100,8 @@
     </div>
     <button type="button" id="header-search-menu" class="header-search-menu" title="Pencarian ATR/BPN">🔍 Cari Bidang</button>
     <div class="header-actions">
-      <button class="btn-icon lang-toggle" id="btn-lang-pc" title="Toggle language" onclick="window.toggleAuroraLanguage?.()">ID</button>
+      <button class="btn-icon btn-icon-strong" id="btn-settings-pc" title="Pengaturan" aria-label="Pengaturan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       <button class="btn-icon btn-icon-strong legacy-pc-setting" id="btn-about-pc" title="About AuroraMaps"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
-      <button class="btn-icon" id="btn-theme" title="Toggle Theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
       <div id="sep-pc-end" class="header-sep"></div>
       <button class="btn-icon" id="btn-bottom-toggle" title="Toggle Bottom Panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/></svg></button>
       <button class="btn-icon btn-icon-large" id="btn-sidebar-left-toggle" title="Toggle Left Sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
@@ -130,34 +129,47 @@
     </div>
   </div>
 
-  <!-- TOOLBAR -->
+  <!-- TOOLBAR — hanya tombol kerja harian; fitur jarang pakai pindah ke
+       dropdown (Impor/Proyek) dan panel Pengaturan -->
   <div id="toolbar">
-    <button class="toolbar-btn" id="tb-open" title="Open File (Ctrl+O)">
-      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> Open
-    </button>
-    <button class="toolbar-btn" id="tb-open-project" title="Buka Proyek AuroraMaps">
-      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span> Proyek
-    </button>
-    <button class="toolbar-btn" id="tb-img-overlay" title="Overlay Gambar Peta (JPG/PNG sebagai acuan)">
-      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span> Overlay
-    </button>
-    <button class="toolbar-btn" id="tb-import-url" title="Import from URL">
-      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span> URL
-    </button>
+    <div class="tb-menu" id="tb-import-wrap">
+      <button class="toolbar-btn" id="tb-import-menu" title="Impor data">
+        <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> Impor
+      </button>
+      <div class="tb-menu-pop">
+        <button class="toolbar-btn" id="tb-open" title="Open File (Ctrl+O)">
+          <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> Open
+        </button>
+        <button class="toolbar-btn" id="tb-img-overlay" title="Overlay Gambar Peta (JPG/PNG sebagai acuan)">
+          <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span> Overlay
+        </button>
+        <button class="toolbar-btn" id="tb-import-url" title="Import from URL">
+          <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span> URL
+        </button>
+      </div>
+    </div>
     <button class="toolbar-btn" id="btn-atrbpn" title="ATRBPN (LSD & RTRW)" aria-label="ATRBPN">
       <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span> ATRBPN
     </button>
-    <button class="toolbar-btn" id="tb-save-project" title="Simpan Proyek AuroraMaps">
-      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></span> Simpan
-    </button>
+    <div class="tb-menu" id="tb-project-wrap">
+      <button class="toolbar-btn" id="tb-project-menu" title="Proyek AuroraMaps">
+        <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span> Proyek
+      </button>
+      <div class="tb-menu-pop">
+        <button class="toolbar-btn" id="tb-save-project" title="Simpan Proyek AuroraMaps">
+          <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></span> Simpan
+        </button>
+        <button class="toolbar-btn" id="tb-open-project" title="Buka Proyek AuroraMaps">
+          <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span> Buka
+        </button>
+      </div>
+    </div>
     <button class="toolbar-btn" id="tb-export" title="Export Data" aria-label="Export Data">
       <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Export
     </button>
     <button class="toolbar-btn" id="tb-screenshot" title="Cetak / Simpan Gambar (PNG resolusi cetak atau SVG vektor)" aria-label="Cetak">
       <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span> Cetak
     </button>
-    <button class="toolbar-btn" id="tb-gps-record" title="Rekam GPS" aria-label="Rekam GPS">📍 Rekam GPS</button>
-    <button class="toolbar-btn" id="tb-offline-download" title="Download area peta offline">⬇ Peta Offline</button>
     <div class="toolbar-sep"></div>
     <button class="toolbar-btn" id="tb-zoom-all" title="Zoom to All Layers">
       <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg></span> Fit All
@@ -643,8 +655,6 @@
         <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
         <span class="mm-item-text">Export</span>
       </button>
-      <button class="mm-item" id="mm-gps-record"><span class="mm-item-icon">📍</span><span class="mm-item-text">Rekam GPS</span></button>
-      <button class="mm-item" id="mm-offline-download"><span class="mm-item-icon">⬇</span><span class="mm-item-text">Download Peta Offline</span></button>
       <button class="mm-item" id="mm-layers">
         <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span>
         <span class="mm-item-text">Layer Manager</span>
@@ -674,15 +684,9 @@
       </div>
       <div class="mm-divider"></div>
 
-      <button class="mm-item" id="mm-lang" aria-label="Ganti bahasa / Toggle language">
-        <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
-        <span class="mm-item-text">Bahasa / Language</span>
-        <span class="mm-item-badge" id="mm-lang-badge">ID</span>
-      </button>
-      <button class="mm-item" id="mm-theme">
-        <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
-        <span class="mm-item-text">Theme</span>
-        <span class="mm-item-badge" id="mm-theme-badge">Dark</span>
+      <button class="mm-item" id="mm-settings">
+        <span class="mm-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+        <span class="mm-item-text">Pengaturan</span>
       </button>
 
       <div class="mm-divider"></div>
@@ -799,20 +803,21 @@
 <script src="https://riacaya.github.io/auroramaps/src/js/layers.js?v=52"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/parser.js?v=50"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/features.js?v=51"></script>
-<script src="https://riacaya.github.io/auroramaps/src/js/exporter.js?v=52"></script>
+<script src="https://riacaya.github.io/auroramaps/src/js/exporter.js?v=53"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/search.js?v=50"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/attrTable.js?v=50"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/history.js?v=50"></script>
-<script src="https://riacaya.github.io/auroramaps/src/js/theme.js?v=53"></script>
+<script src="https://riacaya.github.io/auroramaps/src/js/theme.js?v=54"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/bookmarks.js?v=50"></script>
-<script src="https://riacaya.github.io/auroramaps/src/js/ui.js?v=53"></script>
+<script src="https://riacaya.github.io/auroramaps/src/js/ui.js?v=54"></script>
+<script src="https://riacaya.github.io/auroramaps/src/js/settings.js?v=1"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/mobile.js?v=51"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/imageOverlay.js?v=50"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/atrbpnLayers.js?v=64"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/mapPopup.js?v=50"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/bhumiIdentify.js?v=64"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/adminPanel.js?v=3"></script>
-<script src="https://riacaya.github.io/auroramaps/src/js/app.js?v=70"></script>
+<script src="https://riacaya.github.io/auroramaps/src/js/app.js?v=71"></script>
 <script>
 (() => {
   const button = document.getElementById('login-install-link');

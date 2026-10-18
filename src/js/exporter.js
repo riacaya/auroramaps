@@ -566,7 +566,14 @@ const Exporter = {
   // tidak bisa untuk plang 4×6 m. Kini peta dirender ulang lewat html2canvas
   // pada skala sesuai ukuran cetak × DPI, ditambah ekspor vektor SVG yang tajam
   // di ukuran cetak berapa pun.
-  _printState: { widthM: 4, dpi: 50, format: 'png', title: true },
+  // Pilihan terakhir dipersist ke localStorage agar panel cetak
+  // langsung membuka ukuran/DPI/format yang biasa dipakai.
+  _printState: Object.assign({ widthM: 4, dpi: 50, format: 'png', title: true }, Storage.load('print-prefs', {})),
+
+  _savePrintPrefs() {
+    const S = this._printState;
+    Storage.save('print-prefs', { widthM: S.widthM, dpi: S.dpi, format: S.format, title: S.title });
+  },
 
   _printLimits() {
     const small = Math.min(window.innerWidth, window.innerHeight) < 768;
@@ -643,12 +650,13 @@ const Exporter = {
 
     const bind = (id, key, num) => document.getElementById(id)?.addEventListener('change', e => {
       S[key] = num ? parseFloat(e.target.value) : e.target.value;
+      this._savePrintPrefs();
       this._refreshPrintSummary();
     });
     bind('pp-size', 'widthM', true);
     bind('pp-dpi', 'dpi', true);
     bind('pp-format', 'format', false);
-    document.getElementById('pp-title')?.addEventListener('change', e => { S.title = e.target.checked; });
+    document.getElementById('pp-title')?.addEventListener('change', e => { S.title = e.target.checked; this._savePrintPrefs(); });
     this._refreshPrintSummary();
   },
 
