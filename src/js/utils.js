@@ -133,7 +133,11 @@ const Utils = {
   },
   escapeHtml(s) {
     if (typeof s !== 'string') s = String(s);
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    // Kutip ikut di-escape karena nilai ini juga disisipkan ke atribut HTML
+    // (value="…" title="…"). Tanpa ini, nama ber-kutip seperti SHM "2411"
+    // memecah atribut: nilai terpotong dan data atribut palsu bisa masuk.
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   },
   formatJSON(obj) {
     const str = JSON.stringify(obj, null, 2);

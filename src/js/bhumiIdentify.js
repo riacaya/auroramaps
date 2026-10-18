@@ -498,7 +498,7 @@ const BhumiIdentify = {
       </div>
       ${candidates}
       <table>
-        ${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}
+        ${rows.map(([k, v]) => `<tr><th>${k}</th><td>${Utils.escapeHtml(String(v))}</td></tr>`).join('')}
       </table>
       <div class="mp-coord">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
       <button class="mp-share" type="button" onclick="BhumiIdentify.shareLocation(${lat}, ${lng})">🔗 Bagikan lokasi lahan</button>

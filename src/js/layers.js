@@ -144,14 +144,27 @@ const LayerManager = {
     const toPoints = coords => (Array.isArray(coords) ? coords : [])
       .filter(c => Array.isArray(c) && c.length >= 2 && Number.isFinite(Number(c[0])) && Number.isFinite(Number(c[1])))
       .map(c => L.latLng(Number(c[1]), Number(c[0])));
+    // Ring poligon yang datanya belum tertutup (titik awal ≠ titik akhir)
+    // ditutup dulu, supaya sisi penutup ikut dapat label panjang.
+    const closeRing = points => {
+      if (points.length > 1) {
+        const first = points[0];
+        const last = points[points.length - 1];
+        if (Math.abs(first.lat - last.lat) > 1e-9 || Math.abs(first.lng - last.lng) > 1e-9) {
+          points.push(L.latLng(first.lat, first.lng));
+        }
+      }
+      return points;
+    };
     switch (geometry.type) {
       case 'LineString':
         return [toPoints(geometry.coordinates)];
       case 'MultiLineString':
-      case 'Polygon':
         return geometry.coordinates.map(toPoints);
+      case 'Polygon':
+        return geometry.coordinates.map(ring => closeRing(toPoints(ring)));
       case 'MultiPolygon':
-        return geometry.coordinates.flatMap(polygon => polygon.map(toPoints));
+        return geometry.coordinates.flatMap(polygon => polygon.map(ring => closeRing(toPoints(ring))));
       default:
         return [];
     }
@@ -204,19 +217,32 @@ const LayerManager = {
     }
     if (!MapManager.map.hasLayer(entry.edgeLabels)) entry.edgeLabels.addTo(MapManager.map);
 
+    // Panel jendela peta (viewport) + ukuran layar dipakai sebagai saringan,
+    // supaya label hanya dibuat untuk sisi yang sedang terlihat dan terbaca.
+    // Tanpa saringan ini KMZ berisi ratusan poligon menghasilkan ribuan marker
+    // label DOM yang dibangun + dibongkar ulang setiap peta di-pan/zoom —
+    // itulah penyebab utama aplikasi terasa berat / hank di HP.
+    const map = MapManager.map;
+    const bounds = map.getBounds().pad(0.1);
+    const MIN_EDGE_PX = 30;  // sisi < 30 px di layar: labelnya tak terbaca
+    const MAX_LABELS = 500;  // batas keras jumlah label per layer
+    let made = 0;
+
     const features = entry.geoJSON?.features || [];
-    features.forEach(feature => {
-      this._edgePointSets(feature).forEach(points => {
-        if (points.length < 2) return;
-        const first = points[0];
-        const last = points[points.length - 1];
-        const isClosed = Math.abs(first.lat - last.lat) < 1e-9 && Math.abs(first.lng - last.lng) < 1e-9;
-        const limit = isClosed ? points.length - 1 : points.length - 1;
+    for (const feature of features) {
+      for (const points of this._edgePointSets(feature)) {
+        if (points.length < 2) continue;
+        const limit = points.length - 1;
         for (let i = 0; i < limit; i++) {
-          const nextIndex = i + 1 < points.length ? i + 1 : 0;
-          if (!isClosed && nextIndex === 0) break;
+          if (made >= MAX_LABELS) return;
           const a = points[i];
-          const b = points[nextIndex];
+          const b = points[i + 1];
+          const start = map.latLngToLayerPoint(a);
+          const end = map.latLngToLayerPoint(b);
+          const dx = end.x - start.x;
+          const dy = end.y - start.y;
+          if (Math.sqrt(dx * dx + dy * dy) < MIN_EDGE_PX) continue;
+          if (!bounds.contains(L.latLng((a.lat + b.lat) / 2, (a.lng + b.lng) / 2))) continue;
           const length = Utils.haversine(a.lat, a.lng, b.lat, b.lng);
           if (!Number.isFinite(length) || length <= 0) continue;
           const labelLayout = this._edgeLabelLayout(a, b);
@@ -232,9 +258,10 @@ const LayerManager = {
             keyboard: false,
             zIndexOffset: 700
           }).addTo(entry.edgeLabels);
+          made++;
         }
-      });
-    });
+      }
+    }
   },
 
   _featureLabelPoint(feature) {
@@ -438,7 +465,7 @@ const LayerManager = {
     }
     State.selectedLayer = layerId;
     FeatureSelect.select(feature, leafletSub || entry.leafletLayer, layerId);
-    UI.renderLayerList();
+    if (!UI.syncSelectionInLayerList()) UI.renderLayerList();
     try {
       const ll = leafletSub || entry.leafletLayer;
       const b = ll.getBounds ? ll.getBounds() : (ll.getLatLng ? ll.getLatLng().toBounds(50) : null);

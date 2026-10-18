@@ -71,6 +71,35 @@ const UI = {
     }).join('');
   },
 
+  // Perbarui sorotan pilihan di daftar layer TANPA membangun ulang seluruh
+  // daftar. Memakai renderLayerList() (innerHTML ulang) setiap poligon diklik
+  // terasa tersendat di HP bila layer berisi ratusan fitur.
+  // Mengembalikan false bila daftar belum terisi (pemanggil pakai render penuh).
+  syncSelectionInLayerList() {
+    const list = document.getElementById('layer-list');
+    if (!list || !list.querySelector('.layer-item')) return false;
+
+    list.querySelectorAll('.layer-item.selected').forEach(el => el.classList.remove('selected'));
+    list.querySelectorAll('.sublayer-item.feat-selected').forEach(el => el.classList.remove('feat-selected'));
+
+    if (State.selectedLayer) {
+      const item = list.querySelector(`.layer-item[data-layer-id="${State.selectedLayer}"]`);
+      if (item) item.classList.add('selected');
+    }
+
+    const feature = State.selectedFeature;
+    const layerId = State.selectedFeatureLayer;
+    if (feature && layerId) {
+      const entry = State.layers.find(l => l.id === layerId);
+      const index = entry?.geoJSON?.features ? entry.geoJSON.features.indexOf(feature) : -1;
+      if (index >= 0) {
+        const sub = list.querySelector(`.sublayer-item[data-layer-feature="${layerId}:${index}"]`);
+        if (sub) sub.classList.add('feat-selected');
+      }
+    }
+    return true;
+  },
+
   toggleLayerExpand(layerId) {
     State.expandedLayers[layerId] = !State.expandedLayers[layerId];
     this.renderLayerList();

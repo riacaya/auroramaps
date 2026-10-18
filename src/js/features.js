@@ -51,7 +51,7 @@ const FeatureSelect = {
       if (rightSidebar) rightSidebar.classList.remove('collapsed');
     }
 
-    UI.renderLayerList();
+    if (!UI.syncSelectionInLayerList()) UI.renderLayerList();
     UI.scrollToLayer(layerId);
 
     UI.activateRightTab('panel-props');
