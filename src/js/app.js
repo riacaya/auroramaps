@@ -177,10 +177,9 @@ const App = {
     bindClick('mm-offline-download', () => OfflineManager.downloadCurrentArea());
     bindClick('btn-3d', () => MapManager.toggle3D());
     bindClick('compass-3d', () => MapManager.reset3DHeading());
-    bindClick('tb-screenshot', () => {
-      const ts = new Date().toISOString().replace(/[T:]/g,'-').slice(0,19);
-      Exporter.exportMapImage('jpg', { filename: 'auroramaps_' + ts, scale: 2, quality: 0.92, fitAll: false });
-    });
+    // Tombol "Cetak" → panel ukuran cetak (px = meter × 39,37 × DPI) + ekspor
+    // vektor SVG. Pengganti Screen Capture yang tidak jalan di WebView Android.
+    bindClick('tb-screenshot', () => Exporter.showPrintPanel());
 
     Search.init();
     const searchMenu = document.getElementById('header-search-menu');

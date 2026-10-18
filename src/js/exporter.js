@@ -559,79 +559,282 @@ const Exporter = {
     }
   },
 
-  async exportMapImage(format, options = {}) {
-    const filename = options.filename || ('peta_' + new Date().toISOString().slice(0,10));
-    const quality  = options.quality ?? 0.92;
+  // ── CETAK / SIMPAN GAMBAR (pengganti Screen Capture lama) ───────────────────
+  // Cara lama memakai getDisplayMedia: tidak tersedia sama sekali di WebView
+  // Android, harus memilih tab layar, dan hasilnya hanya sebesar layar sehingga
+  // tidak bisa untuk plang 4×6 m. Kini peta dirender ulang lewat html2canvas
+  // pada skala sesuai ukuran cetak × DPI, ditambah ekspor vektor SVG yang tajam
+  // di ukuran cetak berapa pun.
+  _printState: { widthM: 4, dpi: 50, format: 'png', title: true },
 
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-      Toast.show('Browser tidak mendukung Screen Capture API. Gunakan Win+Shift+S (Windows) atau tombol Power+Volume Down (Android).', 'warn');
-      AppConsole.log('Screen Capture API tidak tersedia di browser ini', 'warn');
+  _printLimits() {
+    const small = Math.min(window.innerWidth, window.innerHeight) < 768;
+    return small
+      ? { maxPixels: 12e6, maxSide: 6000, device: 'HP' }
+      : { maxPixels: 40e6, maxSide: 12000, device: 'Komputer' };
+  },
+
+  _printGeometry() {
+    const el = document.getElementById('map-container');
+    const cw = Math.max(1, el ? el.offsetWidth : 1000);
+    const ch = Math.max(1, el ? el.offsetHeight : 700);
+    const lim = this._printLimits();
+    // Skala ideal = lebar cetak (m) × inci-per-meter ÷ DPI, dibaca dari lebar
+    // layar dalam px CSS. Contoh: 4 m @50 DPI pada layar 1000 px → skala 7,87×.
+    const ideal = (this._printState.widthM * 39.3700787 * this._printState.dpi) / cw;
+    // Batas aman kanvas perangkat (memori + panjang sisi maksimal).
+    const scale = Math.min(ideal,
+                           lim.maxSide / Math.max(cw, ch),
+                           Math.sqrt(lim.maxPixels / (cw * ch)));
+    const effDpi = this._printState.dpi * (scale / ideal);
+    return {
+      cw, ch, lim, ideal, scale, effDpi,
+      w: Math.round(cw * scale),
+      h: Math.round(ch * scale),
+      // Panjang cetak aktual (mengecil bila dibatasi memori perangkat).
+      printW: this._printState.widthM * (scale / ideal),
+      clamped: scale < ideal - 1e-6
+    };
+  },
+
+  _fmtId(n) { return Number(n).toLocaleString('id-ID'); },
+
+  showPrintPanel() {
+    const S = this._printState;
+    const sizes = [['A3', 0.297], ['A2', 0.42], ['A1', 0.594], ['A0', 0.841],
+                   ['2 m', 2], ['3 m', 3], ['4 m', 4], ['5 m', 5]];
+    const dpis  = [30, 50, 75, 100];
+    const fmts  = [['PNG', 'png'], ['JPG', 'jpg']];
+    // Catatan: atribut HTML selalu huruf kecil (data-pp-widthM → dataset.ppWidthm),
+    // jadi pakai satu atribut data-ppval + kunci grup agar tidak ada yang nyasar.
+    const chips = (key, items) => items.map(([label, val]) =>
+      `<button type="button" class="exp-chip${String(S[key]) === String(val) ? ' on' : ''}" data-ppval="${val}">${label}</button>`).join('');
+
+    const html = `
+      <div class="modal-stack">
+        <div class="exp-field">
+          <span class="exp-field-label">Ukuran cetak (lebar)</span>
+          <div class="exp-chips" data-ppgrp="widthM">${chips('widthM', sizes)}</div>
+        </div>
+        <div class="exp-field">
+          <span class="exp-field-label">Ketajaman (DPI)</span>
+          <div class="exp-chips" data-ppgrp="dpi">${chips('dpi', dpis.map(d => [String(d), d]))}</div>
+        </div>
+        <div class="exp-field">
+          <span class="exp-field-label">Format berkas</span>
+          <div class="exp-chips" data-ppgrp="format">${chips('format', fmts)}</div>
+        </div>
+        <label class="exp-field" style="flex-direction:row;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="pp-title" class="modal-check"${S.title ? ' checked' : ''}/>
+          <span>Sertakan pita judul (nama proyek, tanggal, skala)</span>
+        </label>
+        <div class="mp-cand" style="margin-top:10px">Mencetak plang besar? Pakai
+          <strong>Ekspor Vektor SVG</strong> — tajam di ukuran cetak berapa pun dan filenya kecil.
+          PNG dibatasi memori perangkat (HP ±12 megapiksel).</div>
+        <div id="pp-summary" class="exp-file-count" style="margin-top:8px"></div>
+      </div>`;
+
+    Modal.open('Cetak / Simpan Gambar', html, [
+      { label: 'Batal', cls: 'btn-secondary', action: () => Modal.close() },
+      { label: '📄 Vektor SVG', cls: 'btn-secondary', action: () => { Modal.close(); this.exportVectorSVG(); } },
+      { label: '🖨️ Simpan Gambar', cls: 'btn-primary', action: () => this.exportPrintImage() }
+    ]);
+
+    const root = document.getElementById('modal-container');
+    for (const grp of root.querySelectorAll('[data-ppgrp]')) {
+      const key = grp.dataset.ppgrp;
+      grp.addEventListener('click', e => {
+        const b = e.target.closest('button[data-ppval]');
+        if (!b || !grp.contains(b)) return;
+        S[key] = (key === 'format') ? b.dataset.ppval : parseFloat(b.dataset.ppval);
+        grp.querySelectorAll('.exp-chip').forEach(c => c.classList.toggle('on', c === b));
+        this._refreshPrintSummary();
+      });
+    }
+    document.getElementById('pp-title')?.addEventListener('change', e => { S.title = e.target.checked; });
+    this._refreshPrintSummary();
+  },
+
+  _refreshPrintSummary() {
+    const el = document.getElementById('pp-summary');
+    if (!el) return;
+    const g = this._printGeometry();
+    const bpp = this._printState.format === 'jpg' ? 0.35 : 1.8;   // perkiraan kasar
+    const mb = (g.w * g.h * bpp) / 1048576;
+    const ratio = g.ch / g.cw;
+    el.innerHTML = `<strong>${this._fmtId(g.w)} × ${this._fmtId(g.h)} px</strong> · `
+      + `cetak ${g.printW.toFixed(2)} × ${(g.printW * ratio).toFixed(2)} m · `
+      + `±${Math.round(g.effDpi)} DPI · file ±${mb < 1 ? '<1' : mb.toFixed(0)} MB`
+      + (g.clamped ? `<div class="mp-cand" style="margin-top:6px">⚠️ ${g.lim.device} membatasi hasil ke `
+          + `${this._fmtId(g.w)} × ${this._fmtId(g.h)} px (±${Math.round(g.effDpi)} DPI), `
+          + `jadi maksimal ±${g.printW.toFixed(2)} m. Untuk lebih besar, pakai Vektor SVG.</div>` : '');
+  },
+
+  async exportPrintImage() {
+    if (typeof html2canvas !== 'function') {
+      Toast.show('Modul html2canvas belum termuat (cek koneksi internet).', 'error');
       return;
     }
-
-    Toast.show('Pilih tab / layar lalu klik Bagikan → screenshot otomatis tersimpan.', 'info');
-    AppConsole.log('Menunggu izin Screen Capture…', 'info');
-
+    const el = document.getElementById('map-container');
+    if (!el) return;
+    const g = this._printGeometry();
+    Toast.show('Merender peta untuk cetak…', 'info');
+    AppConsole.log(`Cetak: skala ${g.scale.toFixed(2)}× → ${g.w}×${g.h} px (±${Math.round(g.effDpi)} DPI)`, 'info');
+    // Sembunyikan panel selama render agar dialog tidak ikut tercetak.
+    const modalBox = document.getElementById('modal-container');
+    if (modalBox) modalBox.style.visibility = 'hidden';
     try {
-      const constraints = {
-        video: {
-          frameRate:   { ideal: 5, max: 15 },
-          width:       { ideal: window.screen.width  * (window.devicePixelRatio || 1) },
-          height:      { ideal: window.screen.height * (window.devicePixelRatio || 1) },
-          displaySurface: 'browser'
-        },
-        audio: false,
-        preferCurrentTab:    true,
-        selfBrowserSurface:  'include',
-        surfaceSwitching:    'exclude',
-        monitorTypeSurfaces: 'exclude'
-      };
-
-      const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
-      const video = document.createElement('video');
-      video.srcObject  = stream;
-      video.muted      = true;
-      video.playsInline = true;
-
-      await new Promise(resolve => {
-        video.onloadedmetadata = () => resolve();
+      // useCORS: tile OSM/Esri/Stadia mengirim header CORS, jadi kanvas tidak
+      // terkunci (tersimpan tetap bisa).
+      const canvas = await html2canvas(el, {
+        scale: g.scale,
+        useCORS: true,
+        logging: false,
+        imageTimeout: 20000,
+        backgroundColor: getComputedStyle(el).backgroundColor || '#0b1020'
       });
-      await video.play();
-
-      await new Promise(r => setTimeout(r, 300));
-
-      const W = video.videoWidth;
-      const H = video.videoHeight;
-
-      const canvas = document.createElement('canvas');
-      canvas.width  = W;
-      canvas.height = H;
-      canvas.getContext('2d').drawImage(video, 0, 0, W, H);
-
-      stream.getTracks().forEach(t => t.stop());
-      video.srcObject = null;
-
-      const ext = format === 'png' ? '.png' : '.jpg';
-      const mime = format === 'png' ? 'image/png' : 'image/jpeg';
-
-      await new Promise((resolve, reject) => {
-        canvas.toBlob(blob => {
-          if (!blob) { reject(new Error('Canvas kosong')); return; }
-          this._download(blob, filename + ext);
-          Toast.show(`Disimpan: ${filename}${ext}  (${W}×${H}px)`, 'success');
-          AppConsole.log(`Screenshot layar berhasil → ${filename}${ext} ${W}×${H}`, 'success');
-          resolve();
-        }, mime, quality);
-      });
-
+      if (this._printState.title) this._drawPrintTitleBar(canvas, g.scale);
+      const mime = this._printState.format === 'jpg' ? 'image/jpeg' : 'image/png';
+      const ext  = this._printState.format === 'jpg' ? '.jpg' : '.png';
+      const blob = await new Promise(res => canvas.toBlob(res, mime, 0.9));
+      if (!blob) throw new Error('kanvas kosong (gambar mungkin gagal dimuat)');
+      const ts = new Date().toISOString().replace(/[T:]/g, '-').slice(0, 19);
+      this._download(blob, `auroramaps_cetak_${ts}${ext}`);
+      AppConsole.log(`Gambar cetak tersimpan → ${canvas.width}×${canvas.height} (${(blob.size / 1048576).toFixed(1)} MB)`, 'success');
+      Toast.show(`Tersimpan: ${canvas.width}×${canvas.height} px`, 'success');
+      Modal.close();
     } catch (err) {
-      if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
-        Toast.show('Screenshot dibatalkan.', 'warn');
-        AppConsole.log('Screenshot dibatalkan oleh pengguna', 'warn');
-      } else {
-        Toast.show('Gagal screenshot: ' + err.message, 'error');
-        AppConsole.log('Screenshot error: ' + err.message, 'error');
+      Toast.show('Gagal membuat gambar: ' + err.message, 'error');
+      AppConsole.log('Cetak gambar error: ' + err.message, 'error');
+    } finally {
+      if (modalBox) modalBox.style.visibility = '';
+    }
+  },
+
+  // Pita judul di dasar hasil cetak: nama proyek, tanggal, koordinat, skala.
+  _drawPrintTitleBar(canvas, scale) {
+    const ctx = canvas.getContext && canvas.getContext('2d');
+    const map = MapManager.map;
+    if (!ctx || !map) return;
+    const H = canvas.height, W = canvas.width;
+    const barPx = 56 * scale;
+    ctx.save();
+    // html2canvas meninggalkan translate pada konteks (mis. e:-1, f:-88) —
+    // tanpa reset ini pita judul tergeser keluar bidang kanvas.
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = 'rgba(13,18,32,0.94)';
+    ctx.fillRect(0, H - barPx, W, barPx);
+    ctx.scale(scale, scale);
+    const w = W / scale, y0 = H / scale - 56;
+    const c = map.getCenter();
+    let nama = 'AuroraMaps';
+    for (const id of ['project-name-display', 'project-name', 'proj-name', 'active-project-name']) {
+      const t = document.getElementById(id)?.textContent?.trim();
+      if (t) { nama = t; break; }
+    }
+    const tgl = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    ctx.fillStyle = '#e5e7eb'; ctx.font = '600 15px system-ui,sans-serif';
+    ctx.fillText(nama.slice(0, 48), 14, y0 + 19);
+    ctx.fillStyle = '#9aa4b2'; ctx.font = '12px system-ui,sans-serif';
+    ctx.fillText(`${tgl} · ${c.lat.toFixed(6)}, ${c.lng.toFixed(6)} · zoom ${map.getZoom()}`, 14, y0 + 39);
+    const bar = this._printScaleBar(map, 150);
+    if (bar && bar.px > 20 && bar.px < w - 40) {
+      const x2 = w - 16, x1 = x2 - bar.px, yb = y0 + 34;
+      ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(x1, yb); ctx.lineTo(x2, yb);
+      ctx.moveTo(x1, yb - 5); ctx.lineTo(x1, yb + 5);
+      ctx.moveTo(x2, yb - 5); ctx.lineTo(x2, yb + 5);
+      ctx.stroke();
+      ctx.textAlign = 'center';
+      ctx.fillText(bar.label, (x1 + x2) / 2, yb - 12);
+    }
+    ctx.restore();
+  },
+
+  // Panjang skala "bulat" (1/2/5×10ⁿ) yang paling mendekati lebar px tertentu.
+  _printScaleBar(map, targetPx) {
+    const c = map.getCenter();
+    const mpp = 156543.03392 * Math.cos(c.lat * Math.PI / 180) / Math.pow(2, map.getZoom());
+    const targetM = targetPx * mpp;
+    const pow = Math.pow(10, Math.floor(Math.log10(Math.max(targetM, 1e-6))));
+    const k = [1, 2, 5, 10].find(v => v * pow >= targetM * 0.7) || 10;
+    const m = k * pow;
+    return { px: m / mpp, label: m >= 1000 ? (m / 1000) + ' km' : Math.round(m) + ' m' };
+  },
+
+  // Ekspor vektor SVG: semua geometri layer terlihat + pita judul. Karena
+  // vektor, hasilnya tajam di ukuran cetak berapa pun dan filenya kecil
+  // sehingga aman dari batas memori perangkat.
+  exportVectorSVG() {
+    const map = MapManager.map;
+    const el = document.getElementById('map-container');
+    if (!map || !el) return;
+    const cw = el.offsetWidth || 1000, ch = el.offsetHeight || 700;
+    const margin = Math.max(cw, ch) * 1.5;   // buang geometri jauh di luar layar
+    const toPts = ring => ring.filter(p => Array.isArray(p) && p.length >= 2).map(p => {
+      const q = map.latLngToContainerPoint([p[1], p[0]]);
+      return (q.x < -margin || q.x > cw + margin || q.y < -margin || q.y > ch + margin) ? null : q;
+    });
+    const svg = [
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${cw}" height="${ch}" viewBox="0 0 ${cw} ${ch}" font-family="system-ui,Segoe UI,sans-serif">`,
+      `<rect width="${cw}" height="${ch}" fill="#ffffff"/>`
+    ];
+    let n = 0;
+    for (const entry of State.layers) {
+      if (!entry.visible || !entry.geoJSON?.features) continue;
+      const col = entry.color || '#3b82f6';
+      for (const f of entry.geoJSON.features) {
+        const g = f?.geometry; if (!g) continue;
+        let rings = [];
+        if (g.type === 'Point') rings = [[g.coordinates]];
+        else if (g.type === 'MultiPoint') rings = g.coordinates.map(c => [c]);
+        else if (g.type === 'LineString') rings = [g.coordinates];
+        else if (g.type === 'MultiLineString') rings = g.coordinates;
+        else if (g.type === 'Polygon') rings = g.coordinates;
+        else if (g.type === 'MultiPolygon') rings = g.coordinates.flat();
+        else continue;
+        const area = /Polygon/.test(g.type) || /Point/.test(g.type);
+        for (const ring of rings) {
+          const ps = toPts(ring).filter(Boolean);
+          if (ps.length < (area ? 3 : 2)) continue;
+          if (/Point/.test(g.type)) {
+            svg.push(`<circle cx="${ps[0].x.toFixed(1)}" cy="${ps[0].y.toFixed(1)}" r="6" fill="${col}" fill-opacity="0.8" stroke="${col}" stroke-width="2"/>`);
+          } else {
+            const d = ps.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ') + (area ? ' Z' : '');
+            svg.push(`<path d="${d}" fill="${area ? col : 'none'}" fill-opacity="${area ? 0.35 : 0}" stroke="${col}" stroke-opacity="1" stroke-width="2" stroke-linejoin="round"/>`);
+          }
+          n++;
+        }
       }
+    }
+    if (this._printState.title) this._svgTitleBlock(svg, cw, ch);
+    svg.push('</svg>');
+    const ts = new Date().toISOString().replace(/[T:]/g, '-').slice(0, 19);
+    this._download(new Blob([svg.join('\n')], { type: 'image/svg+xml;charset=utf-8' }), `auroramaps_vektor_${ts}.svg`);
+    AppConsole.log(`Ekspor vektor SVG → ${n} bentuk geometri`, 'success');
+    Toast.show(`SVG vektor tersimpan (${n} bentuk) — tajam di ukuran cetak berapa pun.`, 'success');
+  },
+
+  _svgTitleBlock(svg, cw, ch) {
+    const map = MapManager.map; if (!map) return;
+    const c = map.getCenter();
+    let nama = 'AuroraMaps';
+    for (const id of ['project-name-display', 'project-name', 'proj-name', 'active-project-name']) {
+      const t = document.getElementById(id)?.textContent?.trim();
+      if (t) { nama = t; break; }
+    }
+    const esc = s => String(s).replace(/[<>&"]/g, m => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[m]));
+    const tgl = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+    svg.push(`<rect x="0" y="${ch - 56}" width="${cw}" height="56" fill="#0d1220" fill-opacity="0.94"/>`);
+    svg.push(`<text x="14" y="${ch - 37}" fill="#e5e7eb" font-size="15" font-weight="600">${esc(nama.slice(0, 48))}</text>`);
+    svg.push(`<text x="14" y="${ch - 17}" fill="#9aa4b2" font-size="12">${esc(`${tgl} · ${c.lat.toFixed(6)}, ${c.lng.toFixed(6)} · zoom ${map.getZoom()}`)}</text>`);
+    const bar = this._printScaleBar(map, 150);
+    if (bar && bar.px > 20 && bar.px < cw - 40) {
+      const x2 = cw - 16, x1 = x2 - bar.px, yb = ch - 22;
+      svg.push(`<path d="M${x1} ${yb} L${x2} ${yb} M${x1} ${yb - 5} L${x1} ${yb + 5} M${x2} ${yb - 5} L${x2} ${yb + 5}" stroke="#e5e7eb" stroke-width="1.6" fill="none"/>`);
+      svg.push(`<text x="${(x1 + x2) / 2}" y="${yb - 8}" fill="#e5e7eb" font-size="12" text-anchor="middle">${bar.label}</text>`);
     }
   },
 
