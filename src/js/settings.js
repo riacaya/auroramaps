@@ -86,11 +86,9 @@ const SettingsPanel = {
           </div>`)}
         ${section(t('set-info'),
           `<div class="set-note">AuroraMaps v${Config.version} · ${t('set-layers-count')}: ${layerCount} · ${t('set-features-count')}: ${featureCount}</div>
-           <div class="set-actions">
-             ${isAdmin ? `<button class="btn btn-secondary" id="set-admin">${t('set-admin')}</button>` : ''}
-             <button class="btn btn-secondary" id="set-about">${t('set-about')}</button>
-             <button class="btn btn-secondary" id="set-logout">${t('set-logout')}</button>
-           </div>`)}
+           ${isAdmin ? `<div class="set-actions">
+             <button class="btn btn-secondary" id="set-admin">${t('set-admin')}</button>
+           </div>` : ''}`)}
       </div>`;
 
     // Tanpa tombol footer — panel sudah punya ikon X di kanan atas.
@@ -133,10 +131,8 @@ const SettingsPanel = {
     // Lapangan.
     $('set-offline-dl')?.addEventListener('click', () => { Modal.close(); OfflineManager.downloadCurrentArea(); });
     $('set-gps-nobase')?.addEventListener('change', e => Storage.save('gps-coordinate-only', e.target.checked));
-    // Info.
-    $('set-about')?.addEventListener('click', () => { Modal.close(); window.openAuroraAbout?.(); });
+    // Info — About & Logout tetap di header PC (#btn-about-pc / #btn-logout-pc).
     $('set-admin')?.addEventListener('click', () => { Modal.close(); document.getElementById('btn-admin-pc')?.click(); });
-    $('set-logout')?.addEventListener('click', () => { Modal.close(); LoginGate.logout(); });
 
     this._tileCount().then(n => {
       const el = $('set-tile-count');

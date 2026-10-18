@@ -330,6 +330,9 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
 #header .btn-icon:hover { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.35); color: #fff; }
 #header .btn-icon.active { background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.5); color: #fff; }
 .theme-toggle { position: relative; }
+#btn-about-pc { display: flex !important; }
+/* Logout — header PC (paling kanan) & baris terakhir di panel Menu HP (#mm-logout) */
+#btn-logout-pc:hover { background: var(--danger-light); border-color: var(--danger); color: var(--danger); }
 
 /* Panel Administrator — hanya terlihat saat login sbg Administrator (body.is-admin):
    tombol header PC & baris 'Administrator' di panel Menu HP */
@@ -1873,7 +1876,7 @@ input[type="range"]:focus-visible { outline: none; }
   #toolbar, #sidebar-left, #sidebar-right,
   #bottom-panel, #bp-resize-handle,
   #statusbar, .resize-handle, .draw-tools,
-  #header-search-menu, #btn-admin-pc, #btn-settings-pc { display: none !important; }
+  #header-search-menu, #btn-logout-pc, #btn-admin-pc, #btn-settings-pc { display: none !important; }
 
   /* ── HEADER ── */
   #header { flex-shrink: 0; height: 54px; padding: 0 10px; gap: 6px; }
@@ -1884,6 +1887,7 @@ input[type="range"]:focus-visible { outline: none; }
   #btn-bottom-toggle                      { display: none !important; }
   #btn-undo, #btn-redo                { display: none !important; }
   #sep-pc-end                         { display: none !important; }
+  #btn-about-pc                       { display: none !important; }
   .mh-btn                             { display: flex !important; width: 34px; height: 34px; }
   .mh-btn svg                         { width: 18px; height: 18px; }
   .mh-btn                             { color: var(--accent) !important; }

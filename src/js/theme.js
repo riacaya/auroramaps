@@ -132,8 +132,6 @@ const LanguageUI = {
       'set-layers-count': 'Layer',
       'set-features-count': 'Fitur',
       'set-admin': 'Panel Admin',
-      'set-about': 'About',
-      'set-logout': 'Keluar',
       'set-close': 'Tutup',
     },
     EN: {
@@ -216,8 +214,6 @@ const LanguageUI = {
       'set-layers-count': 'Layers',
       'set-features-count': 'Features',
       'set-admin': 'Admin Panel',
-      'set-about': 'About',
-      'set-logout': 'Log out',
       'set-close': 'Close',
     }
   },
