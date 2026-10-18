@@ -88,13 +88,13 @@ const SettingsPanel = {
           `<div class="set-note">AuroraMaps v${Config.version} · ${t('set-layers-count')}: ${layerCount} · ${t('set-features-count')}: ${featureCount}</div>
            <div class="set-actions">
              ${isAdmin ? `<button class="btn btn-secondary" id="set-admin">${t('set-admin')}</button>` : ''}
+             <button class="btn btn-secondary" id="set-about">${t('set-about')}</button>
              <button class="btn btn-secondary" id="set-logout">${t('set-logout')}</button>
            </div>`)}
       </div>`;
 
-    Modal.open('⚙ ' + t('set-title'), html, [
-      { label: t('set-close'), cls: 'btn-secondary', action: () => Modal.close() }
-    ]);
+    // Tanpa tombol footer — panel sudah punya ikon X di kanan atas.
+    Modal.open('⚙ ' + t('set-title'), html, []);
 
     const $ = (id) => document.getElementById(id);
     // Select tema/bahasa & tombol hapus tile memakai class — id yang sama
@@ -134,6 +134,7 @@ const SettingsPanel = {
     $('set-offline-dl')?.addEventListener('click', () => { Modal.close(); OfflineManager.downloadCurrentArea(); });
     $('set-gps-nobase')?.addEventListener('change', e => Storage.save('gps-coordinate-only', e.target.checked));
     // Info.
+    $('set-about')?.addEventListener('click', () => { Modal.close(); window.openAuroraAbout?.(); });
     $('set-admin')?.addEventListener('click', () => { Modal.close(); document.getElementById('btn-admin-pc')?.click(); });
     $('set-logout')?.addEventListener('click', () => { Modal.close(); LoginGate.logout(); });
 
