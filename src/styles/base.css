@@ -1,26 +1,28 @@
 /* ===== CSS VARIABLES / THEMES ===== */
 :root {
-  --bg-base: #0d0f13;
-  --bg-panel: #14171d;
-  --bg-chrome: #0a0c11;
-  --bg-surface: #1a1e26;
-  --bg-hover: #222736;
-  --bg-active: #2a3142;
-  --bg-accent: #1c2035;
-  --border: #252a38;
-  --border-light: #2e3547;
-  --text-primary: #e8ecf0;
-  --text-secondary: #8a94a6;
-  --text-muted: #556077;
+  /* Tema Night — identik dengan tema "Night" app Cek-KTP (D:\KTP) */
+  --bg-base: #0b1220;
+  --bg-panel: #24324a;
+  --bg-chrome: #172554;
+  --bg-surface: #2c3b55;
+  --bg-hover: #35496a;
+  --bg-active: #3d5378;
+  --bg-accent: #1e2f4d;
+  --border: #3b4a63;
+  --border-light: #4a5c78;
+  --text-primary: #e5edf8;
+  --text-secondary: #aebdd1;
+  --text-muted: #8296b0;
   --text-accent: #60a5fa;
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
-  --accent-light: rgba(59,130,246,0.15);
+  --accent: #60a5fa;
+  --accent-hover: #3b82f6;
+  --accent-light: rgba(96,165,250,0.15);
   --success: #22c55e;
   --warning: #f59e0b;
   --danger: #ef4444;
   --danger-light: rgba(239,68,68,0.15);
   --success-light: rgba(34,197,94,0.15);
+  --header-bg: linear-gradient(120deg,#020617,#172554);
   --header-h: 48px;
   --toolbar-h: 40px;
   --statusbar-h: 26px;
@@ -32,48 +34,73 @@
   --shadow: 0 4px 20px rgba(0,0,0,0.5);
 }
 
+/* Biru — identik dengan tema bawaan app Cek-KTP */
 [data-theme="light"] {
-  --bg-base: #f0f2f5;
+  --bg-base: #f1f5f9;
   --bg-panel: #ffffff;
-  --bg-chrome: #dfe4ec;
-  --bg-surface: #f7f8fa;
-  --bg-hover: #eef0f4;
-  --bg-active: #e2e6ed;
-  --bg-accent: #ebf0fb;
-  --border: #dde2ec;
-  --border-light: #cdd3e0;
-  --text-primary: #1a202c;
-  --text-secondary: #4a5568;
-  --text-muted: #a0aec0;
+  --bg-chrome: #e2e8f0;
+  --bg-surface: #f8fafc;
+  --bg-hover: #eef2f7;
+  --bg-active: #e2e8f0;
+  --bg-accent: #eff6ff;
+  --border: #cbd5e1;
+  --border-light: #b8c4d4;
+  --text-primary: #172033;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
   --text-accent: #2563eb;
-  --accent: #3b82f6;
+  --accent: #2563eb;
   --accent-hover: #1d4ed8;
-  --accent-light: rgba(59,130,246,0.1);
-  --shadow: 0 4px 20px rgba(0,0,0,0.12);
+  --accent-light: rgba(37,99,235,0.1);
+  --header-bg: linear-gradient(120deg,#1d4ed8,#0f766e);
+  --shadow: 0 3px 12px rgba(15,23,42,0.07);
 }
+/* Senja — identik dengan tema "Senja" app Cek-KTP */
 [data-theme="senja"] {
-  --bg-base: #0d0608;
-  --bg-panel: #1a0a0e;
-  --bg-chrome: #120609;
-  --bg-surface: #241218;
-  --bg-hover: #321820;
-  --bg-active: #3d1f28;
-  --bg-accent: #2a1015;
-  --border: #3d1822;
-  --border-light: #522230;
-  --text-primary: #f5d5b0;
-  --text-secondary: #c49070;
-  --text-muted: #7a5040;
-  --text-accent: #f0a060;
-  --accent: #e05830;
-  --accent-hover: #c04428;
-  --accent-light: rgba(224,88,48,0.15);
-  --success: #90b848;
-  --warning: #e0a030;
-  --danger: #d04040;
-  --danger-light: rgba(208,64,64,0.15);
-  --success-light: rgba(144,184,72,0.15);
-  --shadow: 0 4px 20px rgba(0,0,0,0.65);
+  --bg-base: #fff4e6;
+  --bg-panel: #fffaf3;
+  --bg-chrome: #ffe9d1;
+  --bg-surface: #fff7ec;
+  --bg-hover: #ffefd9;
+  --bg-active: #ffe4c4;
+  --bg-accent: #ffedd5;
+  --border: #fbd7ad;
+  --border-light: #f3c894;
+  --text-primary: #422006;
+  --text-secondary: #64748b;
+  --text-muted: #64748b;
+  --text-accent: #c2410c;
+  --accent: #c2410c;
+  --accent-hover: #9a3412;
+  --accent-light: rgba(194,65,12,0.12);
+  --success: #15803d;
+  --warning: #b45309;
+  --danger: #b91c1c;
+  --danger-light: rgba(185,28,28,0.1);
+  --success-light: rgba(21,128,61,0.1);
+  --header-bg: linear-gradient(120deg,#9a3412,#f59e0b);
+  --shadow: 0 3px 12px rgba(120,53,15,0.1);
+}
+/* Elegan — identik dengan tema "Elegan" app Cek-KTP */
+[data-theme="elegan"] {
+  --bg-base: #f7f3ea;
+  --bg-panel: #fffdf8;
+  --bg-chrome: #efe8da;
+  --bg-surface: #fbf8f1;
+  --bg-hover: #f3ede1;
+  --bg-active: #e7d7c5;
+  --bg-accent: #f5eee1;
+  --border: #e2d6c3;
+  --border-light: #d3c3aa;
+  --text-primary: #292524;
+  --text-secondary: #57534e;
+  --text-muted: #78716c;
+  --text-accent: #7c3f20;
+  --accent: #7c3f20;
+  --accent-hover: #63301a;
+  --accent-light: rgba(124,63,32,0.1);
+  --header-bg: linear-gradient(120deg,#3f2d24,#a16207);
+  --shadow: 0 3px 12px rgba(41,37,36,0.08);
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; overflow: hidden; font-family: var(--font); background: var(--bg-base); color: var(--text-primary); font-size: 13px; }
@@ -91,7 +118,7 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
 /* ===== HEADER ===== */
 #header {
   height: var(--header-h);
-  background: var(--bg-chrome);
+  background: var(--header-bg, var(--bg-chrome));
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center;
   padding: 0 12px;
@@ -292,6 +319,16 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
 .btn-icon:hover { background: var(--bg-hover); border-color: var(--border); color: var(--text-primary); }
 .btn-icon.active { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
 .btn-icon svg { width: 15px; height: 15px; }
+/* Teks & ikon header dibuat putih agar terbaca di atas gradien (seperti header Cek-KTP) */
+#header .header-title { color: #fff; }
+#header .header-subtitle {
+  color: rgba(255,255,255,0.85);
+  background: none;
+  -webkit-text-fill-color: rgba(255,255,255,0.85);
+}
+#header .btn-icon { color: rgba(255,255,255,0.92); }
+#header .btn-icon:hover { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.35); color: #fff; }
+#header .btn-icon.active { background: rgba(255,255,255,0.22); border-color: rgba(255,255,255,0.5); color: #fff; }
 .theme-toggle { position: relative; }
 #btn-about-pc { display: flex !important; }
 /* Logout — header PC (paling kanan) & baris terakhir di panel Menu HP (#mm-logout) */
