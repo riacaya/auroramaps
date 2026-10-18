@@ -68,37 +68,9 @@ const App = {
       if (el) el.addEventListener('input', fn);
     };
 
-    bindClick('btn-theme', () => Theme.toggle());
     bindClick('btn-logout-pc', () => LoginGate.logout());
     bindClick('btn-settings-pc', () => SettingsPanel.open());
 
-    // Dropdown toolbar (Impor ▾ / Proyek ▾): buka/tutup pop, tutup saat
-    // klik di mana pun, dan tutup otomatis setelah item dipilih. Pop memakai
-    // position:fixed (CSS) + koordinat dari tombol pemicu, karena #toolbar
-    // beroverflow:hidden dan akan memotong pop bila position:absolute.
-    document.querySelectorAll('.tb-menu').forEach(menu => {
-      const trigger = menu.querySelector(':scope > button');
-      const pop = menu.querySelector('.tb-menu-pop');
-      trigger?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const willOpen = !menu.classList.contains('open');
-        document.querySelectorAll('.tb-menu.open').forEach(m => m.classList.remove('open'));
-        menu.classList.toggle('open', willOpen);
-        if (willOpen && pop) {
-          const r = trigger.getBoundingClientRect();
-          pop.style.top = (r.bottom + 6) + 'px';
-          pop.style.left = '0px';           // ukur lebar dulu saat tampil
-          const w = pop.offsetWidth;
-          pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
-        }
-      });
-      menu.querySelectorAll('.tb-menu-pop button').forEach(item =>
-        item.addEventListener('click', () => menu.classList.remove('open')));
-    });
-    document.addEventListener('click', () =>
-      document.querySelectorAll('.tb-menu.open').forEach(m => m.classList.remove('open')));
-    window.addEventListener('resize', () =>
-      document.querySelectorAll('.tb-menu.open').forEach(m => m.classList.remove('open')));
     bindClick('btn-atrbpn', () => AtrbpnLayers.showPanel(false));
     bindClick('btn-undo', () => {
       if (State.activeDrawTool && MobileUI._isMobile()) {
@@ -883,7 +855,7 @@ LoginGate.init();
   };
   const syncMenuBadges = () => {
     setBadgeText('mm-lang-badge', LanguageUI.current);
-    const activeTheme = document.documentElement.dataset.theme || State.theme || 'dark';
+    const activeTheme = document.documentElement.dataset.theme || State.theme || 'senja';
     setBadgeText('mm-theme-badge', Theme._labels[activeTheme] || activeTheme);
   };
 

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="senja">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
@@ -20,7 +20,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
 <!-- Font -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"/>
-<link rel="stylesheet" href="./src/styles/base.css?v=65" />
+<link rel="stylesheet" href="./src/styles/base.css?v=66" />
 <style>
 .login-branding-logo svg, .logo-icon svg, .about-logo svg { display:none !important; }
 .login-gate{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:var(--bg-base,#0d0f13)}
@@ -100,8 +100,8 @@
     </div>
     <button type="button" id="header-search-menu" class="header-search-menu" title="Pencarian ATR/BPN">🔍 Cari Bidang</button>
     <div class="header-actions">
-      <button class="btn-icon btn-icon-strong" id="btn-settings-pc" title="Pengaturan" aria-label="Pengaturan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       <button class="btn-icon btn-icon-strong legacy-pc-setting" id="btn-about-pc" title="About AuroraMaps"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
+      <button class="btn-icon btn-icon-strong" id="btn-settings-pc" title="Pengaturan" aria-label="Pengaturan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       <div id="sep-pc-end" class="header-sep"></div>
       <button class="btn-icon" id="btn-bottom-toggle" title="Toggle Bottom Panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/></svg></button>
       <button class="btn-icon btn-icon-large" id="btn-sidebar-left-toggle" title="Toggle Left Sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></button>
@@ -132,38 +132,24 @@
   <!-- TOOLBAR — hanya tombol kerja harian; fitur jarang pakai pindah ke
        dropdown (Impor/Proyek) dan panel Pengaturan -->
   <div id="toolbar">
-    <div class="tb-menu" id="tb-import-wrap">
-      <button class="toolbar-btn" id="tb-import-menu" title="Impor data">
-        <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> Impor
-      </button>
-      <div class="tb-menu-pop">
-        <button class="toolbar-btn" id="tb-open" title="Open File (Ctrl+O)">
-          <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> Open
-        </button>
-        <button class="toolbar-btn" id="tb-img-overlay" title="Overlay Gambar Peta (JPG/PNG sebagai acuan)">
-          <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span> Overlay
-        </button>
-        <button class="toolbar-btn" id="tb-import-url" title="Import from URL">
-          <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span> URL
-        </button>
-      </div>
-    </div>
+    <button class="toolbar-btn" id="tb-open" title="File (Ctrl+O)">
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span> File
+    </button>
+    <button class="toolbar-btn" id="tb-img-overlay" title="Overlay Gambar Peta (JPG/PNG sebagai acuan)">
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span> Overlay
+    </button>
+    <button class="toolbar-btn" id="tb-import-url" title="Import from URL">
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span> URL
+    </button>
     <button class="toolbar-btn" id="btn-atrbpn" title="ATRBPN (LSD & RTRW)" aria-label="ATRBPN">
       <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span> ATRBPN
     </button>
-    <div class="tb-menu" id="tb-project-wrap">
-      <button class="toolbar-btn" id="tb-project-menu" title="Proyek AuroraMaps">
-        <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span> Proyek
-      </button>
-      <div class="tb-menu-pop">
-        <button class="toolbar-btn" id="tb-save-project" title="Simpan Proyek AuroraMaps">
-          <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></span> Simpan
-        </button>
-        <button class="toolbar-btn" id="tb-open-project" title="Buka Proyek AuroraMaps">
-          <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span> Buka
-        </button>
-      </div>
-    </div>
+    <button class="toolbar-btn" id="tb-save-project" title="Simpan Proyek AuroraMaps">
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></span> Simpan
+    </button>
+    <button class="toolbar-btn" id="tb-open-project" title="Buka Proyek AuroraMaps">
+      <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span> Buka
+    </button>
     <button class="toolbar-btn" id="tb-export" title="Export Data" aria-label="Export Data">
       <span class="tb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Export
     </button>
@@ -792,7 +778,7 @@
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <!-- App modules (load order = dependency order) -->
-<script src="./src/js/config.js?v=58"></script>
+<script src="./src/js/config.js?v=59"></script>
 <script src="./src/js/utils.js?v=51"></script>
 <script src="./src/js/storage.js?v=50"></script>
 <script src="./src/js/project.js?v=50"></script>
@@ -806,7 +792,7 @@
 <script src="./src/js/search.js?v=50"></script>
 <script src="./src/js/attrTable.js?v=50"></script>
 <script src="./src/js/history.js?v=50"></script>
-<script src="./src/js/theme.js?v=56"></script>
+<script src="./src/js/theme.js?v=58"></script>
 <script src="./src/js/bookmarks.js?v=50"></script>
 <script src="./src/js/ui.js?v=54"></script>
 <script src="./src/js/settings.js?v=3"></script>
@@ -816,7 +802,7 @@
 <script src="./src/js/mapPopup.js?v=50"></script>
 <script src="./src/js/bhumiIdentify.js?v=64"></script>
 <script src="./src/js/adminPanel.js?v=3"></script>
-<script src="./src/js/app.js?v=72"></script>
+<script src="./src/js/app.js?v=73"></script>
 <script>
 (() => {
   const button = document.getElementById('pwa-install-btn');

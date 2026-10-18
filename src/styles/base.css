@@ -121,14 +121,14 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
   background: var(--header-bg, var(--bg-chrome));
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center;
-  padding: 0 12px;
-  gap: 12px;
+  padding: 0 10px;
+  gap: 8px;
   flex-shrink: 0;
   z-index: 200;
 }
 .header-logo {
-  display: flex; align-items: center; gap: 8px;
-  font-weight: 700; font-size: 15px; color: var(--text-accent);
+  display: flex; align-items: center; gap: 6px;
+  font-weight: 700; font-size: 14px; color: var(--text-accent);
   letter-spacing: -0.3px;
   white-space: nowrap;
 }
@@ -145,7 +145,7 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
 .about-logo { background: url('https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjnh-IT8PsV6xuVkev5Wva6KMDEXDegNwM8uqyxBrF7eKOgMjSdmAZTrp-t54jWhH2LuVdMHfHM0UI_Vdz0UGFA5zBYtAx7gMOSOCLQRw_O6dtnKfenOSXhYjWdVNUR47k_FQI5_sRr2Sxvm56W2uCxb7WsRPjhtpvIF07/s320/auroramaps.png') center/contain no-repeat; }
 .about-logo svg { display: none; }
 .header-subtitle {
-  font-size: 10px; font-weight: 500;
+  font-size: 9px; font-weight: 500;
   background: linear-gradient(90deg, var(--accent), #8b5cf6);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   text-transform: uppercase; letter-spacing: 1px;
@@ -188,7 +188,7 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
   font-family: var(--font);
 }
 .header-search input::placeholder { color: var(--text-muted); }
-.header-title { font-size: 13px; font-weight: 700; line-height: 1; }
+.header-title { font-size: 12px; font-weight: 700; line-height: 1; }
 .header-search-icon { color: var(--text-muted); font-size: 12px; }
 .header-search-clear {
   cursor: pointer;
@@ -293,7 +293,7 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
   max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   cursor: pointer;
 }
-.header-actions { display: flex; align-items: center; gap: 8px; }
+.header-actions { display: flex; align-items: center; gap: 4px; }
 .header-action-btn {
   width: 30px;
   min-width: 30px;
@@ -309,16 +309,16 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
   letter-spacing: 0.3px;
 }
 .btn-icon {
-  width: 30px; height: 30px;
+  width: 26px; height: 26px;
   background: transparent; border: 1px solid transparent;
   border-radius: var(--radius); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  color: var(--text-secondary); font-size: 14px;
+  color: var(--text-secondary); font-size: 13px;
   transition: all .15s;
 }
 .btn-icon:hover { background: var(--bg-hover); border-color: var(--border); color: var(--text-primary); }
 .btn-icon.active { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
-.btn-icon svg { width: 15px; height: 15px; }
+.btn-icon svg { width: 14px; height: 14px; }
 /* Teks & ikon header dibuat putih agar terbaca di atas gradien (seperti header Cek-KTP) */
 #header .header-title { color: #fff; }
 #header .header-subtitle {
@@ -878,21 +878,6 @@ body.is-admin #mm-admin { display: flex; }
 .toolbar-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
 .toolbar-spacer { flex: 1; }
 
-/* Dropdown toolbar (Impor ▾ / Proyek ▾) — tombol lama pindah ke dalam pop.
-   Posisi fixed agar tidak terpotong overflow:hidden #toolbar; koordinat
-   dihitung app.js saat dibuka. */
-.tb-menu { position: relative; }
-.tb-menu > .toolbar-btn::after { content: '▾'; font-size: 9px; margin-left: 3px; opacity: .7; }
-.tb-menu-pop {
-  position: fixed; z-index: 5000;
-  min-width: 210px; padding: 5px;
-  background: var(--bg-panel); border: 1px solid var(--border);
-  border-radius: 10px; box-shadow: var(--shadow);
-  display: none;
-}
-.tb-menu.open .tb-menu-pop { display: block; }
-.tb-menu-pop .toolbar-btn { width: 100%; justify-content: flex-start; margin-bottom: 3px; }
-.tb-menu-pop .toolbar-btn:last-child { margin-bottom: 0; }
 
 /* Panel Pengaturan (settings.js) */
 .set-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }

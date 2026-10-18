@@ -126,7 +126,7 @@ const State = {
   activeDrawType: null,
   activeMeasureTool: null,
   isEditMode: false,
-  theme: 'dark',
+  theme: 'senja',
   history: [],
   historyIndex: -1,
   bookmarks: [],

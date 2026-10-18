@@ -53,7 +53,7 @@ const LanguageUI = {
   },
   labels: {
     ID: {
-      'tb-open': 'Buka',
+      'tb-open': 'File',
       'tb-open-project': 'Buka Proyek',
       'tb-save-project': 'Simpan Proyek',
       'tb-img-overlay': 'Overlay',
@@ -109,8 +109,11 @@ const LanguageUI = {
       'modal-merge-ok': '⊕ Gabung',
       'modal-merge-cancel': 'Batal',
 
-      'tb-import-menu': 'Impor',
-      'tb-project-menu': 'Proyek',
+      'tb-open': 'File',
+      'tb-img-overlay': 'Overlay',
+      'tb-import-url': 'URL',
+      'tb-save-project': 'Simpan',
+      'tb-open-project': 'Buka',
       'mm-settings': 'Pengaturan',
       'set-title': 'Pengaturan',
       'set-appearance': 'Tampilan',
@@ -135,7 +138,7 @@ const LanguageUI = {
       'set-close': 'Tutup',
     },
     EN: {
-      'tb-open': 'Open',
+      'tb-open': 'File',
       'tb-open-project': 'Open Project',
       'tb-save-project': 'Save Project',
       'tb-img-overlay': 'Overlay',
@@ -191,8 +194,6 @@ const LanguageUI = {
       'modal-merge-ok': '⊕ Merge',
       'modal-merge-cancel': 'Cancel',
 
-      'tb-import-menu': 'Import',
-      'tb-project-menu': 'Project',
       'mm-settings': 'Settings',
       'set-title': 'Settings',
       'set-appearance': 'Appearance',
@@ -240,7 +241,7 @@ const LanguageUI = {
     });
     const titles = lang === 'EN'
       ? {
-          'tb-open': 'Open File',
+          'tb-open': 'File (buka data)',
           'tb-img-overlay': 'Image overlay reference',
           'tb-import-url': 'Import from URL',
           'tb-screenshot': 'Print / save map image',
@@ -250,7 +251,7 @@ const LanguageUI = {
           'mm-lang': 'Toggle language',
         }
       : {
-          'tb-open': 'Buka File',
+          'tb-open': 'File (buka data)',
           'tb-img-overlay': 'Overlay gambar referensi',
           'tb-import-url': 'Impor dari URL',
           'tb-screenshot': 'Cetak / simpan gambar peta',
