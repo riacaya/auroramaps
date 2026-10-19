@@ -108,6 +108,7 @@ const LanguageUI = {
       'set-gps-nobase-help': 'Berguna saat ingin jejak GPS saja tanpa peta latar.',
       'set-offline-dl': 'Unduh area peta offline',
       'set-info': 'Info',
+      'set-install': 'Pasang Aplikasi',
       'set-layers-count': 'Layer',
       'set-features-count': 'Fitur',
     },
@@ -182,6 +183,7 @@ const LanguageUI = {
       'set-gps-nobase-help': 'Useful when you only want the GPS track without a background map.',
       'set-offline-dl': 'Download offline map area',
       'set-info': 'Info',
+      'set-install': 'Install App',
       'set-layers-count': 'Layers',
       'set-features-count': 'Features',
     }

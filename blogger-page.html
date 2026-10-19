@@ -36,12 +36,12 @@
 @media(max-width:520px){.login-card{display:block;padding:20px}.login-branding{padding:0 0 16px}.login-branding-logo{width:60px;height:60px;margin-bottom:7px}.login-branding-title{font-size:18px}.login-form-content{padding:12px 0 0;border-top:1px solid var(--border);border-left:0}}
 </style>
 
-<style>.pwa-install-btn{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:99998;border:1px solid #00f5d4;border-radius:999px;padding:11px 16px;background:#14171d;color:#00f5d4;font:600 13px Inter,Arial,sans-serif;box-shadow:0 4px 18px #0009;cursor:pointer}.pwa-install-btn[hidden]{display:none!important}</style>
+<style>.pwa-install-btn{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:99998;border:1px solid #00f5d4;border-radius:999px;padding:11px 16px;background:#14171d;color:#00f5d4;font:600 13px Inter,Arial,sans-serif;box-shadow:0 4px 18px #0009;cursor:pointer}.pwa-install-btn[hidden]{display:none!important}.login-install-link{display:block;width:max-content;margin:12px auto 0;padding:0;border:0;background:transparent;color:var(--text-accent);font:600 11px Inter,Arial,sans-serif;cursor:pointer;letter-spacing:.2px}.login-install-link:hover{text-decoration:underline}.login-install-link[hidden]{display:none!important}</style>
 </head>
 <body>
 <button type="button" id="pwa-install-btn" class="pwa-install-btn" hidden>Pasang AuroraMaps</button>
 
-<div id="login-gate" class="login-gate"><form id="login-form" class="login-card"><div class="login-branding"><div class="login-branding-logo"><svg viewBox="0 0 120 120" role="img" aria-label="AuroraMaps logo"><defs><linearGradient id="login-aurora-gradient" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#00f5d4"/><stop offset=".33" stop-color="#00bbf9"/><stop offset=".66" stop-color="#9b5de5"/><stop offset="1" stop-color="#f15bb5"/></linearGradient></defs><circle cx="60" cy="60" r="58" fill="#0a0a1a" stroke="url(#login-aurora-gradient)" stroke-width="2"/><g fill="none" stroke="url(#login-aurora-gradient)" stroke-width="3" opacity=".85"><path d="M12 45q18-12 36-5t36-5t24 5"/><path d="M10 56q18-12 36-5t36-5t28 5"/><path d="M14 68q18-12 36-5t36-5t24 5"/></g><path d="M60 22c-16 0-24 11-24 23 0 16 24 39 24 39s24-23 24-39c0-12-8-23-24-23z" fill="url(#login-aurora-gradient)"/><circle cx="60" cy="45" r="8" fill="#0a0a1a"/><circle cx="60" cy="45" r="5" fill="url(#login-aurora-gradient)"/></svg></div><div class="login-branding-title">AuroraMaps</div><div class="login-branding-subtitle">RiaCaya GIS Viewer</div><div class="login-contact"><a href="tel:+6282338013610">☎ +62 823-3801-3610</a><a href="mailto:riacaya99@gmail.com">✉ riacaya99@gmail.com</a></div></div><div class="login-form-content"><label>Nomor HP atau ID Admin<input id="login-user" type="text" inputmode="text" autocomplete="username" placeholder="08xxxxxxxxxx atau riacaya" pattern="(?:[Rr][Ii][Aa][Cc][Aa][Yy][Aa]|(?:\+?62|0)8[0-9 .\(\)\-]{8,16})" title="Masukkan nomor HP atau ID administrator riacaya" required></label><label>Password<div class="login-password-wrap"><input id="login-pass" type="password" autocomplete="current-password" required><button type="button" id="login-password-toggle" class="login-password-toggle" aria-label="Tampilkan password" title="Tampilkan password">👁</button></div></label><div class="login-actions"><button type="submit" class="btn btn-primary">Login</button><button type="button" id="login-register" class="btn login-register-btn">Daftar</button></div><div id="login-error" class="login-error"></div></div></form></div>
+<div id="login-gate" class="login-gate"><form id="login-form" class="login-card"><div class="login-branding"><div class="login-branding-logo"><svg viewBox="0 0 120 120" role="img" aria-label="AuroraMaps logo"><defs><linearGradient id="login-aurora-gradient" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#00f5d4"/><stop offset=".33" stop-color="#00bbf9"/><stop offset=".66" stop-color="#9b5de5"/><stop offset="1" stop-color="#f15bb5"/></linearGradient></defs><circle cx="60" cy="60" r="58" fill="#0a0a1a" stroke="url(#login-aurora-gradient)" stroke-width="2"/><g fill="none" stroke="url(#login-aurora-gradient)" stroke-width="3" opacity=".85"><path d="M12 45q18-12 36-5t36-5t24 5"/><path d="M10 56q18-12 36-5t36-5t28 5"/><path d="M14 68q18-12 36-5t36-5t24 5"/></g><path d="M60 22c-16 0-24 11-24 23 0 16 24 39 24 39s24-23 24-39c0-12-8-23-24-23z" fill="url(#login-aurora-gradient)"/><circle cx="60" cy="45" r="8" fill="#0a0a1a"/><circle cx="60" cy="45" r="5" fill="url(#login-aurora-gradient)"/></svg></div><div class="login-branding-title">AuroraMaps</div><div class="login-branding-subtitle">RiaCaya GIS Viewer</div><div class="login-contact"><a href="tel:+6282338013610">☎ +62 823-3801-3610</a><a href="mailto:riacaya99@gmail.com">✉ riacaya99@gmail.com</a><button type="button" id="login-install-btn" class="login-install-link">📲 Pasang Aplikasi</button></div></div><div class="login-form-content"><label>Nomor HP atau ID Admin<input id="login-user" type="text" inputmode="text" autocomplete="username" placeholder="08xxxxxxxxxx atau riacaya" pattern="(?:[Rr][Ii][Aa][Cc][Aa][Yy][Aa]|(?:\+?62|0)8[0-9 .\(\)\-]{8,16})" title="Masukkan nomor HP atau ID administrator riacaya" required></label><label>Password<div class="login-password-wrap"><input id="login-pass" type="password" autocomplete="current-password" required><button type="button" id="login-password-toggle" class="login-password-toggle" aria-label="Tampilkan password" title="Tampilkan password">👁</button></div></label><div class="login-actions"><button type="submit" class="btn btn-primary">Login</button><button type="button" id="login-register" class="btn login-register-btn">Daftar</button></div><div id="login-error" class="login-error"></div></div></form></div>
 <!-- ===== LOADER ===== -->
 <div id="loader">
   <div class="loader-spinner"></div>
@@ -794,10 +794,10 @@
 <script src="https://riacaya.github.io/auroramaps/src/js/search.js?v=50"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/attrTable.js?v=50"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/history.js?v=51"></script>
-<script src="https://riacaya.github.io/auroramaps/src/js/theme.js?v=63"></script>
+<script src="https://riacaya.github.io/auroramaps/src/js/theme.js?v=64"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/bookmarks.js?v=50"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/ui.js?v=54"></script>
-<script src="https://riacaya.github.io/auroramaps/src/js/settings.js?v=5"></script>
+<script src="https://riacaya.github.io/auroramaps/src/js/settings.js?v=6"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/mobile.js?v=53"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/imageOverlay.js?v=50"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/atrbpnLayers.js?v=64"></script>
@@ -807,23 +807,34 @@
 <script src="https://riacaya.github.io/auroramaps/src/js/app.js?v=83"></script>
 <script>
 (() => {
-  const button = document.getElementById('pwa-install-btn');
+  const floating = document.getElementById('pwa-install-btn');
+  const loginLink = document.getElementById('login-install-btn');
   let installPrompt = null;
   const installed = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-  if (installed()) return;
-  window.addEventListener('beforeinstallprompt', event => {
-    event.preventDefault();
-    installPrompt = event;
-    if (button) button.hidden = false;
-  });
-  button?.addEventListener('click', async () => {
-    if (!installPrompt) return;
-    installPrompt.prompt();
-    await installPrompt.userChoice;
-    installPrompt = null;
-    button.hidden = true;
-  });
-  window.addEventListener('appinstalled', () => { if (button) button.hidden = true; });
+  // Pasang app (PWA): pintasan ke layar utama Android/PC - buka tanpa bar browser, ikon = logo app.
+  window.AuroraInstall = {
+    canOffer() { return location.protocol !== 'file:' && !installed(); },
+    trigger() {
+      if (installPrompt) { installPrompt.prompt(); installPrompt = null; return; }
+      if (installed()) { if (window.Toast) Toast.show('AuroraMaps sudah terpasang.', 'info'); return; }
+      if (window.Toast) Toast.show('Cara pasang: Chrome/Edge - menu ⋮ lalu "Pasang aplikasi". iPhone (Safari) - Bagikan lalu "Tambahkan ke Layar Utama".', 'info');
+    }
+  };
+  if (window.AuroraInstall.canOffer()) {
+    window.addEventListener('beforeinstallprompt', event => {
+      event.preventDefault();
+      installPrompt = event;
+      if (floating) floating.hidden = false;
+    });
+    window.addEventListener('appinstalled', () => {
+      if (floating) floating.hidden = true;
+      if (loginLink) loginLink.hidden = true;
+    });
+  } else if (loginLink) {
+    loginLink.hidden = true; // Sudah terpasang / dibuka dari APK WebView (file://)
+  }
+  floating?.addEventListener('click', () => window.AuroraInstall.trigger());
+  loginLink?.addEventListener('click', () => window.AuroraInstall.trigger());
   // Manifest blob: halaman Blogger tidak punya manifest.webmanifest di origin-nya.
   const manifest = {
     name: 'AuroraMaps - GIS Viewer',
@@ -840,6 +851,7 @@
   manifestLink.href = manifestUrl;
   document.head.appendChild(manifestLink);
 })();
+
 </script>
 </body>
 </html>
