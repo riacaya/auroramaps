@@ -816,8 +816,8 @@
     canOffer() { return location.protocol !== 'file:' && !installed(); },
     trigger() {
       if (installPrompt) { installPrompt.prompt(); installPrompt = null; return; }
-      if (installed()) { if (window.Toast) Toast.show('AuroraMaps sudah terpasang.', 'info'); return; }
-      if (window.Toast) Toast.show('Cara pasang: Chrome/Edge - menu ⋮ lalu "Pasang aplikasi". iPhone (Safari) - Bagikan lalu "Tambahkan ke Layar Utama".', 'info');
+      if (installed()) { if (typeof Toast !== 'undefined') Toast.show('AuroraMaps sudah terpasang.', 'info'); return; }
+      if (typeof Toast !== 'undefined') Toast.show('Cara pasang: Chrome/Edge - menu ⋮ lalu "Pasang aplikasi". iPhone (Safari) - Bagikan lalu "Tambahkan ke Layar Utama".', 'info');
     }
   };
   if (window.AuroraInstall.canOffer()) {
