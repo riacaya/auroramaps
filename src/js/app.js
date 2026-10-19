@@ -927,7 +927,6 @@ LoginGate.init();
 
   [
     ['mm-open', () => document.getElementById('file-input').click()],
-    ['mm-open-project', () => document.getElementById('project-input').click()],
     ['mm-save-project', () => ProjectManager.save()],
     ['mm-overlay', () => {
       if (ImageOverlayMgr._loaded) {
