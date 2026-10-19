@@ -375,6 +375,9 @@ const App = {
       el.style.inset = '';
       el.style.left = ''; el.style.top = ''; el.style.width = ''; el.style.height = '';
     });
+    // Versi di About mengikuti Config.version (jangan hardcode di HTML).
+    const aboutVer = document.getElementById('about-version');
+    if (aboutVer) aboutVer.textContent = 'v' + Config.version;
 
     document.addEventListener('click', () => ContextMenuManager.hide());
     document.addEventListener('keydown', (e) => {

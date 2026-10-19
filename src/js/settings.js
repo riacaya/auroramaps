@@ -84,7 +84,7 @@ const SettingsPanel = {
             <button class="btn btn-secondary" id="set-offline-dl">⬇ ${t('set-offline-dl')}</button>
           </div>`)}
         ${section(t('set-info'),
-          `<div class="set-note">AuroraMaps v${Config.version} · ${t('set-layers-count')}: ${layerCount} · ${t('set-features-count')}: ${featureCount}</div>
+          `<div class="set-note">${t('set-layers-count')}: ${layerCount} · ${t('set-features-count')}: ${featureCount}</div>
 `)}
       </div>`;
 
