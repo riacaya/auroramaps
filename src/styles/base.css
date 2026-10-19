@@ -145,10 +145,10 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
 .about-logo { background: url('https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjnh-IT8PsV6xuVkev5Wva6KMDEXDegNwM8uqyxBrF7eKOgMjSdmAZTrp-t54jWhH2LuVdMHfHM0UI_Vdz0UGFA5zBYtAx7gMOSOCLQRw_O6dtnKfenOSXhYjWdVNUR47k_FQI5_sRr2Sxvm56W2uCxb7WsRPjhtpvIF07/s320/auroramaps.png') center/contain no-repeat; }
 .about-logo svg { display: none; }
 .header-subtitle {
-  font-size: 9px; font-weight: 500;
+  font-size: 10px; font-weight: 500;
   background: linear-gradient(90deg, var(--accent), #8b5cf6);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  text-transform: uppercase; letter-spacing: 1px;
+  letter-spacing: 0.2px;
 }
 .header-spacer { flex: 1; }
 .header-search {
@@ -188,7 +188,7 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
   font-family: var(--font);
 }
 .header-search input::placeholder { color: var(--text-muted); }
-.header-title { font-size: 12px; font-weight: 700; line-height: 1; }
+.header-title { font-size: 15px; font-weight: 700; line-height: 1.15; letter-spacing: -0.2px; }
 .header-search-icon { color: var(--text-muted); font-size: 12px; }
 .header-search-clear {
   cursor: pointer;
@@ -294,20 +294,6 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
   cursor: pointer;
 }
 .header-actions { display: flex; align-items: center; gap: 4px; }
-.header-action-btn {
-  width: 30px;
-  min-width: 30px;
-  padding: 0;
-  flex-shrink: 0;
-  justify-content: center;
-  font-size: 14px;
-}
-.lang-toggle {
-  min-width: 34px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-}
 .btn-icon {
   width: 26px; height: 26px;
   background: transparent; border: 1px solid transparent;
@@ -422,8 +408,7 @@ body.is-admin #mm-admin { display: flex; }
 .about-subtitle {
   font-size: 12px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.3px;
   background: linear-gradient(90deg,var(--accent),#8b5cf6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -1133,7 +1118,7 @@ body.is-admin #mm-admin { display: flex; }
 .bottom-tab {
   padding: 0 10px; height: 28px;
   background: none; border: none; cursor: pointer;
-  color: var(--text-muted); font-size: 11px; font-weight: 500;
+  color: var(--text-muted); font-size: 10px; font-weight: 500;
   font-family: var(--font); border-bottom: 2px solid transparent;
   transition: all .15s;
 }
@@ -1509,7 +1494,7 @@ button, input, select, textarea { font-weight: 400; }
   font-weight: 500;
 }
 .panel-title { letter-spacing: .35px; }
-.sidebar-tab { font-size: 11px; }
+.sidebar-tab { font-size: 10px; }
 .panel-header { padding: 9px 12px; }
 .panel-action-btn { width: 26px; height: 26px; border-radius: 6px; }
 .layer-name { font-size: 11px; font-weight: 400; }
@@ -1882,8 +1867,8 @@ input[type="range"]:focus-visible { outline: none; }
   .header-spacer                      { flex: 1; }
   .header-logo                        { font-size: 14px; gap: 7px; }
   .logo-icon                          { width: 28px; height: 28px; }
-  .header-logo > div > div:first-child{ font-size: 14px; }
-  .header-subtitle                    { font-size: 9px; }
+  .header-logo > div > div:first-child{ font-size: 15px; }
+  .header-subtitle                    { font-size: 9.5px; }
 
   /* ── FOOTER: undo/redo styling ── */
   #mb-undo, #mb-redo { color: var(--accent); }
