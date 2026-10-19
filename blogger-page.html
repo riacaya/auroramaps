@@ -734,6 +734,14 @@
       <div class="about-subtitle">RiaCaya GIS Viewer</div>
       <div class="about-desc">Aplikasi GIS berbasis web untuk melihat, mengelola, dan mengedit data geospasial.</div>
       <a class="about-guide-link" href="https://riacaya.github.io/auroramaps/panduan.html" target="_blank" rel="noopener noreferrer">📖 Baca Panduan Penggunaan</a>
+      <div class="about-meta">
+        <div class="about-meta-row">
+          <span>📞</span><a href="tel:+6282338013610">+62 823-3801-3610</a>
+        </div>
+        <div class="about-meta-row">
+          <span>✉</span><a href="mailto:riacaya99@gmail.com">riacaya99@gmail.com</a>
+        </div>
+      </div>
       <div class="about-version">v1.0.0</div>
     </div>
   </div>
@@ -822,10 +830,7 @@
     });
     window.addEventListener('appinstalled', () => {
       if (floating) floating.hidden = true;
-      if (loginLink) loginLink.hidden = true;
     });
-  } else if (loginLink) {
-    loginLink.hidden = true; // Sudah terpasang / dibuka dari APK WebView (file://)
   }
   floating?.addEventListener('click', () => window.AuroraInstall.trigger());
   loginLink?.addEventListener('click', () => window.AuroraInstall.trigger());
