@@ -13,10 +13,6 @@ const MobileUI = {
   init() {
     if (!this._isMobile()) return;
 
-    const _mhOpen = document.getElementById('mh-open');
-    if (_mhOpen) _mhOpen.addEventListener('click', () => {
-      document.getElementById('file-input').click();
-    });
     const rightSidebar = document.getElementById('sidebar-right');
     const rightBackdrop = document.getElementById('mh-right-backdrop');
     const openRightPanel = (panelId) => {

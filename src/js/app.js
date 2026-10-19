@@ -176,8 +176,6 @@ const App = {
     bindClick('btn-my-location', () => MapManager.toggleMyLocation());
     bindClick('tb-gps-record', () => MapManager.toggleGPSRecording());
     bindClick('mm-gps-record', () => MapManager.toggleGPSRecording());
-    bindClick('tb-offline-download', () => OfflineManager.downloadCurrentArea());
-    bindClick('mm-offline-download', () => OfflineManager.downloadCurrentArea());
     bindClick('btn-3d', () => MapManager.toggle3D());
     bindClick('compass-3d', () => MapManager.reset3DHeading());
     // Tombol "Cetak" → panel ukuran cetak (px = meter × 39,37 × DPI) + ekspor
@@ -495,8 +493,7 @@ const LoginGate = {
     });
     return { users, roles };
   },
-  _toUsers(text) { return this._parseAccounts(text).users; },
-  // SHA-256 hex (WebCrypto) — password disimpan di sheet sbg HASH,
+  // SHA-256 hex (WebCrypto) - password disimpan di sheet sbg HASH,
   // bukan teks/angka, supaya tak bisa dibaca dari link sheet & tak pernah
   // diubah Sheets jadi angka (bug reset "0000" → 0).
   async _sha256hex(s) {
@@ -899,10 +896,6 @@ LoginGate.init();
   const btnClose  = document.getElementById('mm-close');
   if (!btnOpen) return;
 
-  const setBadgeText = (id, value) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = value;
-  };
   const toggleMenuState = (isOpen) => {
     backdrop.classList.toggle('open', isOpen);
     menu.classList.toggle('open', isOpen);
@@ -911,14 +904,8 @@ LoginGate.init();
     closeMenu();
     setTimeout(fn, 200);
   };
-  const syncMenuBadges = () => {
-    setBadgeText('mm-lang-badge', LanguageUI.current);
-    const activeTheme = document.documentElement.dataset.theme || State.theme || 'senja';
-    setBadgeText('mm-theme-badge', Theme._labels[activeTheme] || activeTheme);
-  };
 
   const openMenu = () => {
-    syncMenuBadges();
     toggleMenuState(true);
   };
   const closeMenu = () => toggleMenuState(false);
@@ -988,22 +975,15 @@ LoginGate.init();
   // ── Tampilan: Bahasa ──
   let currentLang = localStorage.getItem('sm_lang') || 'ID';
   LanguageUI.apply(currentLang);
-  const pcLangBtn = document.getElementById('btn-lang-pc');
   const applyLanguage = (lang, shouldCloseMenu = false) => {
     currentLang = lang;
     localStorage.setItem('sm_lang', currentLang);
     LanguageUI.apply(currentLang);
-    if (pcLangBtn) pcLangBtn.textContent = currentLang;
     if (shouldCloseMenu) closeMenu();
     Toast.show('Bahasa: ' + currentLang, 'info');
   };
   // Dipakai panel Pengaturan (select bahasa) — jalur resmi ganti bahasa.
   window.setAuroraLanguage = (lang) => applyLanguage(lang === 'EN' ? 'EN' : 'ID');
-  if (pcLangBtn) {
-    pcLangBtn.textContent = currentLang;
-    window.toggleAuroraLanguage = () => applyLanguage(currentLang === 'ID' ? 'EN' : 'ID');
-    pcLangBtn.onclick = window.toggleAuroraLanguage;
-  }
 
   const openAttrPanel = () => {
     AttrTable.load();

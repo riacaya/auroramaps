@@ -410,7 +410,6 @@ const MapManager = {
     this.map.on('dblclick', this._measureDblHandler);
     Toast.show('Klik untuk menambah titik, dobel-klik untuk selesai', 'info');
     AppConsole.log('Distance: klik → tambah titik, dobel-klik → selesai.', 'info');
-    document.getElementById('tb-measure-dist')?.classList.add('active');
   },
 
   _addMeasurePoint(latlng) {

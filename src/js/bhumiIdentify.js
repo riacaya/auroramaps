@@ -542,10 +542,6 @@ const BhumiIdentify = {
     this._clearPolygon();
   },
 
-  // ── Mercator helpers ──
-  _R: 6378137,
-  _toMx(lon) { return lon * Math.PI / 180 * this._R; },
-  _toMy(lat) { return this._R * Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI / 180) / 2)); },
 
 
   // ── Draw: WMS imageOverlay (presisi) ──
