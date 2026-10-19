@@ -429,21 +429,6 @@ body.is-admin #mm-admin { display: flex; }
   text-decoration: none;
 }
 .about-guide-link:hover { text-decoration: underline; }
-.about-meta {
-  border-top: 1px solid var(--border);
-  padding-top: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.about-meta-row {
-  font-size: 13px;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
 .about-version {
   margin-top: 16px;
   font-size: 11px;
