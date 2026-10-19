@@ -420,6 +420,15 @@ body.is-admin #mm-admin { display: flex; }
   margin-bottom: 18px;
   line-height: 1.6;
 }
+.about-guide-link {
+  display: inline-block;
+  margin: 0 0 16px;
+  color: var(--text-accent);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.about-guide-link:hover { text-decoration: underline; }
 .about-meta {
   border-top: 1px solid var(--border);
   padding-top: 14px;
@@ -2057,6 +2066,7 @@ input[type="range"]:focus-visible { outline: none; }
     transition: background .12s;
   }
   .mm-item:active { background: var(--bg-hover); }
+  a.mm-item { text-decoration: none; }
   .mm-item:disabled, .mm-item:disabled:active { opacity: .45; cursor: not-allowed; background: transparent; }
   .mm-item-icon { font-size: 17px; width: 26px; text-align: center; flex-shrink: 0; }
   .mm-item-icon svg { width: 17px; height: 17px; margin: 0 auto; display: block; }
