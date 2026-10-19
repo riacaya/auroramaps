@@ -701,6 +701,7 @@ const Exporter = {
       return;
     }
     const el = document.getElementById('map-container');
+    const mapEl = document.getElementById('map');
     if (!el) return;
     const g = this._printGeometry();
     Toast.show('Merender peta untuk cetak…', 'info');
@@ -711,12 +712,18 @@ const Exporter = {
     try {
       // useCORS: tile OSM/Esri/Stadia mengirim header CORS, jadi kanvas tidak
       // terkunci (tersimpan tetap bisa).
-      const canvas = await html2canvas(el, {
+      // Capture hanya viewport Leaflet, bukan chrome di sekeliling peta.
+      // html2canvas merender ulang elemen SVG dengan ukuran viewport yang
+      // kadang berbeda dari ukuran aktualnya saat Leaflet sedang memakai
+      // transform untuk pan/zoom. Hal itu membuat poligon bergeser dari tile.
+      // Dengan menjadikan #map sebagai root, semua pane menggunakan origin
+      // koordinat yang sama; lebar/tinggi viewport tetap sama dengan peta.
+      const canvas = await html2canvas(mapEl || el, {
         scale: g.scale,
         useCORS: true,
         logging: false,
         imageTimeout: 20000,
-        backgroundColor: getComputedStyle(el).backgroundColor || '#0b1020'
+        backgroundColor: getComputedStyle(mapEl || el).backgroundColor || '#0b1020'
       });
       if (this._printState.title) this._drawPrintTitleBar(canvas, g.scale);
       const mime = this._printState.format === 'jpg' ? 'image/jpeg' : 'image/png';
