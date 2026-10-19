@@ -696,8 +696,8 @@ const Exporter = {
   },
 
   async exportPrintImage() {
-    if (typeof html2canvas !== 'function') {
-      Toast.show('Modul html2canvas belum termuat (cek koneksi internet).', 'error');
+    if (typeof domtoimage !== 'object' || typeof domtoimage.toCanvas !== 'function') {
+      Toast.show('Modul gambar cetak belum termuat.', 'error');
       return;
     }
     const el = document.getElementById('map-container');
@@ -710,20 +710,18 @@ const Exporter = {
     const modalBox = document.getElementById('modal-container');
     if (modalBox) modalBox.style.visibility = 'hidden';
     try {
-      // useCORS: tile OSM/Esri/Stadia mengirim header CORS, jadi kanvas tidak
-      // terkunci (tersimpan tetap bisa).
-      // Capture hanya viewport Leaflet, bukan chrome di sekeliling peta.
-      // html2canvas merender ulang elemen SVG dengan ukuran viewport yang
-      // kadang berbeda dari ukuran aktualnya saat Leaflet sedang memakai
-      // transform untuk pan/zoom. Hal itu membuat poligon bergeser dari tile.
-      // Dengan menjadikan #map sebagai root, semua pane menggunakan origin
-      // koordinat yang sama; lebar/tinggi viewport tetap sama dengan peta.
-      const canvas = await html2canvas(mapEl || el, {
+      // Leaflet mengubah posisi SVG vektor dengan CSS transform saat pan/zoom.
+      // html2canvas menerapkan transform SVG itu dua kali dan menggeser poligon
+      // dari tile peta/zona. dom-to-image-more menyalin posisi DOM yang sudah
+      // dihitung browser sebelum meraster hasilnya.
+      const target = mapEl || el;
+      const canvas = await domtoimage.toCanvas(target, {
+        width: target.offsetWidth || g.cw,
+        height: target.offsetHeight || g.ch,
         scale: g.scale,
-        useCORS: true,
-        logging: false,
-        imageTimeout: 20000,
-        backgroundColor: getComputedStyle(mapEl || el).backgroundColor || '#0b1020'
+        bgcolor: getComputedStyle(target).backgroundColor || '#0b1020',
+        httpTimeout: 20000,
+        ignoreCSSRuleErrors: true
       });
       if (this._printState.title) this._drawPrintTitleBar(canvas, g.scale);
       const mime = this._printState.format === 'jpg' ? 'image/jpeg' : 'image/png';
