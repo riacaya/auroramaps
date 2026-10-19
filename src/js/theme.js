@@ -110,7 +110,6 @@ const LanguageUI = {
       'set-info': 'Info',
       'set-layers-count': 'Layer',
       'set-features-count': 'Fitur',
-      'set-admin': 'Panel Admin',
     },
     EN: {
       'tb-open': 'File',
@@ -185,7 +184,6 @@ const LanguageUI = {
       'set-info': 'Info',
       'set-layers-count': 'Layers',
       'set-features-count': 'Features',
-      'set-admin': 'Admin Panel',
     }
   },
   apply(lang) {

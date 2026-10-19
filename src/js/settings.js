@@ -42,8 +42,7 @@ const SettingsPanel = {
     const lang = localStorage.getItem('sm_lang') === 'EN' ? 'EN' : 'ID';
     const layerCount = State.layers.length;
     const featureCount = State.layers.reduce((n, l) => n + (l.featureCount || 0), 0);
-    const isAdmin = document.body.classList.contains('is-admin');
-
+    
     const section = (title, inner) => `
       <div class="modal-panel">
         <div class="exp-field-label">${title}</div>
@@ -86,9 +85,7 @@ const SettingsPanel = {
           </div>`)}
         ${section(t('set-info'),
           `<div class="set-note">AuroraMaps v${Config.version} · ${t('set-layers-count')}: ${layerCount} · ${t('set-features-count')}: ${featureCount}</div>
-           ${isAdmin ? `<div class="set-actions">
-             <button class="btn btn-secondary" id="set-admin">${t('set-admin')}</button>
-           </div>` : ''}`)}
+`)}
       </div>`;
 
     // Tanpa tombol footer — panel sudah punya ikon X di kanan atas.
@@ -132,7 +129,6 @@ const SettingsPanel = {
     $('set-offline-dl')?.addEventListener('click', () => { Modal.close(); OfflineManager.downloadCurrentArea(); });
     $('set-gps-nobase')?.addEventListener('change', e => Storage.save('gps-coordinate-only', e.target.checked));
     // Info — About & Logout tetap di header PC (#btn-about-pc / #btn-logout-pc).
-    $('set-admin')?.addEventListener('click', () => { Modal.close(); document.getElementById('btn-admin-pc')?.click(); });
 
     this._tileCount().then(n => {
       const el = $('set-tile-count');
