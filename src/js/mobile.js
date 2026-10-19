@@ -105,6 +105,9 @@ const MobileUI = {
         if (this._drawVertexCount >= 3) {
           document.getElementById('mb-add-point').classList.add('draw-done');
         }
+        // Sinkronkan status tombol Undo/Redo (PC & HP) tiap titik ditambah —
+        // di PC titik diletakkan dengan klik peta, bukan tombol ini.
+        History._updateButtons();
       }
     });
 

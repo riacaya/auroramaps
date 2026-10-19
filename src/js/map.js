@@ -96,6 +96,10 @@ const MapManager = {
     this.map.on('draw:created', e => this._onDrawCreated(e));
     this.map.on('draw:edited', e => this._onDrawEdited(e));
     this.map.on('draw:deleted', e => this._onDrawDeleted(e));
+    // Sinkronkan status tombol Undo/Redo tiap titik diletakkan — di PC titik
+    // ditaruh dengan klik peta (bukan tombol mobile), jadi listener ini yang
+    // menyalakan tombol Undo. Berjalan di semua perangkat.
+    this.map.on('draw:drawvertex', () => History._updateButtons());
     this.map.on('mousemove', e => this._onMouseMove(e));
     this.map.on('zoomend', () => {
       UI.updateStatusBar();
@@ -378,6 +382,12 @@ const MapManager = {
       State.activeDrawTool = null;
     }
     State.activeDrawType = null;
+    // Buang sisa tumpukan undo/redo titik & sinkronkan status tombol —
+    // tanpa ini, sisa titik dari gambar sebelumnya bisa "hidup" lagi.
+    MobileUI._vertexRedo = [];
+    MobileUI._drawVertexCount = 0;
+    document.getElementById('mb-add-point')?.classList.remove('draw-done');
+    History._updateButtons();
     document.querySelectorAll('.draw-tools-btn').forEach(b => b.classList.remove('active'));
     if (window.BhumiIdentify) BhumiIdentify.resumeOverlay();
     // Bersihkan mode gambar mobile (crosshair) jika aktif

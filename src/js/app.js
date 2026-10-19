@@ -73,7 +73,9 @@ const App = {
 
     bindClick('btn-atrbpn', () => AtrbpnLayers.showPanel(false));
     bindClick('btn-undo', () => {
-      if (State.activeDrawTool && MobileUI._isMobile()) {
+      // Mode menggambar aktif (PC & HP): hapus titik terakhir — berlaku
+      // untuk semua ukuran layar, bukan hanya mobile.
+      if (State.activeDrawTool) {
         const dt = State.activeDrawTool;
         if (!dt._markers || dt._markers.length === 0) { Toast.show('Tidak ada titik untuk di-undo', 'warn'); return; }
         const lastMarker = dt._markers[dt._markers.length - 1];
@@ -88,13 +90,14 @@ const App = {
         } catch(e) {}
         MobileUI._vertexRedo.push(latlng);
         MobileUI._drawVertexCount = dt._markers.length;
-        if (MobileUI._drawVertexCount < 3) document.getElementById('mb-add-point').classList.remove('draw-done');
+        if (MobileUI._drawVertexCount < 3) document.getElementById('mb-add-point')?.classList.remove('draw-done');
         History._updateButtons();
         Toast.show('Titik terakhir dihapus', 'info');
       } else { History.undo(); }
     });
     bindClick('btn-redo', () => {
-      if (State.activeDrawTool && MobileUI._isMobile()) {
+      // Mode menggambar aktif (PC & HP): kembalikan titik dari tumpukan redo.
+      if (State.activeDrawTool) {
         if (MobileUI._vertexRedo.length === 0) { Toast.show('Tidak ada titik untuk di-redo', 'warn'); return; }
         const latlng = MobileUI._vertexRedo.pop();
         try {
@@ -102,7 +105,7 @@ const App = {
           MobileUI._drawVertexCount = State.activeDrawTool._markers
             ? State.activeDrawTool._markers.length
             : MobileUI._drawVertexCount + 1;
-          if (MobileUI._drawVertexCount >= 3) document.getElementById('mb-add-point').classList.add('draw-done');
+          if (MobileUI._drawVertexCount >= 3) document.getElementById('mb-add-point')?.classList.add('draw-done');
           History._updateButtons();
           Toast.show('Titik dikembalikan', 'info');
         } catch(e) { Toast.show('Gagal redo titik', 'error'); }
@@ -386,6 +389,15 @@ const App = {
           const btn = document.getElementById('btn-attr-max-close');
           if (btn) btn.click();
         }
+      }
+      // Ctrl+Z / Ctrl+Y (juga Cmd+Z/Cmd+Y di Mac) — saat menggambar menghapus /
+      // mengembalikan titik; di luar mode gambar memakai history biasa.
+      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+        const k = String(e.key || '').toLowerCase();
+        // Jangan rebutan dengan input/textarea (undo teks internal browser).
+        const typing = /^(input|textarea|select)$/i.test(e.target?.tagName || '') || e.target?.isContentEditable;
+        if (!typing && k === 'z' && !e.shiftKey) { e.preventDefault(); document.getElementById('btn-undo')?.click(); }
+        else if (!typing && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); document.getElementById('btn-redo')?.click(); }
       }
     });
 
