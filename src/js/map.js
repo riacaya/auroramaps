@@ -51,9 +51,6 @@ const MapManager = {
       if (sourceCfg.zoomOffset !== undefined) layerOpts.zoomOffset = sourceCfg.zoomOffset;
       if (sourceCfg.opacity !== undefined) layerOpts.opacity = sourceCfg.opacity;
       this.baseLayers[k] = OfflineManager.tileLayer(sourceCfg.url, layerOpts);
-      // Dark (Stadia Maps) butuh auth untuk domain production → pasang
-      // deteksi penolakan tile (lihat _watchDarkAuth).
-      if (k === 'dark') this._watchDarkAuth(this.baseLayers[k]);
     });
     this.baseLayers['street'].addTo(this.map);
     this.activeBaselayer = 'street';
@@ -140,42 +137,6 @@ const MapManager = {
     // Perbarui status bar agar nama basemap & level native ikut berubah
     UI.updateStatusBar();
     AppConsole.log(`Switched to ${key} basemap`, 'info');
-  },
-
-  // ── Fallback peta gelap ────────────────────────────────────────────
-  // Stadia Maps melayani tile tanpa API key hanya untuk localhost atau
-  // domain yang terdaftar (domain-based auth). Di host lain (mis. build blog)
-  // tile dibalas 401/403 → ganti otomatis ke Esri Dark Gray (gratis, native
-  // z16) supaya basemap gelap tidak pernah menampilkan tile peringatan.
-  // Status dicek via fetch (Stadia mengirim CORS header access-control-allow-origin).
-  // 429 (rate limit localhost) TIDAK memicu fallback — hanya 401/403.
-  _darkAuthProbing: false,
-  _darkFallbackUsed: false,
-  _watchDarkAuth(layer) {
-    layer.on('tileerror', (e) => {
-      if (this._darkAuthProbing || this._darkFallbackUsed) return;
-      if (!navigator.onLine || !e.coords || typeof layer.getTileUrl !== 'function') return;
-      this._darkAuthProbing = true;
-      fetch(layer.getTileUrl(e.coords), { method: 'GET' })
-        .then(r => { if (r.status === 401 || r.status === 403) this._useDarkFallback(layer); })
-        .catch(() => {}) // jaringan putus → biarkan; cache offline menangani
-        .finally(() => { this._darkAuthProbing = false; });
-    });
-  },
-  _useDarkFallback(layer) {
-    this._darkFallbackUsed = true;
-    const stadiaAttr = '© Stadia Maps, © OpenStreetMap contributors';
-    const fbUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
-    const fbAttr = '© Esri, HERE, Garmin, FAO, NOAA, USGS';
-    const cfg = Config.baseLayers.dark;
-    cfg.url = fbUrl; cfg.maxNativeZoom = 16; cfg.attribution = fbAttr;
-    layer.options.maxNativeZoom = 16;
-    layer.options.attribution = fbAttr;
-    layer.setUrl(fbUrl);
-    this.map?.attributionControl?.removeAttribution?.(stadiaAttr);
-    this.map?.attributionControl?.addAttribution?.(fbAttr);
-    UI.updateStatusBar();
-    AppConsole.log('Tile dark ditolak (401/403) → fallback Esri Dark Gray (native z16)', 'warn');
   },
 
   _onDrawCreated(e) {
@@ -733,13 +694,13 @@ const MapManager = {
         maximumLevel: 19,
         credit: '© Esri'
       }),
-      // Carto (voyager/dark) kini wajib API key → pakai OSM & Stadia, sama
-      // dengan basemap 2D. Bila tile ditolak, handler errorEvent di bawah
+      // Dark Gray Esri digunakan langsung, sama dengan basemap 2D. Bila tile
+      // ditolak, handler errorEvent di bawah
       // melakukan fallback otomatis ke street.
       dark: new C.UrlTemplateImageryProvider({
-        url: 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}.png',
-        maximumLevel: 21,
-        credit: '© Stadia Maps, © OpenStreetMap contributors'
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+        maximumLevel: 16,
+        credit: '© Esri, HERE, Garmin, © OpenStreetMap contributors, GIS user community'
       })
     };
     const provider = providers[key] || providers.street;

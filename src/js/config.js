@@ -104,18 +104,13 @@ const Config = {
       maxZoom: 22,
       maxNativeZoom: 19
     },
-    // Peta gelap: Stadia Maps (gaya dark asli) — data asli s/d z21, tertinggi
-    // di antara semua kandidat. Carto diganti karena kini WAJIB API key
-    // (semua tile membalas "API KEY REQUIRED" tanpa key).
-    // Akses tanpa key: localhost/127.0.0.1 langsung jalan; untuk domain
-    // production daftarkan domain gratis di client.stadiamaps.com
-    // (domain-based auth). Bila tile ditolak 401/403, map.js otomatis
-    // fallback ke Esri Dark Gray (native z16) supaya peta tetap gelap.
+    // Peta gelap: Esri Dark Gray Canvas, tanpa autentikasi domain atau API key.
+    // Data detail area ini tersedia sampai z16; z17+ berupa placeholder.
     dark: {
-      url: 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}.png',
-      attribution: '© Stadia Maps, © OpenStreetMap contributors',
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+      attribution: '© Esri, HERE, Garmin, © OpenStreetMap contributors, GIS user community',
       maxZoom: 22,
-      maxNativeZoom: 21
+      maxNativeZoom: 16
     }
   }
 };
