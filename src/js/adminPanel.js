@@ -2,12 +2,13 @@
 // AuroraMaps · adminPanel.js — Panel Administrator
 // =====================================================
 // Menampilkan semua id di sheet login, dengan dua aksi:
-//   • Reset password menjadi 0000   → Apps Script action "reset"
+//   • Reset password (sandi baru diminta saat ditekan) → action "reset"
 //   • Hapus id                      → Apps Script action "delete"
 // Hanya terbuka untuk akun Status "Administrator" (hasil login dari sheet).
 //   • PC  : tombol shield di header, di sebelah kiri tombol Logout
 //   • HP  : baris "Administrator" di dalam panel Menu (☰)
-// Transport: GET + query (endpoint membalas Access-Control-Allow-Origin: *).
+// Transport: POST JSON (Content-Type text/plain — lolos preflight CORS).
+//   adminKey & sandi baru dikirim di BODY, bukan query URL.
 // =====================================================
 'use strict';
 
@@ -15,7 +16,6 @@ const AdminPanel = {
   ROLE_KEY: 'auroramaps-user-role',        // localStorage — diisi app.js saat login
   USER_KEY: 'auroramaps-current-user',
   CTX_KEY: 'auroramaps-admin-ctx',         // sessionStorage — ikut tutup saat tab ditutup
-  RESET_KEY: '0000',
 
   // ── izin ─────────────────────────────────────────────
   isAdmin() {
@@ -41,18 +41,21 @@ const AdminPanel = {
   },
 
   // ── transport ke Apps Script ────────────────────────
+  // POST body JSON — kredensial (adminKey) TIDAK pernah lewat URL/query
+  // supaya tidak tercatat di log server/proxy/riwayat browser.
   async _api(action, params) {
     const base = String(window.USER_ADMIN_API_URL || '').trim();
     if (!base) throw new Error('USER_ADMIN_API_URL belum diisi di config.js.');
     const ctx = this._ctx();
     if (!ctx) throw new Error('Sesi admin tidak ada — logout lalu login ulang.');
     if (!ctx.pass) throw new Error('Password administrator belum dimasukkan.');
-    const q = new URLSearchParams();
-    q.set('action', action);
-    q.set('admin', ctx.user);
-    q.set('adminKey', ctx.pass);
-    Object.keys(params || {}).forEach(k => q.set(k, params[k]));
-    const res = await fetch(base + '?' + q.toString(), { cache: 'no-store', redirect: 'follow' });
+    const body = Object.assign({ action: action, admin: ctx.user, adminKey: ctx.pass }, params || {});
+    const res = await fetch(base, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(body),
+      cache: 'no-store', redirect: 'follow'
+    });
     const text = await res.text();
     let data;
     try { data = JSON.parse(text); } catch (e) { throw new Error('Respons server bukan JSON.'); }
@@ -124,7 +127,7 @@ const AdminPanel = {
           '<span class="admin-user-badge' + (admin ? ' is-admin' : '') + '">' + badge + '</span>' +
         '</div>' +
         '<div class="admin-user-actions">' +
-          '<button type="button" class="admin-act admin-act-reset" data-act="reset" title="Reset password menjadi ' + this.RESET_KEY + '">Reset ' + this.RESET_KEY + '</button>' +
+          '<button type="button" class="admin-act admin-act-reset" data-act="reset" title="Ganti password id ini">Reset sandi</button>' +
           '<button type="button" class="admin-act admin-act-del" data-act="delete" title="Hapus id ini dari sheet">Hapus</button>' +
         '</div>' +
       '</div>';
@@ -139,15 +142,21 @@ const AdminPanel = {
     const id = row?.dataset?.id;
     if (!id) return;
     const act = btn.dataset.act;
-    const msg = act === 'reset'
-      ? 'Reset password "' + id + '" menjadi ' + this.RESET_KEY + '?'
-      : 'Hapus id "' + id + '" dari sheet login? Tidak bisa dibatalkan.';
-    if (!confirm(msg)) return;
+    let params;
+    if (act === 'reset') {
+      // Tidak ada sandi default hardcode — admin mengetik sandi baru sendiri.
+      const np = (window.prompt('Sandi baru untuk "' + id + '" (min. 4 karakter):', '') || '').trim();
+      if (!np) return; // dibatalkan
+      if (np.length < 4) { Toast.show('Sandi minimal 4 karakter.', 'warn'); return; }
+      if (!confirm('Ganti password "' + id + '" ke sandi baru ini?')) return;
+      params = { id: id, key: np };
+    } else {
+      if (!confirm('Hapus id "' + id + '" dari sheet login? Tidak bisa dibatalkan.')) return;
+      params = { id: id };
+    }
     btn.disabled = true;
     try {
-      const data = act === 'reset'
-        ? await this._api('reset', { id: id, key: this.RESET_KEY })
-        : await this._api('delete', { id: id });
+      const data = await this._api(act, params);
       Toast.show(data.msg || 'Selesai.', 'success');
       await this.refresh();
     } catch (err) {

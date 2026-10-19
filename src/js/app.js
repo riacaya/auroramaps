@@ -542,11 +542,12 @@ const LoginGate = {
     }
     return h.map(x => x.toString(16).padStart(8, '0')).join('');
   },
-  // Nilai tersimpan bisa HASH (baru) atau PLAINTEXT (sheet lama) — keduanya diterima.
+  // Nilai tersimpan di sheet WAJIB HASH SHA-256 (64 heksadesimal).
+  // Plaintext tidak lagi diterima — sandi lama di-sheet sudah dimigrasi
+  // oleh panel admin (Apps Script action "migrate").
   async _matchKey(stored, pass) {
     if (stored == null || stored === '') return false;
     const s = String(stored);
-    if (s === String(pass)) return true;              // legacy plaintext
     if (!/^[0-9a-f]{64}$/.test(s)) return false;
     const h = await this._sha256hex(pass);
     return !!h && h === s;
@@ -730,8 +731,11 @@ const LoginGate = {
     if (btn) btn.disabled = true;
     setMsg('Mendaftarkan "' + user + '"…');
     try {
-      const q = new URLSearchParams({ action: 'register', id: user, key: pass });
-      const res = await fetch(base + '?' + q.toString(), { cache: 'no-store', redirect: 'follow' });
+      // POST body (text/plain lolos preflight CORS) — sandi TIDAK dikirim via URL.
+      const res = await fetch(base, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' }, cache: 'no-store', redirect: 'follow',
+        body: JSON.stringify({ action: 'register', id: user, key: pass })
+      });
       const data = await res.json().catch(() => { throw new Error('Respons server tidak valid.'); });
       if (!data.ok) throw new Error(data.error || 'Pendaftaran ditolak.');
       setMsg(data.msg || 'Pendaftaran berhasil — silakan tekan Login.', true);
@@ -742,8 +746,11 @@ const LoginGate = {
     }
   },
   init() {
-    let users; try { users = JSON.parse(localStorage.getItem(this.key) || 'null'); } catch { users = null; }
-    if (!users || typeof users !== 'object') { users = { riacaya: 'rcmaps99' }; localStorage.setItem(this.key, JSON.stringify(users)); }
+    // Database user lokal sudah dihapus — dulu ada hardcode akun cadangan
+    // di localStorage yang jadi jalan pintas login tanpa sheet.
+    // Semua login kini diverifikasi HANYA terhadap data sheet (langsung /
+    // cache hash sheet terakhir) — lihat _sheetUsers() & _matchKey().
+    try { localStorage.removeItem(this.key); } catch { /* ignore */ }
     if (localStorage.getItem(this.authKey) === 'true') {
       // Sesi idle sudah kedaluwarsa saat app dibuka → kembali ke layar login.
       if (this._sessionExpired()) {
@@ -791,19 +798,14 @@ const LoginGate = {
       const btn = e.submitter || e.target.querySelector('button[type="submit"]');
       if (btn) btn.disabled = true; // cegah submit ganda saat baca sheet
       if (errEl) errEl.textContent = '';
-      const sheet = await this._sheetUsers(); // segar; null → fallback lokal
+      const sheet = await this._sheetUsers(); // segar; null → sheet tak terjangkau
       if (btn) btn.disabled = false;
-      const map = sheet || users;
-      const stored = map[user];
-      if (await this._matchKey(stored, pass)) {
-        // Login sukses via sheet → simpan juga ke DATABASE LOKAL
-        // (auroramaps-local-users) supaya login berikutnya tetap bisa
-        // walau sheet tak terjangkau. Saat sheet terbaca, sheet tetap
-        // otoritatif — pencabutan user di sheet tetap berlaku.
-        // Nilainya disimpan sbg HASH (fallback ke teks bila WebCrypto absen).
-        if (sheet && stored != null) {
-          try { users[user] = await this._sha256hex(pass) || String(pass); localStorage.setItem(this.key, JSON.stringify(users)); } catch (e) { /* penuh */ }
-        }
+      // Verifikasi HANYA terhadap data sheet (langsung / cache hash sheet) —
+      // tidak ada database user lokal lagi.
+      const stored = sheet ? sheet[user] : null;
+      if (sheet && await this._matchKey(stored, pass)) {
+        // Login sukses → sheet tetap otoritatif; pencabutan/ubah user di
+        // sheet langsung berlaku pada login berikutnya.
         localStorage.setItem(this.authKey, 'true');
         this._touchSession();          // mulai hitungan idle dari detik ini
         this._saveSession_(user, pass, sheet);
@@ -818,7 +820,7 @@ const LoginGate = {
       //   • sheet tak terjangkau & id tak ada lokal → sumber data tak bisa dibaca
       else if (errEl) {
         if (!sheet) {
-          errEl.textContent = 'Username atau password salah — sheet login tidak terjangkau dan akun ini tidak tersimpan lokal.';
+          errEl.textContent = 'Sheet login tidak terjangkau — periksa koneksi internet lalu coba lagi.';
         } else if (stored == null || stored === '') {
           errEl.textContent = this._sheetSrc === 'cache'
             ? 'Username "' + user + '" tidak terdaftar (data cache — coba lagi saat daring).'

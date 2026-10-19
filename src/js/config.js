@@ -28,8 +28,9 @@ window.BHUMI_WORKER_URL = 'https://orange-smoke-f6f5.riacaya99.workers.dev';
 //   2. File → Share → Publish to web → pilih sheet → CSV → Publish.
 //   3. Tempel link-nya di bawah (link edit / link publish juga boleh —
 //      app mengubahnya otomatis ke URL CSV).
-// Cadangan kalau sheet tak terbaca (offline/gagal): cache sheet terakhir,
-// lalu pengguna lokal di localStorage 'auroramaps-local-users'.
+// Cadangan kalau sheet tak terbaca (offline/gagal): cache hash sheet terakhir
+// ('auroramaps-sheet-users'). TIDAK ada lagi database user lokal — login
+// selalu diverifikasi terhadap data sheet (hash SHA-256).
 // (Alternatif tanpa edit file: localStorage.setItem('auroramapsLoginSheet', '<url>').)
 window.LOGIN_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1wI0ENl2RzrmvprzVyaomIsNmCJzYNJR9KqpWbjTg8kA/edit?usp=sharing';
 
@@ -43,8 +44,10 @@ window.LOGIN_SESSION_MINUTES = 60;
 
 // ── Endpoint Apps Script: manajemen user ──────────────────────────────
 // Panel "Administrator" (tombol header PC / baris menu HP #mm-admin) memakai
-// endpoint ini untuk membaca daftar user, reset password jadi 0000,
-// dan menghapus id. gviz hanya bisa BACA, jadi tulis dilakukan Apps Script.
+// endpoint ini untuk membaca daftar user, mengganti/reset password (sandi
+// baru di-hash SHA-256 oleh server), dan menghapus id. gviz hanya bisa
+// BACA, jadi tulis dilakukan Apps Script. Semua aksi admin via POST body
+// — kredensial tidak pernah dikirim lewat URL.
 // Skrip: apps-script/AuroraMapsUsers.gs (petunjuk deploy ada di file itu).
 // Kosongkan → tombol panel tetap ada tapi membuka error konfigurasi.
 window.USER_ADMIN_API_URL = 'https://script.google.com/macros/s/AKfycbw87Ek_iPxSRwdHV79wImgpNbYPAbja47pAjSB54_exMLxYCX2aobWZz-lBCT8Ctqy6uA/exec';
