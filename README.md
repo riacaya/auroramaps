@@ -25,3 +25,9 @@ Cara yang disarankan: buka `blogger-iframe-snippet.html`, salin seluruh isinya, 
 ## Instal di Android
 
 Buka https://riacaya.github.io/auroramaps/ langsung di Chrome Android. Jika tombol **Pasang AuroraMaps** belum muncul, buka menu Chrome (⋮) lalu pilih **Install app** atau **Tambahkan ke layar utama**. Saat dibuka dari ikon, aplikasi memakai mode standalone tanpa bilah Chrome. Tombol pada halaman Blogger membuka versi GitHub Pages yang installable; manifest PWA tidak dapat dipasang lintas origin sebagai aplikasi Blogger.
+
+- `PANDUAN_PENGGUNAAN.md`: panduan penggunaan fitur dan pemecahan masalah.
+
+## Panduan aplikasi
+
+Baca [PANDUAN_PENGGUNAAN.md](PANDUAN_PENGGUNAAN.md) untuk langkah penggunaan peta, layer, gambar, ekspor, cetak, GPS, dan mode offline.
