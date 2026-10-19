@@ -552,6 +552,28 @@ const LoginGate = {
     const h = await this._sha256hex(pass);
     return !!h && h === s;
   },
+  // ── Verifikasi login via Apps Script (server) ──────────────────────
+  // Jalur UTAMA: POST action=login — server membandingkan password
+  // terhadap isi sheet, jadi sheet TIDAK perlu publik (boleh Restricted).
+  // Membalas { ok, status } ATAU { ok:false, error }.
+  // null = endpoint kosong / script lama (action "login" belum ada) /
+  //        gagal jaringan → pemanggil lanjut ke jalur gviz (cadangan).
+  async _loginServer(user, pass) {
+    const base = String(window.USER_ADMIN_API_URL || '').trim();
+    if (!base) return null;
+    try {
+      const res = await fetch(base, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'login', id: user, key: pass }),
+        cache: 'no-store', redirect: 'follow'
+      });
+      const data = await res.json().catch(() => null);
+      if (data && data.ok) return { ok: true, status: String(data.status || '') };
+      // Script versi lama membalas "Aksi tidak dikenal" → sinyal fallback.
+      if (data && /aksi tidak dikenal/i.test(String(data.error || ''))) return null;
+      return { ok: false, error: String((data && data.error) || 'Login ditolak server.') };
+    } catch (e) { return null; } // jaringan/parse gagal → coba gviz
+  },
   // Baca sheet lewat gviz JSONP (tqx=out:script) — TANPA CORS.
   // Google tidak mengirim Access-Control-Allow-Origin utk Origin: null
   // (asal file:///android_asset di APK) → fetch selalu diblokir WebView,
@@ -685,12 +707,12 @@ const LoginGate = {
   },
   // Simpan sesi panel Administrator: user aktif, peran (kolom Status),
   // dan kredensial sementara di sessionStorage (ikut hilang saat tab ditutup).
-  // Peran hanya disimpan bila sheet terbaca — peran tak terverifikasi = tanpa akses.
-  _saveSession_(user, pass, sheet) {
+  // Peran diambil dari respons login server (atau parse gviz pada jalur
+  // cadangan) — peran kosong = tanpa akses panel.
+  _saveSession_(user, pass, role) {
     try {
       localStorage.setItem('auroramaps-current-user', user);
-      const roles = JSON.parse(localStorage.getItem('auroramaps-sheet-roles') || '{}');
-      const role = sheet ? String(roles[user] || '') : '';
+      role = String(role || '');
       if (role) localStorage.setItem('auroramaps-user-role', role);
       else localStorage.removeItem('auroramaps-user-role');
       sessionStorage.setItem('auroramaps-admin-ctx', JSON.stringify({ user, pass }));
@@ -748,8 +770,8 @@ const LoginGate = {
   init() {
     // Database user lokal sudah dihapus — dulu ada hardcode akun cadangan
     // di localStorage yang jadi jalan pintas login tanpa sheet.
-    // Semua login kini diverifikasi HANYA terhadap data sheet (langsung /
-    // cache hash sheet terakhir) — lihat _sheetUsers() & _matchKey().
+    // Login kini diverifikasi via Apps Script (action=login) — sheet tidak
+    // perlu publik; jalur gviz hanya cadangan otomatis (lihat _loginServer).
     try { localStorage.removeItem(this.key); } catch { /* ignore */ }
     if (localStorage.getItem(this.authKey) === 'true') {
       // Sesi idle sudah kedaluwarsa saat app dibuka → kembali ke layar login.
@@ -796,31 +818,45 @@ const LoginGate = {
       }
       userEl.value = user;
       const btn = e.submitter || e.target.querySelector('button[type="submit"]');
-      if (btn) btn.disabled = true; // cegah submit ganda saat baca sheet
+      if (btn) btn.disabled = true; // cegah submit ganda saat verifikasi
       if (errEl) errEl.textContent = '';
-      const sheet = await this._sheetUsers(); // segar; null → sheet tak terjangkau
+      // ── Jalur UTAMA: verifikasi via Apps Script (sheet boleh private) ──
+      let result = await this._loginServer(user, pass);
+      let role = '';
+      // ── Cadangan: baca sheet gviz (hanya bila script lama / server gagal) ──
+      let sheet = null, stored = null;
+      if (!result) {
+        sheet = await this._sheetUsers();
+        stored = sheet ? sheet[user] : null;
+        if (sheet && await this._matchKey(stored, pass)) {
+          result = { ok: true };
+          try { role = String((JSON.parse(localStorage.getItem('auroramaps-sheet-roles') || '{}'))[user] || ''); } catch (e) { role = ''; }
+        }
+      } else if (result.ok) {
+        role = result.status || '';
+      }
       if (btn) btn.disabled = false;
-      // Verifikasi HANYA terhadap data sheet (langsung / cache hash sheet) —
-      // tidak ada database user lokal lagi.
-      const stored = sheet ? sheet[user] : null;
-      if (sheet && await this._matchKey(stored, pass)) {
-        // Login sukses → sheet tetap otoritatif; pencabutan/ubah user di
-        // sheet langsung berlaku pada login berikutnya.
+      if (result && result.ok) {
+        // Login sukses → user/role otoritatif dari server/sheet; pencabutan
+        // atau ubah user langsung berlaku pada login berikutnya.
         localStorage.setItem(this.authKey, 'true');
         this._touchSession();          // mulai hitungan idle dari detik ini
-        this._saveSession_(user, pass, sheet);
+        this._saveSession_(user, pass, role);
         this._watchSession();
         this._pingLogin_(user);        // catat "Login Terakhir" di sheet (tanpa blok UI)
         document.getElementById('login-gate').remove();
         App.init();
       }
       // Pesan dibedakan per penyebab supaya langsung terdiagnosis:
-      //   • sheet terbaca tapi id tak ada  → id tak terdaftar (bukan salah ketik sandi)
-      //   • sheet terbaca, id ada, sandi salah → sandi salah
-      //   • sheet tak terjangkau & id tak ada lokal → sumber data tak bisa dibaca
+      //   • server menolak (id tak ada / sandi salah) → pesan seragam dari
+      //     server (tidak bocorkan apakah id terdaftar)
+      //   • jalur gviz: id tak ada vs sandi salah dibedakan
+      //   • keduanya gagal → sumber verifikasi tak terjangkau
       else if (errEl) {
-        if (!sheet) {
-          errEl.textContent = 'Sheet login tidak terjangkau — periksa koneksi internet lalu coba lagi.';
+        if (result && !result.ok) {
+          errEl.textContent = result.error || 'Username atau password salah.';
+        } else if (!sheet) {
+          errEl.textContent = 'Layanan login tidak terjangkau — periksa koneksi internet lalu coba lagi.';
         } else if (stored == null || stored === '') {
           errEl.textContent = this._sheetSrc === 'cache'
             ? 'Username "' + user + '" tidak terdaftar (data cache — coba lagi saat daring).'

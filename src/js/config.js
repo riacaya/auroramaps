@@ -28,9 +28,12 @@ window.BHUMI_WORKER_URL = 'https://orange-smoke-f6f5.riacaya99.workers.dev';
 //   2. File → Share → Publish to web → pilih sheet → CSV → Publish.
 //   3. Tempel link-nya di bawah (link edit / link publish juga boleh —
 //      app mengubahnya otomatis ke URL CSV).
-// Cadangan kalau sheet tak terbaca (offline/gagal): cache hash sheet terakhir
-// ('auroramaps-sheet-users'). TIDAK ada lagi database user lokal — login
-// selalu diverifikasi terhadap data sheet (hash SHA-256).
+// ── Sumber akun login ───────────────────────────────────────────────
+// Login diverifikasi SERVER lewat Apps Script (action=login) — password
+// dibandingkan di sana, jadi sheet TIDAK harus publik. Setelah skrip
+// apps-script/AuroraMapsUsers.gs di-redeploy, jadikan sheet PRIVATE:
+//   Share → General access → Restricted (hapus "Publish to web" bila ada).
+// URL di bawah hanya cadangan gviz (aktif otomatis bila script lama).
 // (Alternatif tanpa edit file: localStorage.setItem('auroramapsLoginSheet', '<url>').)
 window.LOGIN_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1wI0ENl2RzrmvprzVyaomIsNmCJzYNJR9KqpWbjTg8kA/edit?usp=sharing';
 
