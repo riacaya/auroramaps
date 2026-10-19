@@ -822,17 +822,19 @@ const LoginGate = {
       if (errEl) errEl.textContent = '';
       // ── Jalur UTAMA: verifikasi via Apps Script (sheet boleh private) ──
       let result = await this._loginServer(user, pass);
-      let role = '';
-      // ── Cadangan: baca sheet gviz (hanya bila script lama / server gagal) ──
-      let sheet = null, stored = null;
-      if (!result) {
+      let role = '', sheet = null, stored = null;
+      // Server menolak ATAU tidak terjangkau → cek gviz juga (cadangan):
+      //   • skrip LAMA: action=login tak dikenal (dibalas "salah") → gviz
+      //     yang menentukan → login tetap jalan sampai skrip di-redeploy.
+      //   • skrip BARU + sheet privat: gviz gagal → pesan server yang tampil.
+      if (!result || !result.ok) {
         sheet = await this._sheetUsers();
         stored = sheet ? sheet[user] : null;
         if (sheet && await this._matchKey(stored, pass)) {
           result = { ok: true };
           try { role = String((JSON.parse(localStorage.getItem('auroramaps-sheet-roles') || '{}'))[user] || ''); } catch (e) { role = ''; }
         }
-      } else if (result.ok) {
+      } else {
         role = result.status || '';
       }
       if (btn) btn.disabled = false;
@@ -848,21 +850,22 @@ const LoginGate = {
         App.init();
       }
       // Pesan dibedakan per penyebab supaya langsung terdiagnosis:
-      //   • server menolak (id tak ada / sandi salah) → pesan seragam dari
-      //     server (tidak bocorkan apakah id terdaftar)
-      //   • jalur gviz: id tak ada vs sandi salah dibedakan
+      //   • gviz terbaca tapi gagal → id tak terdaftar vs sandi salah
+      //   • gviz tak terbaca & server menolak → pesan server
       //   • keduanya gagal → sumber verifikasi tak terjangkau
       else if (errEl) {
-        if (result && !result.ok) {
+        if (sheet) {
+          if (stored == null || stored === '') {
+            errEl.textContent = this._sheetSrc === 'cache'
+              ? 'Username "' + user + '" tidak terdaftar (data cache — coba lagi saat daring).'
+              : 'Username "' + user + '" tidak terdaftar di sheet login.';
+          } else {
+            errEl.textContent = (this._sheetSrc === 'cache' ? 'Password salah (data cache).' : 'Password salah.');
+          }
+        } else if (result && !result.ok) {
           errEl.textContent = result.error || 'Username atau password salah.';
-        } else if (!sheet) {
-          errEl.textContent = 'Layanan login tidak terjangkau — periksa koneksi internet lalu coba lagi.';
-        } else if (stored == null || stored === '') {
-          errEl.textContent = this._sheetSrc === 'cache'
-            ? 'Username "' + user + '" tidak terdaftar (data cache — coba lagi saat daring).'
-            : 'Username "' + user + '" tidak terdaftar di sheet login.';
         } else {
-          errEl.textContent = (this._sheetSrc === 'cache' ? 'Password salah (data cache).' : 'Password salah.');
+          errEl.textContent = 'Layanan login tidak terjangkau — periksa koneksi internet lalu coba lagi.';
         }
       }
     });
