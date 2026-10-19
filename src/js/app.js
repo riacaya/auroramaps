@@ -569,9 +569,12 @@ const LoginGate = {
       });
       const data = await res.json().catch(() => null);
       if (data && data.ok) return { ok: true, status: String(data.status || '') };
-      // Script versi lama membalas "Aksi tidak dikenal" → sinyal fallback.
-      if (data && /aksi tidak dikenal/i.test(String(data.error || ''))) return null;
-      return { ok: false, error: String((data && data.error) || 'Login ditolak server.') };
+      // Skrip BARU menandai jawaban definitif dgn login:true → penolakan
+      // server mengalahkan cache/gviz (user terhapus tak bisa login via cache).
+      if (data && data.login === true) {
+        return { ok: false, definitive: true, error: String(data.error || 'Username atau password salah.') };
+      }
+      return null; // skrip lama / respons tak dikenal → pemanggil coba gviz
     } catch (e) { return null; } // jaringan/parse gagal → coba gviz
   },
   // Baca sheet lewat gviz JSONP (tqx=out:script) — TANPA CORS.
@@ -823,18 +826,21 @@ const LoginGate = {
       // ── Jalur UTAMA: verifikasi via Apps Script (sheet boleh private) ──
       let result = await this._loginServer(user, pass);
       let role = '', sheet = null, stored = null;
-      // Server menolak ATAU tidak terjangkau → cek gviz juga (cadangan):
+      // Server MENOLAK dgn penanda definitive (skrip baru) → langsung
+      // tampil pesan server; gviz/cache TIDAK dicoba (user yang sudah
+      // dihapus dari sheet tak bisa login lewat cache lama).
+      // Server tidak terjangkau / skrip lama → cek gviz juga (cadangan):
       //   • skrip LAMA: action=login tak dikenal (dibalas "salah") → gviz
       //     yang menentukan → login tetap jalan sampai skrip di-redeploy.
       //   • skrip BARU + sheet privat: gviz gagal → pesan server yang tampil.
-      if (!result || !result.ok) {
+      if ((!result || !result.ok) && !(result && result.definitive)) {
         sheet = await this._sheetUsers();
         stored = sheet ? sheet[user] : null;
         if (sheet && await this._matchKey(stored, pass)) {
           result = { ok: true };
           try { role = String((JSON.parse(localStorage.getItem('auroramaps-sheet-roles') || '{}'))[user] || ''); } catch (e) { role = ''; }
         }
-      } else {
+      } else if (result && result.ok) {
         role = result.status || '';
       }
       if (btn) btn.disabled = false;
