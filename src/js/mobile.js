@@ -45,6 +45,12 @@ const MobileUI = {
       document.getElementById('mb-add-point').classList.remove('draw-action-ready');
       const type = this._selectedDrawType;
       if (!type) return;
+      if (type === 'point') {
+        const markerOptions = MapManager.drawControl.options.draw.marker;
+        const marker = L.marker(MapManager.map.getCenter(), markerOptions);
+        MapManager.map.fire(L.Draw.Event.CREATED, { layer: marker, layerType: 'marker' });
+        return;
+      }
       if (!State.activeDrawTool || State.activeDrawType !== type) {
         MapManager.startDraw(type);
         if (type === 'line' || type === 'poly') this._enterDrawMode();
@@ -155,8 +161,13 @@ const MobileUI = {
       button.classList.toggle('selected', button.id === `dt-${type}`);
     });
     this._setDrawActionEnabled(true);
-    MapManager.startDraw(type);
-    if (type === 'line' || type === 'poly') this._enterDrawMode();
+    if (type === 'point') {
+      if (window.BhumiIdentify) BhumiIdentify.pauseOverlay();
+      this._enterDrawMode();
+    } else {
+      MapManager.startDraw(type);
+      if (type === 'line' || type === 'poly') this._enterDrawMode();
+    }
     const add = document.getElementById('mb-add-point');
     add.title = ['line', 'poly'].includes(type)
       ? `Tambah titik ${this._drawTypeLabel(type)}; ketuk dua kali untuk selesai`
@@ -165,9 +176,11 @@ const MobileUI = {
     add.classList.add('draw-action-ready');
     add.focus({ preventScroll: true });
     add.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-    Toast.show(type === 'line' || type === 'poly'
-      ? `Mode ${this._drawTypeLabel(type)} aktif. Tekan + untuk menambah titik.`
-      : `Mode ${this._drawTypeLabel(type)} aktif. Gambar langsung pada peta.`, 'info');
+    Toast.show(type === 'point'
+      ? 'Geser peta untuk mengatur titik di tengah crosshair, lalu tekan +.'
+      : type === 'line' || type === 'poly'
+        ? `Mode ${this._drawTypeLabel(type)} aktif. Tekan + untuk menambah titik.`
+        : `Mode ${this._drawTypeLabel(type)} aktif. Gambar langsung pada peta.`, 'info');
   },
 
   _setDrawActionEnabled(enabled) {
