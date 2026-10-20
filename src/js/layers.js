@@ -123,6 +123,13 @@ const LayerManager = {
         opacity: 1
       }),
       pointToLayer: (feature, latlng) => {
+        const circleRadius = this._circleRadiusMeters(feature);
+        if (circleRadius) {
+          return L.circle(latlng, {
+            pane: 'dataPane', radius: circleRadius,
+            color, fillColor: color, fillOpacity: 0.35, weight: 2, opacity: 1
+          });
+        }
         return L.circleMarker(latlng, {
           pane: 'dataPane',
           radius: 6, color: color, fillColor: color,
@@ -136,6 +143,37 @@ const LayerManager = {
       }
     };
     return L.geoJSON(geoJSON, options);
+  },
+
+  _circleRadiusMeters(feature) {
+    if (feature?.geometry?.type !== 'Point') return null;
+    const props = feature.properties || {};
+    const shape = [props._drawType, props.drawType, props.shape, props.geometry_type]
+      .some(value => String(value || '').toLowerCase() === 'circle');
+    const hasMeterField = ['radius_m', 'circle_radius_m', 'radiusMeters', 'radius_meters']
+      .some(key => props[key] !== undefined && props[key] !== null && props[key] !== '');
+    const raw = props.radius_m ?? props.circle_radius_m ?? props.radiusMeters
+      ?? props.radius_meters ?? (shape ? props.radius : null);
+    if (!shape && !hasMeterField) return null;
+    const numeric = Number(raw);
+    if (Number.isFinite(numeric) && numeric > 0) return numeric;
+    const match = String(raw ?? '').trim().match(/^([+-]?(?:\d+(?:[.,]\d*)?|[.,]\d+))\s*(km|m)?/i);
+    if (!match) return null;
+    const value = Number(match[1].replace(',', '.'));
+    if (!Number.isFinite(value) || value <= 0) return null;
+    return value * (match[2]?.toLowerCase() === 'km' ? 1000 : 1);
+  },
+
+  _normalizeCircleFeature(feature) {
+    const radius = this._circleRadiusMeters(feature);
+    if (!radius) return null;
+    const props = feature.properties || (feature.properties = {});
+    props._drawType = 'circle';
+    props.radius_m = radius;
+    props.radius = Utils.formatDist(radius);
+    props.keliling = Utils.formatDist(2 * Math.PI * radius);
+    props.luas_poligon = Utils.formatArea(Math.PI * radius * radius);
+    return radius;
   },
 
   _edgePointSets(feature) {
@@ -443,6 +481,7 @@ const LayerManager = {
     geoJSON.features.forEach(f => {
       if (!f.properties) f.properties = {};
       normalizeFeatureAreaProps(f);
+      this._normalizeCircleFeature(f);
       if (f.properties.name === undefined) f.properties.name = f.properties.Name || '';
       if (f.properties.deskripsi === undefined)
         f.properties.deskripsi = f.properties.description || f.properties.Description || '';
