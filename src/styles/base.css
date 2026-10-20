@@ -55,6 +55,8 @@
   --header-bg: linear-gradient(120deg,#1d4ed8,#0f766e);
   --shadow: 0 3px 12px rgba(15,23,42,0.07);
 }
+
+
 /* Senja — identik dengan tema "Senja" app Cek-KTP */
 [data-theme="senja"] {
   --bg-base: #fff4e6;
@@ -2246,4 +2248,19 @@ input[type="range"]:focus-visible { outline: none; }
   .map-popup-panel .mp-zone-col + .mp-zone-col {
     border-left: none; border-top: 1px solid var(--border);
   }
+}
+
+/* Panel UI selalu bersudut siku; geometri peta dan kontrol bundar tetap utuh. */
+:root { --radius: 0px; --ui-radius: 0px; }
+body :is(
+  [class*="panel"], [class*="modal"], [class*="card"],
+  [class*="sidebar"], [class*="menu"], [class*="popup"],
+  [id*="panel"], [id*="modal"], [id*="sidebar"], [id*="menu"]
+),
+.login-card, .about-card, .guide-card,
+.search-dropdown, .header-search-dropdown, .bhumi-ctx-menu,
+#context-menu, #mobile-menu, #bottom-panel, #img-overlay-panel,
+.file-drop-zone, .stat-card, .toast,
+.leaflet-popup-content-wrapper {
+  border-radius: 0 !important;
 }
