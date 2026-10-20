@@ -139,6 +139,14 @@ const FileManager = {
 
       if (ext === 'geojson' || ext === 'json') {
         const text = await file.text();
+        if (ext === 'json') {
+          let documentData;
+          try { documentData = JSON.parse(text); } catch (_) {}
+          if (ProjectManager.isProjectData(documentData)) {
+            await ProjectManager.openData(documentData);
+            return;
+          }
+        }
         geoJSON = Parser.parseGeoJSON(text);
       } else if (ext === 'kml') {
         const text = await file.text();
