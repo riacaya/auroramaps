@@ -54,7 +54,7 @@ const MobileUI = {
       if (!State.activeDrawTool || State.activeDrawType !== type) {
         MapManager.startDraw(type);
         if (type === 'line' || type === 'poly') this._enterDrawMode();
-        else Toast.show(`Mode gambar ${this._drawTypeLabel(type)} aktif. Gambar langsung pada peta.`, 'info');
+        else Toast.show(`Mode gambar ${this._drawTypeLabel(type)} aktif.`, 'info');
         _lastTapTime = 0;
         return;
       }
@@ -180,7 +180,7 @@ const MobileUI = {
       ? 'Geser peta untuk mengatur titik di tengah crosshair, lalu tekan +.'
       : type === 'line' || type === 'poly'
         ? `Mode ${this._drawTypeLabel(type)} aktif. Tekan + untuk menambah titik.`
-        : `Mode ${this._drawTypeLabel(type)} aktif. Gambar langsung pada peta.`, 'info');
+        : `Mode gambar ${this._drawTypeLabel(type)} aktif.`, 'info');
   },
 
   _setDrawActionEnabled(enabled) {
