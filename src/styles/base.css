@@ -1936,6 +1936,21 @@ input[type="range"]:focus-visible { outline: none; }
     width: 0; height: 0;
   }
   #mobile-crosshair.is-visible { display: block !important; visibility: visible !important; opacity: 1 !important; }
+  #map-container.point-placement-focus::after {
+    content: "";
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 44px; height: 44px;
+    transform: translate(-50%, -50%);
+    border: 2px solid #ef3030;
+    border-radius: 50%;
+    background:
+      linear-gradient(#ef3030, #ef3030) center / 2px 58px no-repeat,
+      linear-gradient(#ef3030, #ef3030) center / 58px 2px no-repeat;
+    box-shadow: 0 0 0 2px #fff, 0 0 10px rgba(0,0,0,.9);
+    pointer-events: none;
+    z-index: 3000;
+  }
   .mc-h, .mc-v {
     position: absolute; background: #ff3030; box-shadow: 0 0 2px #fff, 0 0 5px rgba(0,0,0,.95);
   }

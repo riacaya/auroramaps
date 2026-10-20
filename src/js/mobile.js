@@ -163,7 +163,7 @@ const MobileUI = {
     this._setDrawActionEnabled(true);
     if (type === 'point') {
       if (window.BhumiIdentify) BhumiIdentify.pauseOverlay();
-      this._enterDrawMode();
+      this._enterDrawMode(type);
     } else {
       MapManager.startDraw(type);
       if (type === 'line' || type === 'poly') this._enterDrawMode();
@@ -206,9 +206,10 @@ const MobileUI = {
     return ({ point: 'titik', line: 'garis', poly: 'poligon', rect: 'kotak', circle: 'lingkaran' })[type] || type;
   },
 
-  _enterDrawMode() {
+  _enterDrawMode(type = this._selectedDrawType) {
     this._drawVertexCount = 0;
     this._vertexRedo = [];
+    document.getElementById('map-container')?.classList.toggle('point-placement-focus', type === 'point');
     const crosshair = document.getElementById('mobile-crosshair');
     if (crosshair) {
       crosshair.classList.add('is-visible');
@@ -232,6 +233,7 @@ const MobileUI = {
   },
 
   _exitDrawMode() {
+    document.getElementById('map-container')?.classList.remove('point-placement-focus');
     const crosshair = document.getElementById('mobile-crosshair');
     if (crosshair) {
       crosshair.classList.remove('is-visible');
