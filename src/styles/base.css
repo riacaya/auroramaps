@@ -1856,7 +1856,7 @@ input[type="range"]:focus-visible { outline: none; }
   /* ── SEMBUNYIKAN elemen PC ── */
   #toolbar, #sidebar-left, #sidebar-right,
   #bottom-panel, #bp-resize-handle,
-  #statusbar, .resize-handle, .draw-tools,
+  #statusbar, .resize-handle,
   #header-search-menu, #btn-logout-pc, #btn-admin-pc, #btn-settings-pc { display: none !important; }
 
   /* ── HEADER ── */
@@ -1906,6 +1906,9 @@ input[type="range"]:focus-visible { outline: none; }
   }
 
   /* ── MAP OVERLAYS ── */
+  .draw-tools { top: 10px; left: 10px; right: auto; z-index: 1200; display: flex !important; flex-direction: row; align-items: center; gap: 4px; padding: 4px; background: var(--bg-chrome); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,.22); }
+  .draw-tools-btn { width: 40px; height: 40px; border-radius: 7px; box-shadow: none; }
+  .draw-tools-btn svg { width: 20px; height: 20px; }
   .zoom-tools { top: 10px; right: 10px; }
   .zoom-tools-btn { width: 38px; height: 38px; }
   .zoom-tools-btn svg { width: 18px; height: 18px; }
@@ -2111,21 +2114,6 @@ input[type="range"]:focus-visible { outline: none; }
     display: flex !important; position: fixed; left: 0; right: 0; bottom: 60px; height: min(62dvh, 460px);
     z-index: 2900; background: var(--bg-chrome); border-top: 1px solid var(--border); flex-direction: column;
   }
-
-  /* ── DRAW TOOLS (mobile): horizontal row, icon-only ── */
-  .mm-draw-row {
-    display: flex; justify-content: space-around; align-items: center;
-    padding: 8px 12px;
-  }
-  .mm-draw-item {
-    display: flex; align-items: center; justify-content: center;
-    width: 42px; height: 42px; border-radius: 8px;
-    background: transparent; border: none; cursor: pointer;
-    color: var(--text-primary); transition: background .12s;
-  }
-  .mm-draw-item:active { background: var(--bg-hover); }
-  .mm-draw-item .mm-item-icon { width: 100%; }
-  .mm-draw-item .mm-item-icon svg { width: 22px; height: 22px; }
 
   /* ── MAP POPUP (mobile) ── */
   .map-popup-panel {

@@ -941,11 +941,6 @@ LoginGate.init();
     ['mm-export', () => UI.showExportModal()],
     ['mm-atrbpn', () => AtrbpnLayers.showPanel(false)],
     ['mm-atr-search', openAtrSearchMenu],
-    ['mm-draw-point', () => MapManager.toggleDraw('point')],
-    ['mm-draw-line', () => MapManager.toggleDraw('line')],
-    ['mm-draw-poly', () => MapManager.toggleDraw('poly')],
-    ['mm-draw-rect', () => MapManager.toggleDraw('rect')],
-    ['mm-draw-circle', () => MapManager.toggleDraw('circle')],
     ['mm-fit-all', () => MapManager.zoomToAll()],
   ].forEach(([id, fn]) => menuAction(id, fn));
 
