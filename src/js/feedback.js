@@ -36,6 +36,7 @@ const AppConsole = {
 const Modal = {
   open(title, bodyHTML, footer) {
     const modalContainer = document.getElementById('modal-container');
+    document.querySelector('#modal-container .modal')?.classList.remove('settings-modal');
     const canvas = document.getElementById('map-container');
     if (canvas) {
       const r = canvas.getBoundingClientRect();

@@ -2264,3 +2264,37 @@ body :is(
 .leaflet-popup-content-wrapper {
   border-radius: 0 !important;
 }
+
+/* Batas panel Pengaturan mengikuti area kerja yang sama dengan Panduan. */
+#modal-container .modal.settings-modal {
+  max-height: calc(100% - 24px);
+  min-height: 0;
+}
+@media (min-width: 769px) {
+  #modal-container .modal.settings-modal {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #modal-container .settings-modal .modal-header,
+  #modal-container .settings-modal .modal-footer { flex: 0 0 auto; }
+  #modal-container .settings-modal .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-light) transparent;
+  }
+  #modal-container .settings-modal .modal-body::-webkit-scrollbar { width: 6px; }
+  #modal-container .settings-modal .modal-body::-webkit-scrollbar-thumb {
+    background: var(--border-light);
+  }
+}
+@media (max-width: 768px) {
+  #modal-container .modal.settings-modal {
+    max-height: calc(100% - 12px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  #modal-container .settings-modal .modal-body { overflow: visible; }
+}

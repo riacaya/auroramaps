@@ -90,6 +90,7 @@ ${window.AuroraInstall?.canOffer() ? `<div class="set-actions"><button class="bt
 
     // Tanpa tombol footer — panel sudah punya ikon X di kanan atas.
     Modal.open('⚙ ' + t('set-title'), html, []);
+    document.querySelector('#modal-container .modal')?.classList.add('settings-modal');
 
     const $ = (id) => document.getElementById(id);
     // Select tema/bahasa & tombol hapus tile memakai class — id yang sama
