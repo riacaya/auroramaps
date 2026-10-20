@@ -9,6 +9,7 @@
 const MobileUI = {
   _drawVertexCount: 0,
   _vertexRedo: [],
+  _selectedDrawType: null,
 
   init() {
     if (!this._isMobile()) return;
@@ -37,14 +38,27 @@ const MobileUI = {
       document.getElementById('btn-redo').click();
     });
 
+    this._setDrawActionEnabled(false);
+
     let _lastTapTime = 0;
     document.getElementById('mb-add-point').addEventListener('click', () => {
+      const type = this._selectedDrawType;
+      if (!type) return;
+      if (!State.activeDrawTool || State.activeDrawType !== type) {
+        MapManager.startDraw(type);
+        if (type === 'line' || type === 'poly') this._enterDrawMode();
+        else Toast.show(`Mode gambar ${this._drawTypeLabel(type)} aktif. Gambar langsung pada peta.`, 'info');
+        _lastTapTime = 0;
+        return;
+      }
+      if (!['line', 'poly'].includes(type)) return;
       const now = Date.now();
-      const isDoubleTap = (now - _lastTapTime) < 300 && State.activeDrawTool;
+      const isDoubleTap = (now - _lastTapTime) < 300;
       _lastTapTime = now;
 
       if (isDoubleTap) {
-        if (this._drawVertexCount >= 3) {
+        const minimumVertices = type === 'line' ? 2 : 3;
+        if (this._drawVertexCount >= minimumVertices) {
           try {
             State.activeDrawTool._finishShape();
             // Some Leaflet Draw versions do not emit draw:created before the
@@ -55,15 +69,12 @@ const MobileUI = {
             }, 120);
           } catch(e) { MapManager._stopDrawTool(); this._exitDrawMode(); }
         } else {
-          Toast.show('Minimal 3 titik untuk selesai', 'warn');
+          Toast.show(`Minimal ${minimumVertices} titik untuk selesai`, 'warn');
         }
         return;
       }
 
       if (!State.activeDrawTool) {
-        document.getElementById('mb-add-point')?.classList.remove('pending-bhumi-draw');
-        MapManager.startDraw('poly');
-        this._enterDrawMode();
         return;
       }
       const center = MapManager.map.getCenter();
@@ -124,6 +135,32 @@ const MobileUI = {
   },
 
   _isMobile() { return window.innerWidth <= 768; },
+
+  selectDrawType(type) {
+    if (!['point', 'line', 'poly', 'rect', 'circle'].includes(type)) return;
+    MapManager.cancelDraw();
+    this._selectedDrawType = type;
+    document.querySelectorAll('.draw-tools-btn').forEach(button => {
+      button.classList.toggle('selected', button.id === `dt-${type}`);
+    });
+    this._setDrawActionEnabled(true);
+    this._exitDrawMode();
+    const add = document.getElementById('mb-add-point');
+    add.title = `Mulai gambar ${this._drawTypeLabel(type)}`;
+    add.setAttribute('aria-label', add.title);
+    Toast.show(`Pilih + untuk mulai gambar ${this._drawTypeLabel(type)}`, 'info');
+  },
+
+  _setDrawActionEnabled(enabled) {
+    const add = document.getElementById('mb-add-point');
+    if (!add) return;
+    add.disabled = !enabled;
+    add.setAttribute('aria-disabled', String(!enabled));
+  },
+
+  _drawTypeLabel(type) {
+    return ({ point: 'titik', line: 'garis', poly: 'poligon', rect: 'kotak', circle: 'lingkaran' })[type] || type;
+  },
 
   _enterDrawMode() {
     this._drawVertexCount = 0;

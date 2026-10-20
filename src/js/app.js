@@ -164,11 +164,11 @@ const App = {
       else ImageOverlayMgr.open();
     });
 
-    bindClick('dt-point', () => MapManager.toggleDraw('point'));
-    bindClick('dt-line', () => MapManager.toggleDraw('line'));
-    bindClick('dt-poly', () => MapManager.toggleDraw('poly'));
-    bindClick('dt-rect', () => MapManager.toggleDraw('rect'));
-    bindClick('dt-circle', () => MapManager.toggleDraw('circle'));
+    bindClick('dt-point', () => MobileUI._isMobile() ? MobileUI.selectDrawType('point') : MapManager.toggleDraw('point'));
+    bindClick('dt-line', () => MobileUI._isMobile() ? MobileUI.selectDrawType('line') : MapManager.toggleDraw('line'));
+    bindClick('dt-poly', () => MobileUI._isMobile() ? MobileUI.selectDrawType('poly') : MapManager.toggleDraw('poly'));
+    bindClick('dt-rect', () => MobileUI._isMobile() ? MobileUI.selectDrawType('rect') : MapManager.toggleDraw('rect'));
+    bindClick('dt-circle', () => MobileUI._isMobile() ? MobileUI.selectDrawType('circle') : MapManager.toggleDraw('circle'));
 
     bindClick('tb-zoom-all', () => MapManager.zoomToAll());
     bindClick('btn-zoom-in', () => MapManager.zoomIn());
