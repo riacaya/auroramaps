@@ -1913,6 +1913,7 @@ input[type="range"]:focus-visible { outline: none; }
   .draw-tools { top: 10px; left: 10px; right: auto; z-index: 1200; display: flex !important; flex-direction: column; align-items: center; gap: 4px; padding: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
   .draw-tools-btn { width: 38px; height: 38px; border-radius: 7px; background: var(--bg-panel); box-shadow: 0 2px 6px rgba(0,0,0,.28); }
   .draw-tools-btn svg { width: 18px; height: 18px; }
+  .draw-tools-btn.active.selected { outline: none; }
   .zoom-tools { top: 10px; right: 10px; }
   .zoom-tools-btn { width: 38px; height: 38px; }
   .zoom-tools-btn svg { width: 18px; height: 18px; }
@@ -1951,6 +1952,7 @@ input[type="range"]:focus-visible { outline: none; }
     pointer-events: none;
     z-index: 3000;
   }
+  #map-container.point-placement-focus #mobile-crosshair { display: none !important; }
   .mc-h, .mc-v {
     position: absolute; background: #ff3030; box-shadow: 0 0 2px #fff, 0 0 5px rgba(0,0,0,.95);
   }
