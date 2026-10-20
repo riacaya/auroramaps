@@ -1906,9 +1906,9 @@ input[type="range"]:focus-visible { outline: none; }
   }
 
   /* ── MAP OVERLAYS ── */
-  .draw-tools { top: 10px; left: 10px; right: auto; z-index: 1200; display: flex !important; flex-direction: row; align-items: center; gap: 4px; padding: 4px; background: var(--bg-chrome); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,.22); }
-  .draw-tools-btn { width: 40px; height: 40px; border-radius: 7px; box-shadow: none; }
-  .draw-tools-btn svg { width: 20px; height: 20px; }
+  .draw-tools { top: 10px; left: 10px; right: auto; z-index: 1200; display: flex !important; flex-direction: column; align-items: center; gap: 4px; padding: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+  .draw-tools-btn { width: 38px; height: 38px; border-radius: 7px; background: var(--bg-panel); box-shadow: 0 2px 6px rgba(0,0,0,.28); }
+  .draw-tools-btn svg { width: 18px; height: 18px; }
   .zoom-tools { top: 10px; right: 10px; }
   .zoom-tools-btn { width: 38px; height: 38px; }
   .zoom-tools-btn svg { width: 18px; height: 18px; }
