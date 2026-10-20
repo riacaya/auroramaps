@@ -2298,3 +2298,9 @@ body :is(
   }
   #modal-container .settings-modal .modal-body { overflow: visible; }
 }
+
+/* Tombol kelompok zoom dan gambar memakai sudut siku pada desktop maupun HP. */
+.zoom-tools-btn,
+.draw-tools-btn {
+  border-radius: 0 !important;
+}
