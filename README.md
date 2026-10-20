@@ -20,12 +20,12 @@ Cara yang disarankan: buka `blogger-iframe-snippet.html`, salin seluruh isinya, 
 - `assets/`: data wilayah dalam JavaScript.
 - `blogger-page.html`: versi dokumen aplikasi yang merujuk ke file di GitHub Pages.
 - `blogger-iframe-snippet.html`: kode semat untuk Blogger.
-- `panduan.html`: panduan lengkap aplikasi yang dapat dibuka dari menu.
+- `src/js/panduan.js`: konten panduan yang dibuka di panel aplikasi dan mengikuti tema aktif.
 - `.nojekyll`: mencegah GitHub Pages memproses folder aset melalui Jekyll.
 
 ## Panduan aplikasi
 
-Buka [panduan.html](panduan.html) untuk membaca panduan penggunaan AuroraMaps.
+Buka **Panduan penggunaan** dari menu atau tautan pada panel About untuk membaca panduan AuroraMaps.
 
 ## Instal di Android
 

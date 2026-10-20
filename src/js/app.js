@@ -1009,6 +1009,8 @@ LoginGate.init();
     el.style.display = 'flex';
   };
   menuAction('mm-about', openAboutModal);
+  menuAction('mm-guide', () => window.GuidePanel?.open());
+  document.getElementById('about-open-guide')?.addEventListener('click', () => window.GuidePanel?.open());
 
   // ── Administrator & Logout (mantan isi panel Pengaturan, tombol ⚙ dihapus) ──
   menuAction('mm-admin', () => window.AdminPanel?.open());

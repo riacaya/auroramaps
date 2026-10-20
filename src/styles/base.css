@@ -427,8 +427,101 @@ body.is-admin #mm-admin { display: flex; }
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
+  font-family: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
 }
 .about-guide-link:hover { text-decoration: underline; }
+.guide-card.about-card {
+  width: min(1040px, calc(100% - 24px));
+  max-width: none;
+  height: calc(100% - 24px);
+  max-height: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  text-align: left;
+  color: var(--text-primary);
+}
+.guide-panel-header {
+  flex: none;
+  padding: 16px 58px 14px 20px;
+  background: var(--bg-chrome);
+  border-bottom: 1px solid var(--border);
+}
+.guide-panel-title { color: var(--text-accent); font-size: 18px; font-weight: 750; line-height: 1.3; }
+.guide-panel-subtitle { margin-top: 3px; color: var(--text-secondary); font-size: 12px; }
+#guide-content.guide-panel-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 230px) minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+#guide-content .toc {
+  position: static;
+  top: auto;
+  max-height: none;
+  overflow: auto;
+  margin: 0;
+  padding: 16px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--bg-surface);
+  box-shadow: none;
+}
+#guide-content .toc strong { margin-bottom: 8px; color: var(--text-primary); font-size: 13px; }
+#guide-content .toc ol { padding-left: 18px; }
+#guide-content .toc li { margin: 5px 0; color: var(--text-secondary); font-size: 11px; line-height: 1.4; }
+#guide-content .toc a { color: var(--text-secondary); text-decoration: none; }
+#guide-content .toc a:hover, #guide-content .toc a:focus { color: var(--text-accent); text-decoration: underline; }
+#guide-content main {
+  min-width: 0;
+  overflow: auto;
+  padding: 20px 24px;
+  color: var(--text-primary);
+  background: var(--bg-panel);
+}
+#guide-content h2 { margin: 0 0 8px; padding-top: 14px; border-top: 1px solid var(--border); color: var(--text-accent); font-size: 18px; line-height: 1.35; scroll-margin-top: 12px; }
+#guide-content main > h2:first-of-type { border-top: 0; padding-top: 0; }
+#guide-content h3 { margin: 14px 0 6px; color: var(--text-primary); font-size: 15px; scroll-margin-top: 12px; }
+#guide-content p, #guide-content li { color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+#guide-content p { margin: 8px 0 12px; }
+#guide-content li { margin: 4px 0; }
+#guide-content code { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 4px; padding: 1px 4px; color: var(--text-primary); }
+#guide-content strong { color: var(--text-primary); }
+#guide-content .table-wrap { overflow: auto; margin: 12px 0; }
+#guide-content table { width: 100%; border-collapse: collapse; font-size: 11px; }
+#guide-content th, #guide-content td { padding: 7px 8px; border: 1px solid var(--border); color: var(--text-secondary); text-align: left; vertical-align: top; }
+#guide-content th { background: var(--bg-surface); color: var(--text-primary); }
+.guide-panel-footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-chrome);
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.guide-panel-footer strong { color: var(--text-primary); }
+.guide-panel-footer a { color: inherit; text-decoration: none; }
+.guide-panel-footer a:hover { color: var(--text-accent); text-decoration: underline; }
+@media (max-width: 768px) {
+  .guide-card.about-card { width: calc(100% - 12px); height: calc(100% - 12px); border-radius: 14px; }
+  #guide-content.guide-panel-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(110px, 34%) minmax(0, 1fr); }
+  #guide-content .toc { padding: 9px 13px; border-right: 0; border-bottom: 1px solid var(--border); }
+  #guide-content .toc ol { columns: 2; column-gap: 18px; }
+  #guide-content main { padding: 14px 16px; }
+  .guide-panel-footer { flex-wrap: wrap; padding: 6px 12px; font-size: 10px; }
+}
+.about-modal .about-guide-link { color: var(--text-accent); }
 .about-meta {
   border-top: 1px solid var(--border);
   padding-top: 14px;
