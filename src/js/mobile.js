@@ -64,10 +64,11 @@ const MobileUI = {
             // Some Leaflet Draw versions do not emit draw:created before the
             // mobile crosshair is repainted. Force the cleanup after finish.
             setTimeout(() => {
-              if (State.activeDrawType === 'poly') MapManager._stopDrawTool();
+              if (State.activeDrawTool) MapManager._stopDrawTool();
               this._exitDrawMode();
+              this._clearDrawSelection();
             }, 120);
-          } catch(e) { MapManager._stopDrawTool(); this._exitDrawMode(); }
+          } catch(e) { MapManager._stopDrawTool(); this._exitDrawMode(); this._clearDrawSelection(); }
         } else {
           Toast.show(`Minimal ${minimumVertices} titik untuk selesai`, 'warn');
         }
@@ -104,6 +105,7 @@ const MobileUI = {
 
     MapManager.map.on('draw:created', () => {
       this._exitDrawMode();
+      this._clearDrawSelection();
     });
 
     MapManager.map.on('draw:drawvertex', () => {
@@ -156,6 +158,17 @@ const MobileUI = {
     if (!add) return;
     add.disabled = !enabled;
     add.setAttribute('aria-disabled', String(!enabled));
+  },
+
+  _clearDrawSelection() {
+    this._selectedDrawType = null;
+    document.querySelectorAll('.draw-tools-btn').forEach(button => button.classList.remove('selected'));
+    this._setDrawActionEnabled(false);
+    const add = document.getElementById('mb-add-point');
+    if (add) {
+      add.title = 'Pilih alat gambar terlebih dahulu';
+      add.setAttribute('aria-label', add.title);
+    }
   },
 
   _drawTypeLabel(type) {
