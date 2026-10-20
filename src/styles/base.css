@@ -1893,7 +1893,7 @@ input[type="range"]:focus-visible { outline: none; }
     pointer-events: none;
   }
   #mb-undo .mb-icon svg, #mb-redo .mb-icon svg { width: 26px; height: 26px; }
-  #mb-edit .mb-icon svg, #mb-style .mb-icon svg { width: 24px; height: 24px; }
+  #mb-edit .mb-icon svg, #mb-layers .mb-icon svg { width: 24px; height: 24px; }
 
   /* ── WORKSPACE ── */
   #workspace { flex: 1; min-height: 0; overflow: hidden; display: flex; }

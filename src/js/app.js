@@ -954,13 +954,11 @@ LoginGate.init();
     document.getElementById('sidebar-left')?.classList.add('mobile-open');
     layersBackdrop?.classList.add('open');
   };
-  const mmLayersBtn = document.getElementById('mm-layers');
-  if (mmLayersBtn) mmLayersBtn.addEventListener('click', () => {
-    runAfterMenuClose(() => {
-      const sb = document.getElementById('sidebar-left');
-      if (sb && sb.classList.contains('mobile-open')) closeLayersOverlay();
-      else openLayersOverlay();
-    });
+  const mbLayersBtn = document.getElementById('mb-layers');
+  if (mbLayersBtn) mbLayersBtn.addEventListener('click', () => {
+    const sidebar = document.getElementById('sidebar-left');
+    if (sidebar?.classList.contains('mobile-open')) closeLayersOverlay();
+    else openLayersOverlay();
   });
   if (layersBackdrop) layersBackdrop.addEventListener('click', closeLayersOverlay);
 

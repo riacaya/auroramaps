@@ -29,7 +29,6 @@ const MobileUI = {
       rightBackdrop.classList.remove('open');
     });
     document.getElementById('mb-edit').addEventListener('click', () => openRightPanel('panel-props'));
-    document.getElementById('mb-style').addEventListener('click', () => openRightPanel('panel-style'));
 
     document.getElementById('mb-undo').addEventListener('click', () => {
       document.getElementById('btn-undo').click();
