@@ -939,6 +939,7 @@ LoginGate.init();
     }],
     ['mm-import-url', () => UI.showImportURLModal()],
     ['mm-export', () => UI.showExportModal()],
+    ['mm-print', () => Exporter.showPrintPanel()],
     ['mm-atrbpn', () => AtrbpnLayers.showPanel(false)],
     ['mm-atr-search', openAtrSearchMenu],
     ['mm-fit-all', () => MapManager.zoomToAll()],
