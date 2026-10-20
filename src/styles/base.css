@@ -1932,18 +1932,20 @@ input[type="range"]:focus-visible { outline: none; }
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
     pointer-events: none;
-    z-index: 900;
+    z-index: 2500;
     width: 0; height: 0;
   }
+  #mobile-crosshair.is-visible { display: block !important; visibility: visible !important; opacity: 1 !important; }
   .mc-h, .mc-v {
-    position: absolute; background: rgba(239,68,68,0.8);
+    position: absolute; background: #ff3030; box-shadow: 0 0 2px #fff, 0 0 5px rgba(0,0,0,.95);
   }
   .mc-h { width: 44px; height: 1.5px; top: 0; left: 50%; transform: translate(-50%,-50%); }
   .mc-v { height: 44px; width: 1.5px; top: 50%; left: 0; transform: translate(-50%,-50%); }
   .mc-ring {
     position: absolute;
-    width: 60px; height: 60px;
-    border: 1.5px solid rgba(239,68,68,0.65);
+    width: 42px; height: 42px;
+    border: 2px solid #ff3030;
+    box-shadow: 0 0 2px #fff, 0 0 6px rgba(0,0,0,.95), inset 0 0 2px #fff;
     border-radius: 50%;
     top: 0; left: 0;
     transform: translate(-50%, -50%);

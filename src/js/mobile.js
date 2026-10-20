@@ -196,7 +196,11 @@ const MobileUI = {
   _enterDrawMode() {
     this._drawVertexCount = 0;
     this._vertexRedo = [];
-    document.getElementById('mobile-crosshair').style.display = 'block';
+    const crosshair = document.getElementById('mobile-crosshair');
+    if (crosshair) {
+      crosshair.classList.add('is-visible');
+      crosshair.style.display = 'block';
+    }
     const add = document.getElementById('mb-add-point');
     add.classList.remove('draw-done');
     add.classList.remove('pending-bhumi-draw');
@@ -215,7 +219,11 @@ const MobileUI = {
   },
 
   _exitDrawMode() {
-    document.getElementById('mobile-crosshair').style.display = 'none';
+    const crosshair = document.getElementById('mobile-crosshair');
+    if (crosshair) {
+      crosshair.classList.remove('is-visible');
+      crosshair.style.display = 'none';
+    }
     const add = document.getElementById('mb-add-point');
     add.classList.remove('draw-done');
     this._drawVertexCount = 0;
