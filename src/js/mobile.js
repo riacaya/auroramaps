@@ -42,6 +42,7 @@ const MobileUI = {
 
     let _lastTapTime = 0;
     document.getElementById('mb-add-point').addEventListener('click', () => {
+      document.getElementById('mb-add-point').classList.remove('draw-action-ready');
       const type = this._selectedDrawType;
       if (!type) return;
       if (!State.activeDrawTool || State.activeDrawType !== type) {
@@ -150,6 +151,9 @@ const MobileUI = {
     const add = document.getElementById('mb-add-point');
     add.title = `Mulai gambar ${this._drawTypeLabel(type)}`;
     add.setAttribute('aria-label', add.title);
+    add.classList.add('draw-action-ready');
+    add.focus({ preventScroll: true });
+    add.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     Toast.show(`Pilih + untuk mulai gambar ${this._drawTypeLabel(type)}`, 'info');
   },
 
@@ -166,6 +170,7 @@ const MobileUI = {
     this._setDrawActionEnabled(false);
     const add = document.getElementById('mb-add-point');
     if (add) {
+      add.classList.remove('draw-action-ready');
       add.title = 'Pilih alat gambar terlebih dahulu';
       add.setAttribute('aria-label', add.title);
     }
