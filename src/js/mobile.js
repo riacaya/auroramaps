@@ -141,20 +141,33 @@ const MobileUI = {
 
   selectDrawType(type) {
     if (!['point', 'line', 'poly', 'rect', 'circle'].includes(type)) return;
+    if (this._selectedDrawType === type) {
+      MapManager.cancelDraw();
+      this._exitDrawMode();
+      this._clearDrawSelection();
+      Toast.show('Mode gambar dibatalkan', 'info');
+      return;
+    }
     MapManager.cancelDraw();
+    this._exitDrawMode();
     this._selectedDrawType = type;
     document.querySelectorAll('.draw-tools-btn').forEach(button => {
       button.classList.toggle('selected', button.id === `dt-${type}`);
     });
     this._setDrawActionEnabled(true);
-    this._exitDrawMode();
+    MapManager.startDraw(type);
+    if (type === 'line' || type === 'poly') this._enterDrawMode();
     const add = document.getElementById('mb-add-point');
-    add.title = `Mulai gambar ${this._drawTypeLabel(type)}`;
+    add.title = ['line', 'poly'].includes(type)
+      ? `Tambah titik ${this._drawTypeLabel(type)}; ketuk dua kali untuk selesai`
+      : `Mode gambar ${this._drawTypeLabel(type)} aktif`;
     add.setAttribute('aria-label', add.title);
     add.classList.add('draw-action-ready');
     add.focus({ preventScroll: true });
     add.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-    Toast.show(`Pilih + untuk mulai gambar ${this._drawTypeLabel(type)}`, 'info');
+    Toast.show(type === 'line' || type === 'poly'
+      ? `Mode ${this._drawTypeLabel(type)} aktif. Tekan + untuk menambah titik.`
+      : `Mode ${this._drawTypeLabel(type)} aktif. Gambar langsung pada peta.`, 'info');
   },
 
   _setDrawActionEnabled(enabled) {
