@@ -5,7 +5,24 @@ var __name = (target, value) => __defProp(target, "name", { value, configurable:
 var BHUMI_BASE = "https://bhumi.atrbpn.go.id";
 var BHUMI_ORIGIN = "https://bhumi.atrbpn.go.id";
 var BHUMI_REFERER = "https://bhumi.atrbpn.go.id/";
-var BHUMI_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+var BHUMI_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36";
+function bhumiRequestHeaders(contentType) {
+  const headers = new Headers({
+    Accept: "*/*",
+    "Accept-Language": "id-ID,id;q=0.9,en-ID;q=0.8,en;q=0.7,en-US;q=0.6",
+    Origin: BHUMI_ORIGIN,
+    Referer: BHUMI_REFERER,
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+    "User-Agent": BHUMI_UA,
+    "sec-ch-ua": '"Google Chrome";v="155", "Chromium";v="155", "Not(A:Brand";v="24"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"Windows"'
+  });
+  if (contentType) headers.set("Content-Type", contentType);
+  return headers;
+}
 // GISTARU (WMS RTR Provinsi & GetFeatureInfo zona RTR/RTRW).
 // Sejak 14 Okt 2026 WAF gistaru-app.atrbpn.go.id membalas 403
 // {"error":"Akses ditolak"} untuk SEMUA Referer kecuali https://bhumi.atrbpn.go.id/
@@ -94,13 +111,7 @@ var bhumi_tile_worker_default = {
       });
     }
     if (path === "/expapi/getPersil" && request.method === "POST") {
-      const headers2 = new Headers({
-        "Accept": "*/*",
-        "Content-Type": "application/json",
-        "Origin": BHUMI_ORIGIN,
-        "Referer": BHUMI_REFERER,
-        "User-Agent": BHUMI_UA
-      });
+      const headers2 = bhumiRequestHeaders("application/json");
       const auth2 = request.headers.get("Authorization");
       if (auth2) headers2.set("Authorization", auth2);
       for (const name of ["X-Client-Pubkey", "X-Ticket-Id", "X-Timestamp"]) {
@@ -124,14 +135,7 @@ var bhumi_tile_worker_default = {
     if (!allowed.some((prefix) => path.startsWith(prefix))) {
       return new Response("not allowed", { status: 403, headers: corsHeaders() });
     }
-    const headers = new Headers({
-      Accept: "*/*",
-      Origin: BHUMI_ORIGIN,
-      Referer: BHUMI_REFERER,
-      "User-Agent": BHUMI_UA
-    });
-    const contentType = request.headers.get("Content-Type");
-    if (contentType) headers.set("Content-Type", contentType);
+    const headers = bhumiRequestHeaders(request.headers.get("Content-Type"));
     const auth = request.headers.get("Authorization");
     if (auth) headers.set("Authorization", auth);
     const upstream = await fetch(BHUMI_BASE + path + url.search, {
