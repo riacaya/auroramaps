@@ -2,7 +2,7 @@
 // AuroraMaps · atrbpnLayers.js — Layer referensi ATR/BPN
 // LSD (Lahan Sawah Dilindungi) · RTR Provinsi · RTRW Kabupaten/Kota
 // Bidang Tanah / persil (bhumi mprx via proxy lokal /bhumi-proxy)
-// Sumber: gistaru-app WMS (RTR/RTRW — pola HAR 22 Okt 2026), bhumi
+// Sumber: GISLINER TMS (RTRW Kab/Kota & KP2B dari HAR pengguna), GISTARU WMS
 // /expapi/rtrw/wms (merge), bhumi /expapi/bhumigeos/umum/wms (LSD, gisliner
 // mati sejak 22 Okt 2026) & bhumi.atrbpn.go.id/mprx/service
 // Klik peta → popup baca layer ATR/BPN aktif (GetFeatureInfo gistaru-app).
@@ -156,7 +156,8 @@ const AtrbpnLayers = {
     const RTRW_URL = (gBase ? gBase + '/interoppublic/api/wms/' : GISTARU_WMS) + RTRW_UUID;
 
     // Pane terpisah per layer agar urutannya stabil (belakang → depan):
-    //   LSD (300) < RTR Provinsi (305) < RTRW Kab/Kota (310) < Bidang Tanah (320)
+    //   LSD (300) < RTR Provinsi (305) < RTRW Kab/Kota (310) < KP2B (312)
+    //   < Bidang Tanah (320)
     // Semua di atas overlay JPG (250) & basemap (200), di bawah data import
     // (400) dan hasil gambar manual (500).
     this._map.createPane('atrbpnLsdPane');
@@ -256,10 +257,10 @@ const AtrbpnLayers = {
     }));
     else shguEntry.note = 'perlu auth key — gunakan ?shguAuthKey=...';
 
-    // RTRW Kab/Kota dari HAR pengguna: GISLINER TMS 212_rtrwkbpt.
+    // ── RTRW Kab/Kota: TMS GISLINER sesuai HAR pengguna ────────────────────
     const rtrwLayer = attachTileRetry(L.tileLayer(xyz('212_rtrwkbpt', 1024),
       LIGHT('atrbpnRtrwPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false })));
-    // KP2B dari HAR pengguna: GISLINER TMS 235_kp2b.
+    // KP2B dari HAR menggunakan endpoint TMS yang sama dengan layer ID 235.
     const kp2bLayer = attachTileRetry(L.tileLayer(xyz('235_kp2b', 1024),
       LIGHT('atrbpnKp2bPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false })));
 
@@ -557,6 +558,18 @@ const AtrbpnLayers = {
   // (14 Okt 2026) — tanpa centang RTR Provinsi/RTRW, blok zona tidak muncul.
   _zonePopupHtml(active, zoneRes, lat, lng) {
     const esc = (v) => Utils.escapeHtml(String(v));
+    const fieldLabels = {
+      namobj: 'Jenis Kawasan', keterangan: 'Keterangan', jnsrpr: 'Kategori',
+      wadmpr: 'Provinsi', wadmkk: 'Kab/Kota', wadmkc: 'Kecamatan',
+      nothpr: 'Dasar Perda', meta: 'Wilayah',
+      perda: 'Peraturan Daerah', no_perda: 'Nomor Perda',
+      nomor_perda: 'Nomor Perda', tahun_perda: 'Tahun Perda',
+      dasar_hukum: 'Dasar Hukum', undang_undang: 'Undang-Undang',
+      no_peraturan: 'Nomor Peraturan', jenis_peraturan: 'Jenis Peraturan',
+      objectid: 'ID Objek'
+    };
+    const labelField = (key) => fieldLabels[key.toLowerCase()] ||
+      key.replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     const section = (title, res, fields) => {
       if (!res) return '';
       // Pesan tunggal untuk semua kasus kosong/gagal — hindari crash & tabel
@@ -566,9 +579,11 @@ const AtrbpnLayers = {
       if (res.error) return unavailable(`Gagal membaca: ${esc(res.error)}`);
       const f = (res.rows || [])[0];
       if (!f) return unavailable('Data tidak tersedia di titik ini');
-      const rows = fields
-        .filter(([key]) => f[key])
-        .map(([key, label]) => `<tr><th>${esc(label)}</th><td>${esc(f[key])}</td></tr>`)
+      const preferred = fields.filter(([key]) => f[key]);
+      const known = new Set(preferred.map(([key]) => key.toLowerCase()));
+      const extra = Object.entries(f).filter(([key, value]) => value != null && String(value).trim() && !known.has(key.toLowerCase()));
+      const rows = preferred.map(([key, label]) => `<tr><th>${esc(label)}</th><td>${esc(f[key])}</td></tr>`)
+        .concat(extra.map(([key, value]) => `<tr><th>${esc(labelField(key))}</th><td>${esc(value)}</td></tr>`))
         .join('');
       if (!rows) return unavailable('Data tidak tersedia di titik ini');
       const more = res.count > 1 ? `<tr><th>Zona lain</th><td>+${res.count - 1}</td></tr>` : '';
@@ -600,14 +615,15 @@ const AtrbpnLayers = {
       ? '<div class="mp-coord">⚠ Kawasan Hutan: server sedang mati — tidak ikut dibaca (sementara).</div>'
       : '';
 
-    // "Aktif: …" kini menempel di baris header (bukan baris terpisah sendiri)
-    // — hemat satu baris tinggi popup (permintaan 5 Okt 2026).
-    const aktifList = esc(active.map(k => this._layers[k].label).join(' · '));
+    // Judul sendiri; pilihan layer tampil sebagai baris ringkas di bawahnya.
     const header = `
       <div class="mp-header">
         <span class="mp-title">🧭 ATRBPN</span>
-        <span class="mp-aktif" title="${aktifList}">Aktif: ${aktifList}</span>
         <button class="mp-close" onclick="MapPopup.hide()" title="Tutup">✕</button>
+      </div>
+      <div class="mp-layer-options" aria-label="Layer ATR/BPN">
+        ${[['rtrp','RTRW Provinsi'],['rtrw','RTRW Kabupaten'],['lsd','LSD'],['kp2b','KP2B']].map(([key,label]) =>
+          `<span class="mp-layer-chip${active.includes(key) ? ' is-active' : ''}">${active.includes(key) ? '✓ ' : ''}${label}</span>`).join('')}
       </div>`;
 
     // Preview sebelum data benar-benar tampil: satu baris loading penuh
@@ -689,6 +705,30 @@ const AtrbpnLayers = {
     });
   },
 
+  // ── Fallback sumber tile RTRW Kab/Kota ────────────────────────────────
+  // Pemicu: ≥6 tileerror berturut-turut tanpa satu pun tile sukses di
+  // antaranya (tiap tile sudah di-retry 2x oleh attachTileRetry). Tile
+  // 200-tapi-kosong TIDAK memicu tileerror, jadi sumber yang sehat (mis.
+  _rtrwProbed: true,
+  // URL probe sumber #0: GetMap 8×8 px (murah) ke WMS gistaru endpoint HAR.
+  _probeRtrwUrl() {
+    const base = this._gistaruBase();
+    if (!base) return '';
+    return base + '/interoppublic/api/wms/' + RTRW_UUID +
+      '?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&FORMAT=image%2Fpng&TRANSPARENT=true' +
+      '&LAYERS=' + encodeURIComponent(RTRW_LAYER) + '&STYLES=&CRS=EPSG:3857&WIDTH=8&HEIGHT=8&BBOX=0,0,1000,1000';
+  },
+  async _probeRtrwOk() {
+    const url = this._probeRtrwUrl();
+    if (!url) return false;
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = setTimeout(() => { try { ctrl && ctrl.abort(); } catch (e) { /* abaikan */ } }, PROBE_TIMEOUT_MS);
+    try {
+      const r = await fetch(url, ctrl ? { signal: ctrl.signal } : {});
+      return !!r.ok;
+    } catch (e) { return false; } // gagal / dibatalkan → sumber #0 dianggap mati
+    finally { clearTimeout(timer); }
+  },
   _apply(key) {
     const entry = this._layers[key];
     if (!entry.layer) return; // layer tak tersedia (tanpa proxy)
