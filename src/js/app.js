@@ -164,11 +164,11 @@ const App = {
       else ImageOverlayMgr.open();
     });
 
-    bindClick('dt-point', () => MapManager.toggleDraw('point'));
-    bindClick('dt-line', () => MapManager.toggleDraw('line'));
-    bindClick('dt-poly', () => MapManager.toggleDraw('poly'));
-    bindClick('dt-rect', () => MapManager.toggleDraw('rect'));
-    bindClick('dt-circle', () => MapManager.toggleDraw('circle'));
+    bindClick('dt-point', () => MobileUI._isMobile() ? MobileUI.selectDrawType('point') : MapManager.toggleDraw('point'));
+    bindClick('dt-line', () => MobileUI._isMobile() ? MobileUI.selectDrawType('line') : MapManager.toggleDraw('line'));
+    bindClick('dt-poly', () => MobileUI._isMobile() ? MobileUI.selectDrawType('poly') : MapManager.toggleDraw('poly'));
+    bindClick('dt-rect', () => MobileUI._isMobile() ? MobileUI.selectDrawType('rect') : MapManager.toggleDraw('rect'));
+    bindClick('dt-circle', () => MobileUI._isMobile() ? MobileUI.selectDrawType('circle') : MapManager.toggleDraw('circle'));
 
     bindClick('tb-zoom-all', () => MapManager.zoomToAll());
     bindClick('btn-zoom-in', () => MapManager.zoomIn());
@@ -939,6 +939,7 @@ LoginGate.init();
     }],
     ['mm-import-url', () => UI.showImportURLModal()],
     ['mm-export', () => UI.showExportModal()],
+    ['mm-print', () => Exporter.showPrintPanel()],
     ['mm-atrbpn', () => AtrbpnLayers.showPanel(false)],
     ['mm-atr-search', openAtrSearchMenu],
     ['mm-fit-all', () => MapManager.zoomToAll()],
@@ -954,13 +955,11 @@ LoginGate.init();
     document.getElementById('sidebar-left')?.classList.add('mobile-open');
     layersBackdrop?.classList.add('open');
   };
-  const mmLayersBtn = document.getElementById('mm-layers');
-  if (mmLayersBtn) mmLayersBtn.addEventListener('click', () => {
-    runAfterMenuClose(() => {
-      const sb = document.getElementById('sidebar-left');
-      if (sb && sb.classList.contains('mobile-open')) closeLayersOverlay();
-      else openLayersOverlay();
-    });
+  const mbLayersBtn = document.getElementById('mb-layers');
+  if (mbLayersBtn) mbLayersBtn.addEventListener('click', () => {
+    const sidebar = document.getElementById('sidebar-left');
+    if (sidebar?.classList.contains('mobile-open')) closeLayersOverlay();
+    else openLayersOverlay();
   });
   if (layersBackdrop) layersBackdrop.addEventListener('click', closeLayersOverlay);
 
@@ -1011,6 +1010,8 @@ LoginGate.init();
     el.style.display = 'flex';
   };
   menuAction('mm-about', openAboutModal);
+  menuAction('mm-guide', () => window.GuidePanel?.open());
+  document.getElementById('about-open-guide')?.addEventListener('click', () => window.GuidePanel?.open());
 
   // ── Administrator & Logout (mantan isi panel Pengaturan, tombol ⚙ dihapus) ──
   menuAction('mm-admin', () => window.AdminPanel?.open());

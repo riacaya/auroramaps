@@ -9,9 +9,16 @@
 const Exporter = {
   _cleanExportCollection(collection) {
     if (!collection?.features) return collection;
-    return { ...collection, features: collection.features.map((feature, index) => ({
-      ...feature, properties: featureExportRow(feature, index)
-    })) };
+    return { ...collection, features: collection.features.map((feature, index) => {
+      const properties = featureExportRow(feature, index);
+      const circleRadius = LayerManager._circleRadiusMeters(feature);
+      if (circleRadius) {
+        properties._drawType = 'circle';
+        properties.radius_m = circleRadius;
+        properties.radius = Utils.formatDist(circleRadius);
+      }
+      return { ...feature, properties };
+    }) };
   },
 
   exportGeoJSON(layerId, filename) {

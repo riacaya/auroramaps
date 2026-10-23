@@ -63,7 +63,9 @@ const Utils = {
         props['luas_poligon'] = Utils.formatArea(Utils.polygonArea(ring));
       } else if (type === 'circle') {
         const r = layer.getRadius();
+        props['radius_m'] = r;
         props['radius'] = Utils.formatDist(r);
+        props['keliling'] = Utils.formatDist(2 * Math.PI * r);
         props['luas_poligon'] = Utils.formatArea(Math.PI * r * r);
       }
     } catch (err) {}
@@ -100,6 +102,14 @@ const Utils = {
         });
         p.keliling = Utils.formatDist(totalPerim);
         p.luas_poligon = Utils.formatArea(totalArea);
+      } else if (geom.type === 'Point' && String(feature.properties?._drawType || feature.properties?.shape || '').toLowerCase() === 'circle') {
+        const radius = Number(feature.properties?.radius_m);
+        if (Number.isFinite(radius) && radius > 0) {
+          p.radius_m = radius;
+          p.radius = Utils.formatDist(radius);
+          p.keliling = Utils.formatDist(2 * Math.PI * radius);
+          p.luas_poligon = Utils.formatArea(Math.PI * radius * radius);
+        }
       }
     } catch(e) {}
     return p;

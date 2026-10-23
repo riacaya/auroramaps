@@ -24,7 +24,6 @@ const MapPopup = {
    */
   show(html) {
     this._ensureEl();
-    this._el.classList.toggle('mp-wide', String(html).includes('class="mp-zones"'));
     this._el.innerHTML = html;
     this._el.style.opacity = '0';
     this._el.style.transform = 'translateY(8px)';
