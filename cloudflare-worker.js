@@ -41,7 +41,8 @@ function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,HEAD,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Authorization,Content-Type,X-Client-Pubkey,X-Ticket-Id,X-Timestamp",
+    "Access-Control-Allow-Headers": "Authorization,Content-Type,Range,If-Range,If-None-Match,X-Client-Pubkey,X-Ticket-Id,X-Timestamp",
+    "Access-Control-Expose-Headers": "Accept-Ranges,Content-Range,Content-Length,ETag,Cache-Control",
     "Access-Control-Max-Age": "86400"
   };
 }
@@ -52,6 +53,46 @@ var bhumi_tile_worker_default = {
     const path = url.pathname;
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders() });
+    }
+    if (path === "/parcel-registry") {
+      if (request.method !== "GET" && request.method !== "HEAD") {
+        return new Response("method not allowed", { status: 405, headers: corsHeaders() });
+      }
+      const upstream = await fetch("https://api.studiopolygon.id/bhumi-integration/registry.json", {
+        method: request.method,
+        headers: { Accept: "application/json" }
+      });
+      const responseHeaders = new Headers(upstream.headers);
+      Object.entries(corsHeaders()).forEach(([key, value]) => responseHeaders.set(key, value));
+      return new Response(upstream.body, {
+        status: upstream.status,
+        statusText: upstream.statusText,
+        headers: responseHeaders
+      });
+    }
+    // Fixed, allowlisted relay for StudioPolygon PMTiles shards. This is
+    // needed because the public shard host does not grant CORS to app origins.
+    const parcelShardMatch = path.match(/^\/parcel-shards\/([a-z0-9-]{1,80}\.pmtiles)$/i);
+    if (parcelShardMatch) {
+      if (request.method !== "GET" && request.method !== "HEAD") {
+        return new Response("method not allowed", { status: 405, headers: corsHeaders() });
+      }
+      const upstreamHeaders = new Headers({ Accept: "application/octet-stream" });
+      for (const name of ["Range", "If-Range", "If-None-Match"]) {
+        const value = request.headers.get(name);
+        if (value) upstreamHeaders.set(name, value);
+      }
+      const upstream = await fetch(
+        "https://api.studiopolygon.id/bhumi-integration/shards/" + parcelShardMatch[1],
+        { method: request.method, headers: upstreamHeaders }
+      );
+      const responseHeaders = new Headers(upstream.headers);
+      Object.entries(corsHeaders()).forEach(([key, value]) => responseHeaders.set(key, value));
+      return new Response(upstream.body, {
+        status: upstream.status,
+        statusText: upstream.statusText,
+        headers: responseHeaders
+      });
     }
     if (path === GISTARU_RTRONLINE_PATH) {
       if (request.method !== "GET") {
