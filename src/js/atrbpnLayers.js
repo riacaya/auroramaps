@@ -77,8 +77,6 @@ const GISTARU_JATENG_BOUNDS = { west: 108.5416, south: -8.2119, east: 111.6994, 
 const BHUMI_RTRW_PATH = '/expapi/rtrw/wms';
 const BHUMI_RTRW_LAYER = 'petabpn:rtrw_kabkot_merge';
 const BHUMI_RTRW_STYLE = 'petabpn:highlight_rtrw_kabkot';
-const BHUMI_RTRP_LAYER = 'rtrw_jateng';
-const BHUMI_RTRP_STYLE = 'rtrw_jateng_nomin';
 const BHUMI_RDTR_LAYER = 'rdtr_purwokerto';
 const BHUMI_RDTR_STYLE = 'rdtr_purwokerto_nomin';
 const BHUMI_RDTR_BOUNDS = { west: 109.1915283, south: -7.5001984, east: 109.2840882, north: -7.3671789 };
@@ -120,10 +118,11 @@ const AtrbpnLayers = {
     const xyz = (c, ts) => G + '/layers/tms/public/' + c + '/{z}/{x}/{y}/?tileSize=' + ts;
     const bhumiBase = this._resolveBhumiBase();
 
-    // BHUMI menjadi sumber utama RTRW kab/kota dan RTR provinsi Jawa Tengah.
-    // GISTARU dipakai sebagai fallback atribut jika endpoint BHUMI ditolak.
+    // BHUMI menjadi sumber utama identify RTRW kab/kota. Layer provinsi
+    // resmi tetap dari GISTARU; rtrw_jateng di BHUMI adalah data tematik
+    // tutupan lahan/kerawanan, bukan rencana tata ruang provinsi.
     const gBase = this._gistaruBase();
-    const RTRP_URL = bhumiBase ? bhumiBase + BHUMI_RTRW_PATH : ((gBase ? gBase + '/interoppublic/api/wms/' : GISTARU_WMS) + RTRP_UUID);
+    const RTRP_URL = (gBase ? gBase + '/interoppublic/api/wms/' : GISTARU_WMS) + RTRP_UUID;
     const RTRW_URL = bhumiBase ? bhumiBase + BHUMI_RTRW_PATH : ((gBase ? gBase + '/interoppublic/api/wms/' : GISTARU_WMS) + RTRW_UUID);
 
     // Pane terpisah per layer agar urutannya stabil (belakang → depan):
@@ -252,11 +251,9 @@ const AtrbpnLayers = {
       bidang: bidangEntry,
       lsd:  { label: 'LSD Nasional',      on: false, opacity: 0.8, layer: attachTileRetry(L.tileLayer(xyz('269_lsd_', 1024), LIGHT('atrbpnLsdPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false }))) },
       rtrp: { label: 'RTRW Provinsi Jawa Tengah', on: false, opacity: 0.7, layer: attachTileRetry(L.tileLayer.wms(RTRP_URL, LIGHT('atrbpnRtrpPane', 21, {
-              layers: bhumiBase ? BHUMI_RTRP_LAYER : RTRP_LAYER,
-              styles: bhumiBase ? BHUMI_RTRP_STYLE : '',
-              version: bhumiBase ? '1.1.1' : '1.3.0',
+              layers: RTRP_LAYER, styles: '', version: '1.3.0',
               crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true,
-              format: 'image/png', transparent: true, attribution: 'RTR Jawa Tengah (BHUMI)'
+              format: 'image/png', transparent: true, attribution: 'RTR Provinsi (GISTARU)'
             }))) },
       rtrw: { label: 'RTRW Kab/Kota', on: false, opacity: 0.7, layer: rtrwGroup },
       hutan: hutanEntry
@@ -432,24 +429,16 @@ const AtrbpnLayers = {
     return b || g || { rows: [], count: 0 };
   },
 
-  // Layer provinsi BHUMI yang tersedia di data ini khusus Jawa Tengah.
-  // Bila BHUMI ditolak/kosong, coba GISTARU provinsi sebagai fallback.
+  // Endpoint BHUMI belum menyediakan layer RTR provinsi yang terverifikasi.
+  // Untuk klik provinsi, pakai layer resmi GISTARU dalam batas Jawa Tengah.
   async _gfiProvZone(lat, lng) {
     if (!this._isGistaruJatengPoint(lat, lng)) return { rows: [], count: 0, skip: true };
-    const b = this._resolveBhumiBase();
-    if (b) {
-      const primary = await this._gfiBhumiWms(lat, lng, BHUMI_RTRP_LAYER, BHUMI_RTRP_STYLE, b);
-      if (primary && !primary.error && primary.count > 0) {
-        primary.rows = primary.rows.map(row => Object.assign({ _sumber: 'BHUMI RTR Jawa Tengah' }, row));
-        return primary;
-      }
-    }
     const fallback = await this._gfiZone(RTRP_UUID, RTRP_LAYER, lat, lng);
     if (fallback && !fallback.error && fallback.count > 0) {
       fallback.rows = fallback.rows.map(row => Object.assign({ _sumber: 'GISTARU RTR Provinsi Jawa Tengah' }, row));
       return fallback;
     }
-    return fallback && fallback.error ? fallback : { rows: [], count: 0, error: 'BHUMI RTR Jawa Tengah tidak tersedia' };
+    return fallback || { rows: [], count: 0 };
   },
 
   _isGistaruJatengPoint(lat, lng) {
@@ -701,12 +690,10 @@ const AtrbpnLayers = {
     const provRes = zoneRes && (zoneRes.pending ? zoneRes : zoneRes.prov);
     const provSource = !zoneRes?.pending && !provRes?.error
       ? provRes?.rows?.find(o => o._sumber)?._sumber : '';
-    const provTitle = provSource === 'BHUMI RTR Jawa Tengah'
-      ? 'RTRW Provinsi Jawa Tengah (BHUMI)'
-      : provSource === 'GISTARU RTR Online Jateng'
+    const provTitle = provSource === 'GISTARU RTR Online Jateng'
         ? 'RTR Jawa Tengah (fallback RTR Online)'
         : provSource === 'GISTARU RTR Provinsi Jawa Tengah'
-          ? 'RTR Provinsi Jawa Tengah (fallback)'
+          ? 'RTR Provinsi Jawa Tengah'
           : 'Zona RTR Provinsi';
     const provSection = wantProv ? section(provTitle, provRes) : '';
     const kabSection = wantKab ? section('Zona RTRW Kab/Kota',
