@@ -340,7 +340,7 @@ const AtrbpnLayers = {
     if (want.kab) this._gfiKabZone(lat, lng).then(r => settle('kab', r));
     if (want.rdtr) this._gfiBhumiRdtr(lat, lng).then(r => settle('rdtr', r));
     // GISLINER only exposes LSD as raster tiles in the supplied HAR.
-    if (want.lsd) Promise.resolve({ rows: [], count: 0, unavailable: 'HAR GISLINER hanya merekam tile LSD; endpoint identify tidak tersedia di rekaman ini.' }).then(r => settle('lsd', r));
+    if (want.lsd) Promise.resolve({ rows: [], count: 0, unavailable: 'Endpoint identify LSD tidak ditemukan di HAR; hanya tile peta yang tersedia.' }).then(r => settle('lsd', r));
     if (want.kp2b) this._gfiGislinerWfs('235', 'kp2b', lat, lng).then(r => settle('kp2b', r));
   },
 
@@ -420,6 +420,14 @@ const AtrbpnLayers = {
   async _gfiKabZone(lat, lng) {
     const b = await this._gfiBhumiRtrw(lat, lng);
     if (b && !b.error && b.count > 0) return b;
+    // GISLINER WFS returns the actual RTRW polygon attributes and exposes
+    // Perda/legal metadata when present; unlike the raster TMS it is usable
+    // as identify source. Its path was captured in the supplied GISLINER HAR.
+    const l = await this._gfiGislinerWfs('212', 'rtrwkbpt', lat, lng);
+    if (l && !l.error && l.count > 0) {
+      l.rows = l.rows.map(row => Object.assign({ _sumber: 'GISLINER RTRW Kab/Kota' }, row));
+      return l;
+    }
     const g = await this._gfiGistaruRtrw(lat, lng);
     if (g && !g.error && g.count > 0) return g;
     if (g && g.error) {
@@ -658,7 +666,7 @@ const AtrbpnLayers = {
       const unavailable = (why) => `<div class="mp-cand">${title}</div><table><tr><td>⚠ ${why}</td></tr></table>`;
       if (res.pending) return `<div class="mp-cand">${title} — membaca…</div>`;
       if (res.error) return unavailable(`Gagal membaca: ${esc(res.error)}`);
-      if (res.unavailable) return unavailable(res.unavailable);
+      if (res.unavailable) return unavailable(esc(res.unavailable));
       const f = (res.rows || [])[0];
       if (!f) return unavailable('Data tidak tersedia di titik ini');
       const rows = Object.entries(f)
@@ -718,11 +726,9 @@ const AtrbpnLayers = {
 
     // "Aktif: …" kini menempel di baris header (bukan baris terpisah sendiri)
     // — hemat satu baris tinggi popup (permintaan 5 Okt 2026).
-    const aktifList = esc(active.map(k => this._layers[k].label).join(' · '));
     const header = `
       <div class="mp-header">
-        <span class="mp-title">🧭 ATRBPN</span>
-        <span class="mp-aktif" title="${aktifList}">Aktif: ${aktifList}</span>
+        <span class="mp-title"><span class="mp-title-icon" aria-hidden="true">🧭</span><span>ATRBPN</span></span>
         <button class="mp-close" onclick="MapPopup.hide()" title="Tutup">✕</button>
       </div>`;
 
