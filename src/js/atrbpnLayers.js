@@ -268,10 +268,6 @@ const AtrbpnLayers = {
     if (State.activeDrawType) return;   // mode menggambar → klik dipakai vertex
     if (MapManager.isMeasuring) return; // mode pengukuran
     const active = this._activeKeys();
-    if (!active.length) {
-      MapPopup.hide();
-      return; // klik baca poligon manual (perilaku lama)
-    }
     // Bidang aktif → BhumiIdentify yang mengelola popup (fitur ditemukan →
     // popup bidang; tidak ada / gagal → dia yang menutup/Memberi toast).
     const bidangEntry = this._layers && this._layers.bidang;
@@ -279,35 +275,25 @@ const AtrbpnLayers = {
         typeof BhumiIdentify !== 'undefined' && BhumiIdentify._clickIdentifyEnabled) return;
 
     const { lat, lng } = e.latlng;
-    // Info zona MENGIKUTI layer ATRBPN yang dicentang (14 Okt 2026):
-    //   ☑ RTR Provinsi Jawa → kolom provinsi saja (GFI GISTARU);
-    //   ☑ RTRW Kab/Kota     → kolom kab/kota saja (GFI bhumi dulu);
-    //   ☑ keduanya          → dua kolom berdampingan;
-    //   tanpa keduanya (mis. hanya LSD/SHGU) → popup tanpa kolom zona,
-    //   dan GFI zona TIDAK dipanggil sama sekali (hemat: rantai gistaru
-    //   yang 15+15 dtk saat server tak terjangkau jadi tidak dijalankan).
-    const want = {
-      prov: active.includes('rtrp'), kab: active.includes('rtrw'),
-      lsd: active.includes('lsd'), kp2b: active.includes('kp2b'),
-      rdtr: (active.includes('rtrp') || active.includes('rtrw')) && this._isBhumiRdtrPoint(lat, lng)
-    };
-    want.any = want.prov || want.kab || want.rdtr || want.lsd || want.kp2b;
+    // Empat kolom identify selalu dimuat meski overlay visual tidak dicentang.
+    // Klik poligon manual berhenti sebelum event map, dan bidang di atas sudah
+    // didelegasikan ke BhumiIdentify agar popup fitur tetap mendapat prioritas.
+    const want = { prov: true, kab: true, lsd: true, kp2b: true };
     const seq = (this._clickSeq = (this._clickSeq || 0) + 1);
     // Kartu loading penuh "Load ATRBPN……" hanya bila ada kolom zona yang
     // diminta; tanpa zona → langsung kartu final (header + koordinat).
     MapPopup.show(this._zonePopupHtml(
-      active, want.any ? { pending: true } : null, lat, lng));
+      active, { pending: true }, lat, lng));
     // Render bertahap (14 Okt 2026): tiap GFI berjalan paralel TETAPI kartu
     // popup diperbarui setiap hasil masuk — bagian RTRW (WMS bhumi via worker,
     // ±2–4 dtk) langsung tampil tanpa menunggu rantai GISTARU (bisa 15+15 dtk
     // saat server tak terjangkau dari jaringan cloud). Tiap hasil memakai guard
     // seq yang sama seperti pola Promise.all lama.
     const state = {};
-    if (want.prov) state.prov = { pending: true };
-    if (want.kab) state.kab = { pending: true };
-    if (want.rdtr) state.rdtr = { pending: true };
-    if (want.lsd) state.lsd = { pending: true };
-    if (want.kp2b) state.kp2b = { pending: true };
+    state.prov = { pending: true };
+    state.kab = { pending: true };
+    state.lsd = { pending: true };
+    state.kp2b = { pending: true };
     const settle = (key, res) => {
       state[key] = res || { rows: [], count: 0, error: 'gagal' };
       // Buang hasil lama HANYA bila kartu pending sudah tidak tampil / sudah
@@ -338,10 +324,8 @@ const AtrbpnLayers = {
     };
     if (want.prov) this._gfiProvZone(lat, lng).then(r => settle('prov', r));
     if (want.kab) this._gfiKabZone(lat, lng).then(r => settle('kab', r));
-    if (want.rdtr) this._gfiBhumiRdtr(lat, lng).then(r => settle('rdtr', r));
-    // GISLINER only exposes LSD as raster tiles in the supplied HAR.
-    if (want.lsd) Promise.resolve({ rows: [], count: 0, unavailable: 'Endpoint identify LSD tidak ditemukan di HAR; hanya tile peta yang tersedia.' }).then(r => settle('lsd', r));
-    if (want.kp2b) this._gfiGislinerWfs('235', 'kp2b', lat, lng).then(r => settle('kp2b', r));
+    this._gfiGislinerWfs('269', 'lsd', lat, lng).then(r => settle('lsd', r));
+    this._gfiGislinerWfs('235', 'kp2b', lat, lng).then(r => settle('kp2b', r));
   },
 
   // GISLINER WFS; path and query shape follow requests captured in the HAR.
@@ -414,12 +398,9 @@ const AtrbpnLayers = {
     return last;
   },
 
-  // Zona RTRW Kab/Kota — BHUMI nasional tetap utama. Bila ditolak/kosong,
-  // gunakan Identify RTR Online untuk atribut legal; GISLINER TMS hanya
-  // menjadi fallback tampilan peta, bukan sumber atribut/Perda.
+  // Identify kabupaten: utamakan WFS GISLINER yang terhubung dengan layer
+  // peta kabupaten; lanjutkan ke BHUMI lalu RTR Online bila tidak ada fitur.
   async _gfiKabZone(lat, lng) {
-    const b = await this._gfiBhumiRtrw(lat, lng);
-    if (b && !b.error && b.count > 0) return b;
     // GISLINER WFS returns the actual RTRW polygon attributes and exposes
     // Perda/legal metadata when present; unlike the raster TMS it is usable
     // as identify source. Its path was captured in the supplied GISLINER HAR.
@@ -428,6 +409,8 @@ const AtrbpnLayers = {
       l.rows = l.rows.map(row => Object.assign({ _sumber: 'GISLINER RTRW Kab/Kota' }, row));
       return l;
     }
+    const b = await this._gfiBhumiRtrw(lat, lng);
+    if (b && !b.error && b.count > 0) return b;
     const g = await this._gfiGistaruRtrw(lat, lng);
     if (g && !g.error && g.count > 0) return g;
     if (g && g.error) {
@@ -440,7 +423,6 @@ const AtrbpnLayers = {
   // Endpoint BHUMI belum menyediakan layer RTR provinsi yang terverifikasi.
   // Untuk klik provinsi, pakai layer resmi GISTARU dalam batas Jawa Tengah.
   async _gfiProvZone(lat, lng) {
-    if (!this._isGistaruJatengPoint(lat, lng)) return { rows: [], count: 0, skip: true };
     const fallback = await this._gfiZone(RTRP_UUID, RTRP_LAYER, lat, lng);
     if (fallback && !fallback.error && fallback.count > 0) {
       fallback.rows = fallback.rows.map(row => Object.assign({ _sumber: 'GISTARU RTR Provinsi Jawa Tengah' }, row));
@@ -696,22 +678,15 @@ const AtrbpnLayers = {
     // (Field diverifikasi via curl GFI text/html 5 Okt 2026: prov = namobj/
     // wadmpr/nothpr/meta, kab = + jnsrpr/wadmkk/wadmkc. WMS bhumi kabkot_merge
     // hanya mengisi namobj (dari keterangan) — kolom lain kosong → tak dirender.)
-    const wantProv = active.includes('rtrp');
-    const wantKab = active.includes('rtrw');
     const provRes = zoneRes && (zoneRes.pending ? zoneRes : zoneRes.prov);
-    const provSource = !zoneRes?.pending && !provRes?.error
-      ? provRes?.rows?.find(o => o._sumber)?._sumber : '';
     const provTitle = 'RTRW Propinsi';
-    const provSection = wantProv ? section(provTitle, provRes) : '';
-    const kabSection = wantKab ? section('RTRW Kabupaten',
-      zoneRes && (zoneRes.pending ? zoneRes : zoneRes.kab)) : '';
-    const wantRdtr = (wantProv || wantKab) && this._isBhumiRdtrPoint(lat, lng);
-    const lsdSection = active.includes('lsd') ? section('LSD',
-      zoneRes && (zoneRes.pending ? zoneRes : zoneRes.lsd)) : '';
-    const kp2bSection = active.includes('kp2b') ? section('KP2B',
-      zoneRes && (zoneRes.pending ? zoneRes : zoneRes.kp2b)) : '';
-    const rdtrSection = wantRdtr ? section('Zona RDTR Purwokerto',
-      zoneRes && (zoneRes.pending ? zoneRes : zoneRes.rdtr)) : '';
+    const provSection = section(provTitle, provRes);
+    const kabSection = section('RTRW Kabupaten',
+      zoneRes && (zoneRes.pending ? zoneRes : zoneRes.kab));
+    const lsdSection = section('LSD',
+      zoneRes && (zoneRes.pending ? zoneRes : zoneRes.lsd));
+    const kp2bSection = section('KP2B',
+      zoneRes && (zoneRes.pending ? zoneRes : zoneRes.kp2b));
 
     // Endpoint kawasan hutan sengaja tidak dipanggil (server mati);
     // bidang tidak muncul di sini lagi — bila aktif, klik ditangani BhumiIdentify.
@@ -728,29 +703,14 @@ const AtrbpnLayers = {
         <button class="mp-close" onclick="MapPopup.hide()" title="Tutup">✕</button>
       </div>`;
 
-    // Preview sebelum data benar-benar tampil: satu baris loading penuh
-    // "Load ATRBPN……" (berkedip, lihat CSS .mp-loading) — dua kolom hanya
-    // muncul setelah hasil GFI provinsi & kabupaten masuk.
-    if (zoneRes && zoneRes.pending) {
-      return `
-        ${header}
-        <div class="mp-cand mp-loading">Load ATRBPN……</div>
-        ${notes}
-        <div class="mp-coord">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
-      `;
-    }
-
-    // Hanya kolom yang berisi yang dirender (flex .mp-zone-col = 1/2 lebar per
-    // anak → satu kolom tunggal otomatis melebar penuh, tanpa celah kosong).
-    const zoneCols = [kabSection, provSection, lsdSection, kp2bSection].filter(Boolean)
+    // Keempat kolom langsung tampil termasuk ketika endpoint masih membaca.
+    const zoneCols = [provSection, kabSection, lsdSection, kp2bSection].filter(Boolean)
       .map(h => `<div class="mp-zone-col">${h}</div>`).join('');
     const zones = zoneCols ? `<div class="mp-zones">${zoneCols}</div>` : '';
-    const otherZones = rdtrSection ? `<div class="mp-zones mp-zones-extra"><div class="mp-zone-col">${rdtrSection}</div></div>` : '';
 
     return `
       ${header}
       ${zones}
-      ${otherZones}
       ${notes}
       <div class="mp-coord">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
     `;
