@@ -668,7 +668,7 @@ const AtrbpnLayers = {
       if (res.error) return unavailable(`Gagal membaca: ${esc(res.error)}`);
       if (res.unavailable) return unavailable(esc(res.unavailable));
       const f = (res.rows || [])[0];
-      if (!f) return unavailable('Data tidak tersedia di titik ini');
+      if (!f) return unavailable('Data belum tersedia');
       const rows = Object.entries(f)
         .filter(([key, value]) => key && value != null && String(value).trim() !== '')
         .map(([key, value]) => {
@@ -685,7 +685,7 @@ const AtrbpnLayers = {
           return `<tr><th>${esc(fieldLabel(key))}</th><td>${rendered}</td></tr>`;
         })
         .join('');
-      if (!rows) return unavailable('Data tidak tersedia di titik ini');
+      if (!rows) return unavailable('Data belum tersedia');
       const more = res.count > 1 ? `<tr><th>Zona lain</th><td>+${res.count - 1}</td></tr>` : '';
       return `<div class="mp-cand">${title}</div><table>${rows}${more}</table>`;
     };
@@ -701,18 +701,14 @@ const AtrbpnLayers = {
     const provRes = zoneRes && (zoneRes.pending ? zoneRes : zoneRes.prov);
     const provSource = !zoneRes?.pending && !provRes?.error
       ? provRes?.rows?.find(o => o._sumber)?._sumber : '';
-    const provTitle = provSource === 'GISTARU RTR Online Jateng'
-        ? 'RTR Jawa Tengah (fallback RTR Online)'
-        : provSource === 'GISTARU RTR Provinsi Jawa Tengah'
-          ? 'RTR Provinsi Jawa Tengah'
-          : 'Zona RTR Provinsi';
+    const provTitle = 'RTRW Propinsi';
     const provSection = wantProv ? section(provTitle, provRes) : '';
-    const kabSection = wantKab ? section('Zona RTRW Kab/Kota',
+    const kabSection = wantKab ? section('RTRW Kabupaten',
       zoneRes && (zoneRes.pending ? zoneRes : zoneRes.kab)) : '';
     const wantRdtr = (wantProv || wantKab) && this._isBhumiRdtrPoint(lat, lng);
-    const lsdSection = active.includes('lsd') ? section('LSD — Lahan Sawah Dilindungi',
+    const lsdSection = active.includes('lsd') ? section('LSD',
       zoneRes && (zoneRes.pending ? zoneRes : zoneRes.lsd)) : '';
-    const kp2bSection = active.includes('kp2b') ? section('KP2B — Kawasan Pertanian Pangan Berkelanjutan',
+    const kp2bSection = active.includes('kp2b') ? section('KP2B',
       zoneRes && (zoneRes.pending ? zoneRes : zoneRes.kp2b)) : '';
     const rdtrSection = wantRdtr ? section('Zona RDTR Purwokerto',
       zoneRes && (zoneRes.pending ? zoneRes : zoneRes.rdtr)) : '';
