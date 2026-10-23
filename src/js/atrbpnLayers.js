@@ -118,12 +118,10 @@ const AtrbpnLayers = {
     const xyz = (c, ts) => G + '/layers/tms/public/' + c + '/{z}/{x}/{y}/?tileSize=' + ts;
     const bhumiBase = this._resolveBhumiBase();
 
-    // BHUMI menjadi sumber utama identify RTRW kab/kota. Layer provinsi
-    // resmi tetap dari GISTARU; rtrw_jateng di BHUMI adalah data tematik
-    // tutupan lahan/kerawanan, bukan rencana tata ruang provinsi.
+    // Peta RTRW kab/kota memakai tile GISLINER agar tidak tertutup layer
+    // tematik BHUMI. Klik tetap mengidentifikasi atribut lewat BHUMI dahulu.
     const gBase = this._gistaruBase();
     const RTRP_URL = (gBase ? gBase + '/interoppublic/api/wms/' : GISTARU_WMS) + RTRP_UUID;
-    const RTRW_URL = bhumiBase ? bhumiBase + BHUMI_RTRW_PATH : ((gBase ? gBase + '/interoppublic/api/wms/' : GISTARU_WMS) + RTRW_UUID);
 
     // Pane terpisah per layer agar urutannya stabil (belakang → depan):
     //   LSD (300) < RTR Provinsi (305) < RTRW (310) < Bidang Tanah (320)
@@ -223,29 +221,10 @@ const AtrbpnLayers = {
     }));
     else shguEntry.note = 'perlu auth key — gunakan ?shguAuthKey=...';
 
-    const rtrwBhumi = attachTileRetry(L.tileLayer.wms(RTRW_URL, LIGHT('atrbpnRtrwPane', 21, {
-      layers: bhumiBase ? BHUMI_RTRW_LAYER : RTRW_LAYER,
-      styles: bhumiBase ? BHUMI_RTRW_STYLE : '',
-      version: bhumiBase ? '1.1.1' : '1.3.0',
-      crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true,
-      format: 'image/png', transparent: true, attribution: 'RTRW (BHUMI)'
-    })));
-    const rtrwGisliner = L.tileLayer(xyz('212_rtrwkbpt', 256), LIGHT('atrbpnRtrwPane', 18, {
+    const rtrwGisliner = attachTileRetry(L.tileLayer(xyz('212_rtrwkbpt', 256), LIGHT('atrbpnRtrwPane', 18, {
       tileSize: 256, attribution: 'RTRW Kabupaten/Kota (GISLINER)'
-    }));
-    const rtrwGroup = L.layerGroup([rtrwBhumi]);
-    rtrwGroup._bhumiPrimary = true;
-    rtrwGroup.setOpacity = opacity => { rtrwBhumi.setOpacity(opacity); rtrwGisliner.setOpacity(opacity); return rtrwGroup; };
-    let rtrwFallbackUsed = false;
-    let rtrwTileErrors = 0;
-    rtrwBhumi.on('tileerror', () => {
-      if (rtrwFallbackUsed || !bhumiBase || ++rtrwTileErrors < 3) return;
-      rtrwFallbackUsed = true;
-      rtrwGroup._bhumiPrimary = false;
-      rtrwGroup.removeLayer(rtrwBhumi);
-      rtrwGroup.addLayer(rtrwGisliner);
-      rtrwGroup.setOpacity(this._layers?.rtrw?.opacity ?? 0.7);
-    });
+    })));
+    rtrwGisliner.setOpacity(0.7);
 
     this._layers = {
       bidang: bidangEntry,
@@ -255,7 +234,7 @@ const AtrbpnLayers = {
               crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true,
               format: 'image/png', transparent: true, attribution: 'RTR Provinsi (GISTARU)'
             }))) },
-      rtrw: { label: 'RTRW Kab/Kota', on: false, opacity: 0.7, layer: rtrwGroup },
+      rtrw: { label: 'RTRW Kab/Kota (GISLINER)', on: false, opacity: 0.7, layer: rtrwGisliner },
       hutan: hutanEntry
       ,shgu: shguEntry
     };
