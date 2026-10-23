@@ -213,13 +213,8 @@ const MapManager = {
           const updatedGeoJSON = editedLeafletLayer.toGeoJSON();
           if (editedLeafletLayer.feature) {
             editedLeafletLayer.feature.geometry = updatedGeoJSON.geometry;
-            const drawType = editedLeafletLayer.feature.properties?._drawType || '';
-            Object.assign(editedLeafletLayer.feature.properties, Utils.calcLayerMeasurements(editedLeafletLayer, drawType));
             const idx = entry.geoJSON?.features?.indexOf(editedLeafletLayer.feature);
-            if (idx >= 0) {
-              entry.geoJSON.features[idx].geometry = updatedGeoJSON.geometry;
-              Object.assign(entry.geoJSON.features[idx].properties, Utils.calcLayerMeasurements(editedLeafletLayer, drawType));
-            }
+            if (idx >= 0) entry.geoJSON.features[idx].geometry = updatedGeoJSON.geometry;
           }
            LayerManager.refreshEdgeLabels(entry);
            LayerManager.refreshFeatureLabels(entry);

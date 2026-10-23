@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auroramaps-shell-v4';
+const CACHE_NAME = 'auroramaps-shell-v3';
 const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './assets/auroramaps-192.png', './assets/auroramaps-512.png'];
 
 self.addEventListener('install', event => {

@@ -13,7 +13,7 @@ const AttrTable = {
   COLUMNS: [
     ['no', 'No'], ['layer', 'Layer'], ['geometry', 'Geometri'], ['name', 'Nama'],
     ['deskripsi', 'Deskripsi'], ['nib', 'NIB'], ['shm', 'SHM'], ['luas', 'Luas'],
-    ['luas_poligon', 'Luas Poligon'], ['radius', 'Jari-jari'], ['keliling', 'Keliling'], ['keterangan', 'Keterangan'],
+    ['luas_poligon', 'Luas Poligon'], ['keliling', 'Keliling'], ['keterangan', 'Keterangan'],
     ['koordinat', 'Koordinat'], ['maps', 'Maps']
   ],
   // Kolom yang bisa diedit langsung di tabel (ala Excel) — sisanya otomatis/readonly
@@ -71,7 +71,6 @@ const AttrTable = {
       nib: p.nib || p.NIB || '',
       keliling: m.keliling || p.keliling || p.panjang || '',
       luas_poligon: m.luas_poligon || p.luas_poligon || '',
-      radius: m.radius || p.radius || p.radius_m || '',
       luas: p.luas || p.luas || '',
       maps: p.url || '',
       deskripsi: p.deskripsi || p.description || p.Description || '',

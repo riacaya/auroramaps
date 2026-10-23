@@ -55,8 +55,6 @@
   --header-bg: linear-gradient(120deg,#1d4ed8,#0f766e);
   --shadow: 0 3px 12px rgba(15,23,42,0.07);
 }
-
-
 /* Senja — identik dengan tema "Senja" app Cek-KTP */
 [data-theme="senja"] {
   --bg-base: #fff4e6;
@@ -422,108 +420,6 @@ body.is-admin #mm-admin { display: flex; }
   margin-bottom: 18px;
   line-height: 1.6;
 }
-.about-guide-link {
-  display: inline-block;
-  margin: 0 0 16px;
-  color: var(--text-accent);
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: none;
-  font-family: inherit;
-  background: none;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-}
-.about-guide-link:hover { text-decoration: underline; }
-.guide-card.about-card {
-  width: min(1040px, calc(100% - 24px));
-  max-width: none;
-  height: calc(100% - 24px);
-  max-height: none;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  text-align: left;
-  color: var(--text-primary);
-}
-.guide-panel-header {
-  flex: none;
-  padding: 16px 58px 14px 20px;
-  background: var(--bg-chrome);
-  border-bottom: 1px solid var(--border);
-}
-.guide-panel-title { color: var(--text-accent); font-size: 18px; font-weight: 750; line-height: 1.3; }
-.guide-panel-subtitle { margin-top: 3px; color: var(--text-secondary); font-size: 12px; }
-#guide-content.guide-panel-grid {
-  display: grid;
-  grid-template-columns: minmax(180px, 230px) minmax(0, 1fr);
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-#guide-content .toc {
-  position: static;
-  top: auto;
-  max-height: none;
-  overflow: auto;
-  margin: 0;
-  padding: 16px;
-  border: 0;
-  border-right: 1px solid var(--border);
-  border-radius: 0;
-  background: var(--bg-surface);
-  box-shadow: none;
-}
-#guide-content .toc strong { margin-bottom: 8px; color: var(--text-primary); font-size: 13px; }
-#guide-content .toc ol { padding-left: 18px; }
-#guide-content .toc li { margin: 5px 0; color: var(--text-secondary); font-size: 11px; line-height: 1.4; }
-#guide-content .toc a { color: var(--text-secondary); text-decoration: none; }
-#guide-content .toc a:hover, #guide-content .toc a:focus { color: var(--text-accent); text-decoration: underline; }
-#guide-content main {
-  min-width: 0;
-  overflow: auto;
-  padding: 20px 24px;
-  color: var(--text-primary);
-  background: var(--bg-panel);
-}
-#guide-content h2 { margin: 0 0 8px; padding-top: 14px; border-top: 1px solid var(--border); color: var(--text-accent); font-size: 18px; line-height: 1.35; scroll-margin-top: 12px; }
-#guide-content main > h2:first-of-type { border-top: 0; padding-top: 0; }
-#guide-content h3 { margin: 14px 0 6px; color: var(--text-primary); font-size: 15px; scroll-margin-top: 12px; }
-#guide-content p, #guide-content li { color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
-#guide-content p { margin: 8px 0 12px; }
-#guide-content li { margin: 4px 0; }
-#guide-content code { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 4px; padding: 1px 4px; color: var(--text-primary); }
-#guide-content strong { color: var(--text-primary); }
-#guide-content .table-wrap { overflow: auto; margin: 12px 0; }
-#guide-content table { width: 100%; border-collapse: collapse; font-size: 11px; }
-#guide-content th, #guide-content td { padding: 7px 8px; border: 1px solid var(--border); color: var(--text-secondary); text-align: left; vertical-align: top; }
-#guide-content th { background: var(--bg-surface); color: var(--text-primary); }
-.guide-panel-footer {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
-  padding: 8px 16px;
-  border-top: 1px solid var(--border);
-  background: var(--bg-chrome);
-  color: var(--text-secondary);
-  font-size: 11px;
-}
-.guide-panel-footer strong { color: var(--text-primary); }
-.guide-panel-footer a { color: inherit; text-decoration: none; }
-.guide-panel-footer a:hover { color: var(--text-accent); text-decoration: underline; }
-@media (max-width: 768px) {
-  .guide-card.about-card { width: calc(100% - 12px); height: calc(100% - 12px); border-radius: 14px; }
-  #guide-content.guide-panel-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(110px, 34%) minmax(0, 1fr); }
-  #guide-content .toc { padding: 9px 13px; border-right: 0; border-bottom: 1px solid var(--border); }
-  #guide-content .toc ol { columns: 2; column-gap: 18px; }
-  #guide-content main { padding: 14px 16px; }
-  .guide-panel-footer { flex-wrap: wrap; padding: 6px 12px; font-size: 10px; }
-}
-.about-modal .about-guide-link { color: var(--text-accent); }
 .about-meta {
   border-top: 1px solid var(--border);
   padding-top: 14px;
@@ -539,8 +435,6 @@ body.is-admin #mm-admin { display: flex; }
   justify-content: center;
   gap: 8px;
 }
-.about-meta-row a { color: inherit; text-decoration: none; }
-.about-meta-row a:hover { color: var(--text-accent); }
 .about-version {
   margin-top: 16px;
   font-size: 11px;
@@ -1131,7 +1025,7 @@ body.is-admin #mm-admin { display: flex; }
   pointer-events: auto;
 }
 .draw-tools-btn {
-  width: 28px; height: 28px; padding: 0;
+  width: 32px; height: 32px; padding: 0;
   display: flex; align-items: center; justify-content: center;
   background: var(--bg-panel); color: var(--text-primary);
   border: 1px solid var(--border); border-radius: 7px;
@@ -1140,14 +1034,10 @@ body.is-admin #mm-admin { display: flex; }
   transition: background .15s, color .15s, border-color .15s;
 }
 .draw-tools-btn:hover { background: var(--bg-hover); color: var(--accent); }
-.draw-tools-btn svg { width: 15px; height: 15px; }
+.draw-tools-btn svg { width: 17px; height: 17px; }
 .draw-tools-btn.active {
   background: var(--accent-light); color: var(--accent);
   border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset;
-}
-.draw-tools-btn.selected {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
 }
 
 .map-overlay {
@@ -1160,7 +1050,7 @@ body.is-admin #mm-admin { display: flex; }
   pointer-events: auto;
 }
 .zoom-tools-btn {
-  width: 28px; height: 28px; padding: 0;
+  width: 32px; height: 32px; padding: 0;
   display: flex; align-items: center; justify-content: center;
   background: var(--bg-panel); color: var(--text-primary);
   border: 1px solid var(--border); border-radius: 7px;
@@ -1172,7 +1062,7 @@ body.is-admin #mm-admin { display: flex; }
   background: var(--accent-light); color: var(--accent);
   border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset;
 }
-.zoom-tools-btn svg { width: 15px; height: 15px; }
+.zoom-tools-btn svg { width: 17px; height: 17px; }
 .location-marker-pulse {
   width: 16px; height: 16px; border-radius: 50%;
   background: var(--accent); border: 3px solid #fff;
@@ -1188,14 +1078,14 @@ body.is-admin #mm-admin { display: flex; }
 .basemap-btn {
   background: var(--bg-panel); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 0;
-  width: 26px; height: 26px;
+  width: 30px; height: 30px;
   display: inline-flex; align-items: center; justify-content: center;
   cursor: pointer; font-size: 15px; font-weight: 500;
   color: var(--text-secondary); transition: all .15s;
   font-family: var(--font);
   line-height: 1.2;
 }
-.basemap-btn svg { width: 15px; height: 15px; }
+.basemap-btn svg { width: 17px; height: 17px; }
 .basemap-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
 .basemap-btn.active { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
 
@@ -1955,7 +1845,7 @@ input[type="range"]:focus-visible { outline: none; }
   /* ── SEMBUNYIKAN elemen PC ── */
   #toolbar, #sidebar-left, #sidebar-right,
   #bottom-panel, #bp-resize-handle,
-  #statusbar, .resize-handle,
+  #statusbar, .resize-handle, .draw-tools,
   #header-search-menu, #btn-logout-pc, #btn-admin-pc, #btn-settings-pc { display: none !important; }
 
   /* ── HEADER ── */
@@ -1988,7 +1878,7 @@ input[type="range"]:focus-visible { outline: none; }
     pointer-events: none;
   }
   #mb-undo .mb-icon svg, #mb-redo .mb-icon svg { width: 26px; height: 26px; }
-  #mb-edit .mb-icon svg, #mb-layers .mb-icon svg { width: 24px; height: 24px; }
+  #mb-edit .mb-icon svg, #mb-style .mb-icon svg { width: 24px; height: 24px; }
 
   /* ── WORKSPACE ── */
   #workspace { flex: 1; min-height: 0; overflow: hidden; display: flex; }
@@ -2005,13 +1895,9 @@ input[type="range"]:focus-visible { outline: none; }
   }
 
   /* ── MAP OVERLAYS ── */
-  .draw-tools { top: 10px; left: 10px; right: auto; z-index: 1200; display: flex !important; flex-direction: column; align-items: center; gap: 4px; padding: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
-  .draw-tools-btn { width: 32px; height: 32px; border-radius: 7px; background: var(--bg-panel); box-shadow: 0 2px 6px rgba(0,0,0,.28); }
-  .draw-tools-btn svg { width: 16px; height: 16px; }
-  .draw-tools-btn.active.selected { outline: none; }
   .zoom-tools { top: 10px; right: 10px; }
-  .zoom-tools-btn { width: 32px; height: 32px; }
-  .zoom-tools-btn svg { width: 16px; height: 16px; }
+  .zoom-tools-btn { width: 38px; height: 38px; }
+  .zoom-tools-btn svg { width: 18px; height: 18px; }
   .mobile-map-action { display: flex; align-items: center; justify-content: center; font-size: 18px; }
 
   .basemap-switcher {
@@ -2019,7 +1905,7 @@ input[type="range"]:focus-visible { outline: none; }
     gap: 5px; flex-wrap: nowrap;
     align-items: center;
   }
-  .basemap-btn { width: 28px; height: 28px; font-size: 15px; border-radius: 8px; line-height: 1.2; }
+  .basemap-btn { width: 34px; height: 34px; font-size: 17px; border-radius: 8px; line-height: 1.2; }
 
   /* ── CROSSHAIR tengah kanvas (muncul hanya saat mode gambar aktif) ── */
   #mobile-crosshair {
@@ -2028,36 +1914,18 @@ input[type="range"]:focus-visible { outline: none; }
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
     pointer-events: none;
-    z-index: 2500;
+    z-index: 900;
     width: 0; height: 0;
   }
-  #mobile-crosshair.is-visible { display: block !important; visibility: visible !important; opacity: 1 !important; }
-  #map-container.point-placement-focus::after {
-    content: "";
-    position: absolute;
-    top: 50%; left: 50%;
-    width: 44px; height: 44px;
-    transform: translate(-50%, -50%);
-    border: 2px solid #ef3030;
-    border-radius: 50%;
-    background:
-      linear-gradient(#ef3030, #ef3030) center / 2px 58px no-repeat,
-      linear-gradient(#ef3030, #ef3030) center / 58px 2px no-repeat;
-    box-shadow: 0 0 0 2px #fff, 0 0 10px rgba(0,0,0,.9);
-    pointer-events: none;
-    z-index: 3000;
-  }
-  #map-container.point-placement-focus #mobile-crosshair { display: none !important; }
   .mc-h, .mc-v {
-    position: absolute; background: #ff3030; box-shadow: 0 0 2px #fff, 0 0 5px rgba(0,0,0,.95);
+    position: absolute; background: rgba(239,68,68,0.8);
   }
   .mc-h { width: 44px; height: 1.5px; top: 0; left: 50%; transform: translate(-50%,-50%); }
   .mc-v { height: 44px; width: 1.5px; top: 50%; left: 0; transform: translate(-50%,-50%); }
   .mc-ring {
     position: absolute;
-    width: 42px; height: 42px;
-    border: 2px solid #ff3030;
-    box-shadow: 0 0 2px #fff, 0 0 6px rgba(0,0,0,.95), inset 0 0 2px #fff;
+    width: 60px; height: 60px;
+    border: 1.5px solid rgba(239,68,68,0.65);
     border-radius: 50%;
     top: 0; left: 0;
     transform: translate(-50%, -50%);
@@ -2122,10 +1990,6 @@ input[type="range"]:focus-visible { outline: none; }
     gap: 0;
   }
   #mb-add-point:active    { transform: scale(0.91); box-shadow: 0 2px 6px rgba(59,130,246,0.35); }
-  #mb-add-point:disabled { opacity: .38; box-shadow: none; cursor: not-allowed; transform: none; }
-  #mb-add-point.draw-action-ready { animation: mobile-draw-action-focus 1.1s ease-in-out infinite; outline: 3px solid rgba(59,130,246,.35); outline-offset: 3px; }
-  #mb-add-point:focus-visible { outline: 3px solid rgba(59,130,246,.55); outline-offset: 3px; }
-  @keyframes mobile-draw-action-focus { 50% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(59,130,246,.18), 0 3px 12px rgba(59,130,246,.6); } }
   #mb-add-point.draw-done { background: #10b981; box-shadow: 0 3px 10px rgba(16,185,129,0.5); }
   #mb-add-point.pending-bhumi-draw { background: #f59e0b; box-shadow: 0 3px 12px rgba(245,158,11,0.65); animation: aurora-pulse 1.4s ease-in-out infinite; }
   #mb-add-point .mb-add-label {
@@ -2193,7 +2057,6 @@ input[type="range"]:focus-visible { outline: none; }
     transition: background .12s;
   }
   .mm-item:active { background: var(--bg-hover); }
-  a.mm-item { text-decoration: none; }
   .mm-item:disabled, .mm-item:disabled:active { opacity: .45; cursor: not-allowed; background: transparent; }
   .mm-item-icon { font-size: 17px; width: 26px; text-align: center; flex-shrink: 0; }
   .mm-item-icon svg { width: 17px; height: 17px; margin: 0 auto; display: block; }
@@ -2237,6 +2100,21 @@ input[type="range"]:focus-visible { outline: none; }
     z-index: 2900; background: var(--bg-chrome); border-top: 1px solid var(--border); flex-direction: column;
   }
 
+  /* ── DRAW TOOLS (mobile): horizontal row, icon-only ── */
+  .mm-draw-row {
+    display: flex; justify-content: space-around; align-items: center;
+    padding: 8px 12px;
+  }
+  .mm-draw-item {
+    display: flex; align-items: center; justify-content: center;
+    width: 42px; height: 42px; border-radius: 8px;
+    background: transparent; border: none; cursor: pointer;
+    color: var(--text-primary); transition: background .12s;
+  }
+  .mm-draw-item:active { background: var(--bg-hover); }
+  .mm-draw-item .mm-item-icon { width: 100%; }
+  .mm-draw-item .mm-item-icon svg { width: 22px; height: 22px; }
+
   /* ── MAP POPUP (mobile) ── */
   .map-popup-panel {
     bottom: 60px; left: 8px; right: 8px;
@@ -2248,60 +2126,4 @@ input[type="range"]:focus-visible { outline: none; }
   .map-popup-panel .mp-zone-col + .mp-zone-col {
     border-left: none; border-top: 1px solid var(--border);
   }
-}
-
-/* Panel UI selalu bersudut siku; geometri peta dan kontrol bundar tetap utuh. */
-:root { --radius: 0px; --ui-radius: 0px; }
-body :is(
-  [class*="panel"], [class*="modal"], [class*="card"],
-  [class*="sidebar"], [class*="menu"], [class*="popup"],
-  [id*="panel"], [id*="modal"], [id*="sidebar"], [id*="menu"]
-),
-.login-card, .about-card, .guide-card,
-.search-dropdown, .header-search-dropdown, .bhumi-ctx-menu,
-#context-menu, #mobile-menu, #bottom-panel, #img-overlay-panel,
-.file-drop-zone, .stat-card, .toast,
-.leaflet-popup-content-wrapper {
-  border-radius: 0 !important;
-}
-
-/* Batas panel Pengaturan mengikuti area kerja yang sama dengan Panduan. */
-#modal-container .modal.settings-modal {
-  max-height: calc(100% - 24px);
-  min-height: 0;
-}
-@media (min-width: 769px) {
-  #modal-container .modal.settings-modal {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  #modal-container .settings-modal .modal-header,
-  #modal-container .settings-modal .modal-footer { flex: 0 0 auto; }
-  #modal-container .settings-modal .modal-body {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: var(--border-light) transparent;
-  }
-  #modal-container .settings-modal .modal-body::-webkit-scrollbar { width: 6px; }
-  #modal-container .settings-modal .modal-body::-webkit-scrollbar-thumb {
-    background: var(--border-light);
-  }
-}
-@media (max-width: 768px) {
-  #modal-container .modal.settings-modal {
-    max-height: calc(100% - 12px);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  #modal-container .settings-modal .modal-body { overflow: visible; }
-}
-
-/* Tombol kelompok zoom dan gambar memakai sudut siku pada desktop maupun HP. */
-.zoom-tools-btn,
-.draw-tools-btn,
-.basemap-btn {
-  border-radius: 0 !important;
 }

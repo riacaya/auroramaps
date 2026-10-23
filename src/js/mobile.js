@@ -9,7 +9,6 @@
 const MobileUI = {
   _drawVertexCount: 0,
   _vertexRedo: [],
-  _selectedDrawType: null,
 
   init() {
     if (!this._isMobile()) return;
@@ -29,6 +28,7 @@ const MobileUI = {
       rightBackdrop.classList.remove('open');
     });
     document.getElementById('mb-edit').addEventListener('click', () => openRightPanel('panel-props'));
+    document.getElementById('mb-style').addEventListener('click', () => openRightPanel('panel-style'));
 
     document.getElementById('mb-undo').addEventListener('click', () => {
       document.getElementById('btn-undo').click();
@@ -37,51 +37,33 @@ const MobileUI = {
       document.getElementById('btn-redo').click();
     });
 
-    this._setDrawActionEnabled(false);
-
     let _lastTapTime = 0;
     document.getElementById('mb-add-point').addEventListener('click', () => {
-      document.getElementById('mb-add-point').classList.remove('draw-action-ready');
-      const type = this._selectedDrawType;
-      if (!type) return;
-      if (type === 'point') {
-        const markerOptions = MapManager.drawControl.options.draw.marker;
-        const marker = L.marker(MapManager.map.getCenter(), markerOptions);
-        MapManager.map.fire(L.Draw.Event.CREATED, { layer: marker, layerType: 'marker' });
-        return;
-      }
-      if (!State.activeDrawTool || State.activeDrawType !== type) {
-        MapManager.startDraw(type);
-        if (type === 'line' || type === 'poly') this._enterDrawMode();
-        else Toast.show(`Mode gambar ${this._drawTypeLabel(type)} aktif.`, 'info');
-        _lastTapTime = 0;
-        return;
-      }
-      if (!['line', 'poly'].includes(type)) return;
       const now = Date.now();
-      const isDoubleTap = (now - _lastTapTime) < 300;
+      const isDoubleTap = (now - _lastTapTime) < 300 && State.activeDrawTool;
       _lastTapTime = now;
 
       if (isDoubleTap) {
-        const minimumVertices = type === 'line' ? 2 : 3;
-        if (this._drawVertexCount >= minimumVertices) {
+        if (this._drawVertexCount >= 3) {
           try {
             State.activeDrawTool._finishShape();
             // Some Leaflet Draw versions do not emit draw:created before the
             // mobile crosshair is repainted. Force the cleanup after finish.
             setTimeout(() => {
-              if (State.activeDrawTool) MapManager._stopDrawTool();
+              if (State.activeDrawType === 'poly') MapManager._stopDrawTool();
               this._exitDrawMode();
-              this._clearDrawSelection();
             }, 120);
-          } catch(e) { MapManager._stopDrawTool(); this._exitDrawMode(); this._clearDrawSelection(); }
+          } catch(e) { MapManager._stopDrawTool(); this._exitDrawMode(); }
         } else {
-          Toast.show(`Minimal ${minimumVertices} titik untuk selesai`, 'warn');
+          Toast.show('Minimal 3 titik untuk selesai', 'warn');
         }
         return;
       }
 
       if (!State.activeDrawTool) {
+        document.getElementById('mb-add-point')?.classList.remove('pending-bhumi-draw');
+        MapManager.startDraw('poly');
+        this._enterDrawMode();
         return;
       }
       const center = MapManager.map.getCenter();
@@ -111,7 +93,6 @@ const MobileUI = {
 
     MapManager.map.on('draw:created', () => {
       this._exitDrawMode();
-      this._clearDrawSelection();
     });
 
     MapManager.map.on('draw:drawvertex', () => {
@@ -144,76 +125,10 @@ const MobileUI = {
 
   _isMobile() { return window.innerWidth <= 768; },
 
-  selectDrawType(type) {
-    if (!['point', 'line', 'poly', 'rect', 'circle'].includes(type)) return;
-    if (this._selectedDrawType === type) {
-      MapManager.cancelDraw();
-      this._exitDrawMode();
-      this._clearDrawSelection();
-      Toast.show('Mode gambar dibatalkan', 'info');
-      return;
-    }
-    MapManager.cancelDraw();
-    this._exitDrawMode();
-    this._selectedDrawType = type;
-    document.querySelectorAll('.draw-tools-btn').forEach(button => {
-      button.classList.toggle('selected', button.id === `dt-${type}`);
-    });
-    this._setDrawActionEnabled(true);
-    if (type === 'point') {
-      if (window.BhumiIdentify) BhumiIdentify.pauseOverlay();
-      this._enterDrawMode(type);
-    } else {
-      MapManager.startDraw(type);
-      if (type === 'line' || type === 'poly') this._enterDrawMode();
-    }
-    const add = document.getElementById('mb-add-point');
-    add.title = ['line', 'poly'].includes(type)
-      ? `Tambah titik ${this._drawTypeLabel(type)}; ketuk dua kali untuk selesai`
-      : `Mode gambar ${this._drawTypeLabel(type)} aktif`;
-    add.setAttribute('aria-label', add.title);
-    add.classList.add('draw-action-ready');
-    add.focus({ preventScroll: true });
-    add.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-    Toast.show(type === 'point'
-      ? 'Geser peta untuk mengatur titik di tengah crosshair, lalu tekan +.'
-      : type === 'line' || type === 'poly'
-        ? `Mode ${this._drawTypeLabel(type)} aktif. Tekan + untuk menambah titik.`
-        : `Mode gambar ${this._drawTypeLabel(type)} aktif.`, 'info');
-  },
-
-  _setDrawActionEnabled(enabled) {
-    const add = document.getElementById('mb-add-point');
-    if (!add) return;
-    add.disabled = !enabled;
-    add.setAttribute('aria-disabled', String(!enabled));
-  },
-
-  _clearDrawSelection() {
-    this._selectedDrawType = null;
-    document.querySelectorAll('.draw-tools-btn').forEach(button => button.classList.remove('selected'));
-    this._setDrawActionEnabled(false);
-    const add = document.getElementById('mb-add-point');
-    if (add) {
-      add.classList.remove('draw-action-ready');
-      add.title = 'Pilih alat gambar terlebih dahulu';
-      add.setAttribute('aria-label', add.title);
-    }
-  },
-
-  _drawTypeLabel(type) {
-    return ({ point: 'titik', line: 'garis', poly: 'poligon', rect: 'kotak', circle: 'lingkaran' })[type] || type;
-  },
-
-  _enterDrawMode(type = this._selectedDrawType) {
+  _enterDrawMode() {
     this._drawVertexCount = 0;
     this._vertexRedo = [];
-    document.getElementById('map-container')?.classList.toggle('point-placement-focus', type === 'point');
-    const crosshair = document.getElementById('mobile-crosshair');
-    if (crosshair) {
-      crosshair.classList.add('is-visible');
-      crosshair.style.display = 'block';
-    }
+    document.getElementById('mobile-crosshair').style.display = 'block';
     const add = document.getElementById('mb-add-point');
     add.classList.remove('draw-done');
     add.classList.remove('pending-bhumi-draw');
@@ -232,12 +147,7 @@ const MobileUI = {
   },
 
   _exitDrawMode() {
-    document.getElementById('map-container')?.classList.remove('point-placement-focus');
-    const crosshair = document.getElementById('mobile-crosshair');
-    if (crosshair) {
-      crosshair.classList.remove('is-visible');
-      crosshair.style.display = 'none';
-    }
+    document.getElementById('mobile-crosshair').style.display = 'none';
     const add = document.getElementById('mb-add-point');
     add.classList.remove('draw-done');
     this._drawVertexCount = 0;

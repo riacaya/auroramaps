@@ -168,7 +168,7 @@ const FeatureEditor = {
     const panjang = m.panjang || props.panjang || '';
     const showKeliling = !!(keliling || panjang || geomType.toLowerCase().includes('linestring') || geomType.toLowerCase().includes('polygon'));
     const showLuas = !!(luasPoligon || luasShm || geomType.toLowerCase().includes('polygon'));
-    const autoKeys = ['_drawType', 'radius', 'radius_m', 'circle_radius_m', 'keliling', 'luas_poligon', 'luas', 'luas', 'panjang', 'jari_jari', 'name', 'Name', 'deskripsi', 'description', 'Description', 'Deskripsi', 'DESKRIPSI', 'shm', 'SHM', 'nib', 'NIB', 'keterangan', 'Keterangan'];
+    const autoKeys = ['_drawType', 'keliling', 'luas_poligon', 'luas', 'luas', 'panjang', 'jari_jari', 'name', 'Name', 'deskripsi', 'description', 'Description', 'Deskripsi', 'DESKRIPSI', 'shm', 'SHM', 'nib', 'NIB', 'keterangan', 'Keterangan'];
     const extraProps = Object.entries(props).filter(([key]) => !autoKeys.includes(key));
     const extraRows = extraProps.map(([key, value], index) => `
       <div class="prop-edit-row" data-idx="${index}">

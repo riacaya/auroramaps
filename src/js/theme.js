@@ -46,7 +46,6 @@ const LanguageUI = {
       'mm-overlay': 'Overlay',
       'mm-import-url': 'Import URL',
       'mm-export': 'Export',
-      'mm-guide': 'Panduan penggunaan',
 
       'mm-layers': 'Layer Manager',
       'mm-fit-all': 'Fit All',
@@ -126,7 +125,6 @@ const LanguageUI = {
       'mm-overlay': 'Overlay',
       'mm-import-url': 'Import URL',
       'mm-export': 'Export',
-      'mm-guide': 'User guide',
 
       'mm-layers': 'Layer Manager',
       'mm-fit-all': 'Fit All',

@@ -7,11 +7,6 @@
 // PROJECT FILE MANAGER
 // =====================================================
 const ProjectManager = {
-  isProjectData(data) {
-    return (data?.format === 'auroramaps-project' || data?.format === 'senjamaps-project')
-      && Array.isArray(data.layers);
-  },
-
   _safeName(value, fallback = 'auroramaps_proyek') {
     return Utils.safeName(value, fallback);
   },
@@ -76,21 +71,16 @@ const ProjectManager = {
     if (!file) return;
     try {
       const data = JSON.parse(await file.text());
-      if (!this.isProjectData(data)) {
+      const validFormat = data?.format === 'auroramaps-project' || data?.format === 'senjamaps-project';
+      if (!validFormat || !Array.isArray(data.layers)) {
         throw new Error('File bukan proyek AuroraMaps yang valid');
       }
-      this.openData(data);
+      if (State.layers.length && !confirm('Buka proyek baru dan mengganti layer yang sedang terbuka?')) return;
+      this.load(data);
     } catch (e) {
       Toast.show(`Gagal membuka proyek: ${e.message}`, 'error');
       AppConsole.log(`Project load error: ${e.message}`, 'error');
     }
-  },
-
-  openData(data) {
-    if (!this.isProjectData(data)) throw new Error('File bukan proyek AuroraMaps yang valid');
-    if (State.layers.length && !confirm('Buka proyek baru dan mengganti layer yang sedang terbuka?')) return false;
-    this.load(data);
-    return true;
   },
 
   load(data) {

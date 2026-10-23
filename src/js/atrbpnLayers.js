@@ -5,7 +5,7 @@
 // Sumber: gisliner.atrbpn.go.id (tile XYZ publik), gistaru-app WMS (RTR)
 // & bhumi.atrbpn.go.id/mprx/service (WMS TILED 512, via /bhumi-proxy)
 // Klik peta → popup baca layer ATR/BPN aktif (GetFeatureInfo gistaru-app).
-// ⚠ 14 Okt 2026: WAF gistaru menolak semua Referer kecuali bhumi.atrbpn.go.id
+// ⚠ 14 Okt 2026: WAF GISTARU dapat menolak request dari origin aplikasi
 //   → GetMap RTR Provinsi & GetFeatureInfo zona RTR/RTRW lewat proxy worker
 //   (rute /gistaru, lihat _gistaruBase + data/cloudflare-worker.js).
 // =====================================================
@@ -45,8 +45,8 @@ function attachTileRetry(layer, maxRetries = 2, baseDelay = 1200) {
 // info_format (termasuk text/html yang lama) dan geometri TIDAK ikut dikirim
 // bila bbox klik kecil (±55 m) → respons ±1,1 KB, instan (varian lama
 // text/html dulu 14–21 MB & >60 dtk karena geometri fitur ikut terbawa).
-// ⚠ WAF: hanya Referer https://bhumi.atrbpn.go.id/ yang diterima (403 sisanya)
-//   → semua request diarahkan ke proxy worker bila tersedia (_gistaruBase).
+// ⚠ WAF dapat menolak Referer origin aplikasi → request melalui proxy worker
+//   bila tersedia (_gistaruBase).
 // CORS server terbuka: Access-Control-Allow-Origin: * (GET/POST/OPTIONS).
 const GISTARU_WMS = 'https://gistaru-app.atrbpn.go.id/interoppublic/api/wms/';
 const RTRP_UUID = 'ed3223bb-7a26-408f-9b55-3fd39c1b901f';
@@ -76,6 +76,12 @@ const RTRW_LAYER = 'rtr-online:rtrw_kabkot_1_indonesia';
 const BHUMI_RTRW_PATH = '/expapi/rtrw/wms';
 const BHUMI_RTRW_LAYER = 'petabpn:rtrw_kabkot_merge';
 const BHUMI_RTRW_STYLE = 'petabpn:highlight_rtrw_kabkot';
+
+// ArcGIS Identify GISTARU dari HAR gistaru.atrbpn.go.id.har. Service ini
+// berisi 35 layer RTR kabupaten/kota di Jawa Tengah; properties mencakup
+// NOTHPR, PP, dan BT (dasar Perda serta dokumennya). Panggilan melewati
+// relay worker /gistaru-rtronline karena origin GISTARU menolak referer app.
+const GISTARU_RTRONLINE_PATH = '/gistaru-rtronline';
 
 // ── Sumber tile Bidang Tanah (persil) — rantai fallback ─────────────────────
 // Urut prioritas (riset 5 Okt 2026, rincian di endpoint.md §Sentuh Tanahku):
@@ -107,11 +113,9 @@ const AtrbpnLayers = {
     const G = 'https://gisliner.atrbpn.go.id';
     const xyz = (c, ts) => G + '/layers/tms/public/' + c + '/{z}/{x}/{y}/?tileSize=' + ts;
 
-    // WMS RTR Provinsi sesuai pola HAR (bhumi.atrbpn.go.id.har): 243x 200.
-    // ⚠ 14 Okt 2026 WAF gistaru hanya menerima Referer bhumi.atrbpn.go.id
-    // (Referer halaman = origin app → 403, uji curl dgn Referer github.io/local
-    // → 403) → lewat proxy worker rute /gistaru; tanpa proxy → pakai URL asli
-    // (tetap terpakai bila WAF longgar lagi / worker belum ada).
+    // WMS RTR Provinsi sesuai request GetMap sukses pada zonaprokab.har:
+    // WMS 1.3.0, EPSG:3857, tile 512. Uji direct tanpa Referer dari mesin ini
+    // membalas 403, jadi route /gistaru di worker diperlukan untuk browser app.
     const gBase = this._gistaruBase();
     const RTRP_URL = (gBase ? gBase + '/interoppublic/api/wms/' : GISTARU_WMS) + RTRP_UUID;
 
@@ -219,7 +223,7 @@ const AtrbpnLayers = {
       lsd:  { label: 'LSD Nasional',      on: false, opacity: 0.8, layer: attachTileRetry(L.tileLayer(xyz('269_lsd_', 1024), LIGHT('atrbpnLsdPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false }))) },
       rtrp: { label: 'RTR Provinsi Jawa', on: false, opacity: 0.7, layer: attachTileRetry(L.tileLayer.wms(RTRP_URL, LIGHT('atrbpnRtrpPane', 21, {
               layers: RTRP_LAYER, version: '1.3.0',
-              crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true,
+              crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true, styles: '',
               format: 'image/png', transparent: true, attribution: 'RTR (gistaru-app)'
             }))) },
       rtrw: { label: 'RTRW Kab/Kota',     on: false, opacity: 0.7, layer: attachTileRetry(L.tileLayer(xyz('212_rtrwkbpt', 1024), LIGHT('atrbpnRtrwPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false }))) },
@@ -326,7 +330,7 @@ const AtrbpnLayers = {
   },
 
   // Basis proxy GISTARU (rute /gistaru di worker proxy BHUMI).
-  // WAF gistaru hanya membalas 200 untuk Referer https://bhumi.atrbpn.go.id/
+  // WAF GISTARU menolak request tanpa Referer ATR/BPN yang dikenali
   // dan browser tidak bisa mengubah Referer (Referer otomatis = origin app) →
   // GetMap tile & GetFeatureInfo wajib lewat proxy server-side. Hanya URL
   // absolut (worker) yang dipakai; basis relatif '/bhumi-proxy' (server lokal
@@ -339,9 +343,9 @@ const AtrbpnLayers = {
 
   // GetFeatureInfo GISTARU — pola acuan HAR, info_format=application/json
   // (lihat catatan konstanta di atas). bbox = kotak kecil ±55 m di sekitar
-  // titik klik, CRS 4326 seperti di HAR. Urutan percobaan: proxy /gistaru
-  // dulu, URL asli sebagai cadangan (worker belum ter-deploy / WAF longgar).
-  async _gfiZone(uuid, layerName, lat, lng) {
+  // titik klik, CRS 4326. Gunakan relay worker bila basisnya tersedia agar
+  // Referer yang disyaratkan WAF dipasang di server; tanpa worker, direct.
+  async _gfiZone(uuid, layerName, lat, lng, timeoutMs = 15000) {
     const span = 0.0005;
     const qs = '?version=1.1.1&request=GetFeatureInfo&info_format=application/json' +
       '&layers=' + encodeURIComponent(layerName) +
@@ -352,14 +356,14 @@ const AtrbpnLayers = {
     const gBase = this._gistaruBase();
     const urls = [];
     if (gBase) urls.push(gBase + '/interoppublic/api/wms/' + uuid + qs);
-    urls.push(GISTARU_WMS + uuid + qs);
+    else urls.push(GISTARU_WMS + uuid + qs);
     let last = null;
     for (const url of urls) {
-      const r = await this._gfiFetch(url);
+      const r = await this._gfiFetch(url, timeoutMs);
       if (!r.error) return r;
       last = r;
     }
-    // 403 dari rute /gistaru = worker lama (belum ada route gistaru) atau WAF
+    // 403 dari rute /gistaru = worker belum terbarui atau WAF
     // masih menolak; 522 = route sudah ada tetapi server gistaru TIDAK bisa
     // dijangkau dari jaringan cloud (temuan 14 Okt 2026, lihat BHUMI_RTRW_*).
     // Beri petunjuk di popup supaya tidak terkesan mengambang.
@@ -369,12 +373,48 @@ const AtrbpnLayers = {
     return last;
   },
 
-  // Zona RTRW Kab/Kota — urutan percobaan: WMS bhumi dulu (jujur & terjangkau
-  // dari mana pun selama worker aktif), gagal/kosong → GFI GISTARU lama.
+  // Zona RTRW Kab/Kota — ArcGIS Identify GISTARU Jateng memberi rincian zona,
+  // dasar Perda, serta tautan dokumen. Titik di luar cakupan / relay belum
+  // tersedia → fallback ke WMS BHUMI nasional (nama zona).
   async _gfiKabZone(lat, lng) {
+    const g = await this._gfiGistaruRtrw(lat, lng);
+    if (g && !g.error && g.count > 0) return g;
     const b = await this._gfiBhumiRtrw(lat, lng);
     if (b && !b.error && b.count > 0) return b;
-    return this._gfiZone(RTRW_UUID, RTRW_LAYER, lat, lng);
+    return g && g.error ? g : (b || g || { rows: [], count: 0 });
+  },
+
+  // ArcGIS MapServer Identify — service pada HAR meliputi 35 kab/kota Jawa
+  // Tengah. EPSG:102100 setara Web Mercator; mapExtent/imageDisplay mengikuti
+  // viewport agar tolerance piksel memilih poligon tepat di titik klik.
+  async _gfiGistaruRtrw(lat, lng) {
+    const base = this._resolveBhumiBase();
+    if (!base || !/^https?:\/\//i.test(base)) return { rows: [], count: 0, skip: true };
+    const project = p => ({
+      x: p.lng * 20037508.34 / 180,
+      y: Math.log(Math.tan(Math.PI / 4 + p.lat * Math.PI / 360)) * 20037508.34 / Math.PI
+    });
+    const point = project({ lat, lng });
+    let extent = [point.x - 1000, point.y - 1000, point.x + 1000, point.y + 1000];
+    let imageDisplay = '512,512,96';
+    try {
+      const bounds = this._map && this._map.getBounds();
+      const size = this._map && this._map.getSize();
+      if (bounds && size && size.x > 0 && size.y > 0) {
+        const sw = project({ lat: bounds.getSouth(), lng: bounds.getWest() });
+        const ne = project({ lat: bounds.getNorth(), lng: bounds.getEast() });
+        extent = [sw.x, sw.y, ne.x, ne.y];
+        imageDisplay = `${Math.round(size.x)},${Math.round(size.y)},96`;
+      }
+    } catch (e) { /* pakai extent cadangan di sekitar klik */ }
+    const params = new URLSearchParams({
+      f: 'json',
+      geometry: JSON.stringify({ x: point.x, y: point.y, spatialReference: { wkid: 102100 } }),
+      geometryType: 'esriGeometryPoint', sr: '102100', layers: 'all', tolerance: '5',
+      mapExtent: extent.map(v => Number(v.toFixed(3))).join(','), imageDisplay,
+      returnGeometry: 'false'
+    });
+    return this._gfiFetch(base.replace(/\/$/, '') + GISTARU_RTRONLINE_PATH + '?' + params, 12000);
   },
 
   // GetFeatureInfo zona RTRW lewat WMS BHUMI (petabpn:rtrw_kabkot_merge).
@@ -406,16 +446,16 @@ const AtrbpnLayers = {
   },
 
   // Satu percobaan mengambil respons GFI: timeout 15 dtk, gagal → { error }.
-  async _gfiFetch(url) {
+  async _gfiFetch(url, timeoutMs = 15000) {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 15000);
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
       const res = await fetch(url, { signal: ctrl.signal });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       return this._parseGfiBody(await res.text());
     } catch (err) {
       return { rows: [], count: 0,
-               error: err && err.name === 'AbortError' ? 'timeout (15 dtk)' : ((err && err.message) || 'gagal') };
+               error: err && err.name === 'AbortError' ? `timeout (${Math.ceil(timeoutMs / 1000)} dtk)` : ((err && err.message) || 'gagal') };
     } finally {
       clearTimeout(timer);
     }
@@ -432,6 +472,12 @@ const AtrbpnLayers = {
         const j = JSON.parse(t);
         if (j && typeof j === 'object' && !Array.isArray(j)) {
           if (j.error) return { rows: [], count: 0, error: String(j.error) };
+          if (Array.isArray(j.results)) {
+            const rows = j.results
+              .map(r => (r && r.attributes) || {})
+              .filter(o => Object.keys(o).length);
+            return { rows, count: rows.length };
+          }
           if (Array.isArray(j.features)) {
             const rows = j.features
               .map(f => (f && f.properties) || {})
@@ -480,7 +526,27 @@ const AtrbpnLayers = {
   // (14 Okt 2026) — tanpa centang RTR/propinsi, blok zona tidak muncul.
   _zonePopupHtml(active, zoneRes, lat, lng) {
     const esc = (v) => Utils.escapeHtml(String(v));
-    const section = (title, res, fields) => {
+    const fieldLabel = (key) => {
+      const labels = {
+        namobj: 'Jenis Kawasan', NAMOBJ: 'Jenis Kawasan', 'Nama Objek': 'Jenis Kawasan',
+        keterangan: 'Keterangan', jnsrpr: 'Kategori', JNSRPR: 'Kategori',
+        'Jenis Rencana Pola Ruang': 'Kategori', wadmpr: 'Provinsi', WADMPR: 'Provinsi',
+        'Wilayah Administrasi Provinsi': 'Provinsi', wadmkk: 'Kab/Kota', WADMKK: 'Kab/Kota',
+        'Wilayah Administrasi Kabupaten/Kota': 'Kab/Kota', wadmkc: 'Kecamatan', WADMKC: 'Kecamatan',
+        'Wilayah Administrasi Kecamatan': 'Kecamatan', nothpr: 'Dasar Perda', NOTHPR: 'Dasar Perda',
+        'Nomor dan Tahun Peraturan': 'Dasar Perda', PP: 'Peta Perda', 'Peta Perda': 'Peta Perda',
+        BT: 'Batang Tubuh Perda', 'Batang Tubuh': 'Batang Tubuh Perda',
+        LUASHA: 'Luas (ha)', 'Luas (ha)': 'Luas (ha)',
+        KKOP_1: 'Kawasan Keselamatan Operasi Penerbangan',
+        KP2B_2: 'Kawasan Pertanian Pangan Berkelanjutan',
+        KRB_03: 'Kawasan Rawan Bencana', CAGBUD: 'Kawasan Cagar Budaya',
+        RESAIR: 'Kawasan Resapan Air', meta: 'Wilayah'
+      };
+      if (labels[key]) return labels[key];
+      return String(key).replace(/[_-]+/g, ' ').replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/\b\w/g, c => c.toUpperCase());
+    };
+    const section = (title, res) => {
       if (!res) return '';
       // Pesan tunggal untuk semua kasus kosong/gagal — hindari crash & tabel
       // kosong saat kabupaten/tsb tidak punya data atau server tak merespons.
@@ -489,9 +555,21 @@ const AtrbpnLayers = {
       if (res.error) return unavailable(`Gagal membaca: ${esc(res.error)}`);
       const f = (res.rows || [])[0];
       if (!f) return unavailable('Data tidak tersedia di titik ini');
-      const rows = fields
-        .filter(([key]) => f[key])
-        .map(([key, label]) => `<tr><th>${esc(label)}</th><td>${esc(f[key])}</td></tr>`)
+      const rows = Object.entries(f)
+        .filter(([key, value]) => key && value != null && String(value).trim() !== '')
+        .map(([key, value]) => {
+          let rendered = esc(value);
+          if (/^(PP|BT|Peta Perda|Batang Tubuh)$/i.test(key)) {
+            try {
+              const url = new URL(String(value));
+              if (url.hostname === 'gistaru.atrbpn.go.id' && url.pathname.startsWith('/repository/Pages/View')) {
+                url.protocol = 'https:';
+                rendered = `<a href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">Buka dokumen</a>`;
+              }
+            } catch (e) { /* tampilkan nilai biasa jika bukan URL valid */ }
+          }
+          return `<tr><th>${esc(fieldLabel(key))}</th><td>${rendered}</td></tr>`;
+        })
         .join('');
       if (!rows) return unavailable('Data tidak tersedia di titik ini');
       const more = res.count > 1 ? `<tr><th>Zona lain</th><td>+${res.count - 1}</td></tr>` : '';
@@ -507,12 +585,9 @@ const AtrbpnLayers = {
     const wantProv = active.includes('rtrp');
     const wantKab = active.includes('rtrw');
     const provSection = wantProv ? section('Zona RTR Provinsi',
-      zoneRes && (zoneRes.pending ? zoneRes : zoneRes.prov),
-      [['namobj', 'Jenis Kawasan'], ['wadmpr', 'Provinsi'], ['nothpr', 'Dasar Perda'], ['meta', 'Wilayah']]) : '';
+      zoneRes && (zoneRes.pending ? zoneRes : zoneRes.prov)) : '';
     const kabSection = wantKab ? section('Zona RTRW Kab/Kota',
-      zoneRes && (zoneRes.pending ? zoneRes : zoneRes.kab),
-      [['namobj', 'Jenis Kawasan'], ['jnsrpr', 'Kategori'], ['wadmpr', 'Provinsi'],
-       ['wadmkk', 'Kab/Kota'], ['wadmkc', 'Kecamatan'], ['nothpr', 'Dasar Perda'], ['meta', 'Wilayah']]) : '';
+      zoneRes && (zoneRes.pending ? zoneRes : zoneRes.kab)) : '';
 
     // Endpoint kawasan hutan sengaja tidak dipanggil (server mati);
     // bidang tidak muncul di sini lagi — bila aktif, klik ditangani BhumiIdentify.
