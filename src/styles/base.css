@@ -253,9 +253,10 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
 .map-popup-panel .mp-share:hover { filter: brightness(1.1); }
 /* Zona RTR/RW — dua kolom berdampingan (kiri Kab/Kota, kanan Provinsi):
    font serendah mungkin & tanpa tebal supaya popup tidak terlalu tinggi. */
-.map-popup-panel .mp-zones { display: flex; align-items: stretch; }
-.map-popup-panel .mp-zone-col { flex: 1 1 0; min-width: 0; }
+.map-popup-panel .mp-zones { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: stretch; }
+.map-popup-panel .mp-zone-col { min-width: 0; }
 .map-popup-panel .mp-zone-col + .mp-zone-col { border-left: 1px solid var(--border); }
+.map-popup-panel .mp-zones-extra { grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--border); }
 .map-popup-panel .mp-zones .mp-cand { font-size: 10px; padding: 3px 8px; }
 .map-popup-panel .mp-zones table th,
 .map-popup-panel .mp-zones table td {
@@ -2121,8 +2122,8 @@ input[type="range"]:focus-visible { outline: none; }
     max-width: none; min-width: 0;
     border-radius: 8px;
   }
-  /* Zona RTR/RW (mobile): dua kolom ditumpuk vertikal */
-  .map-popup-panel .mp-zones { flex-direction: column; }
+  /* Popup peta (mobile): seluruh kolom ditumpuk vertikal */
+  .map-popup-panel .mp-zones { grid-template-columns: minmax(0, 1fr); }
   .map-popup-panel .mp-zone-col + .mp-zone-col {
     border-left: none; border-top: 1px solid var(--border);
   }
