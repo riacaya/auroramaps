@@ -351,8 +351,8 @@ const AtrbpnLayers = {
     //   yang 15+15 dtk saat server tak terjangkau jadi tidak dijalankan).
     const want = { prov: active.includes('rtrp'), kab: active.includes('rtrw') };
     const seq = (this._clickSeq = (this._clickSeq || 0) + 1);
-    // Kartu loading penuh "Load ATRBPN……" hanya bila ada kolom zona yang
-    // diminta; tanpa zona → langsung kartu final (header + koordinat).
+    // Kartu awal menampilkan panel untuk semua layer aktif, termasuk status
+    // identify LSD/KP2B yang belum disediakan endpoint TMS.
     MapPopup.show(this._zonePopupHtml(
       active, (want.prov || want.kab) ? { pending: true } : null, lat, lng));
     // Render bertahap (14 Okt 2026): tiap GFI berjalan paralel TETAPI kartu
@@ -599,14 +599,17 @@ const AtrbpnLayers = {
     // (dari keterangan) — kolom lain kosong → tak dirender.)
     const wantProv = active.includes('rtrp');
     const wantKab = active.includes('rtrw');
-    const provSection = wantProv ? section('Zona RTR Provinsi',
+    const provSection = wantProv ? section('RTRW Provinsi',
       zoneRes && (zoneRes.pending ? zoneRes : zoneRes.prov),
       [['namobj', 'Jenis Kawasan'], ['wadmpr', 'Provinsi'], ['wadmkk', 'Kab/Kota'],
        ['wadmkc', 'Kecamatan'], ['nothpr', 'Dasar Perda'], ['meta', 'Wilayah']]) : '';
-    const kabSection = wantKab ? section('Zona RTRW Kab/Kota',
+    const kabSection = wantKab ? section('RTRW Kab/Kota',
       zoneRes && (zoneRes.pending ? zoneRes : zoneRes.kab),
       [['namobj', 'Jenis Kawasan'], ['jnsrpr', 'Kategori'], ['wadmpr', 'Provinsi'],
        ['wadmkk', 'Kab/Kota'], ['wadmkc', 'Kecamatan'], ['nothpr', 'Dasar Perda'], ['meta', 'Wilayah']]) : '';
+    const visualOnlySection = (key, title) => active.includes(key)
+      ? `<div class="mp-zone-col"><div class="mp-cand">${title}</div><div class="mp-zone-note">Endpoint tile belum menyediakan atribut untuk titik ini.</div></div>`
+      : '';
 
     // Endpoint kawasan hutan sengaja tidak dipanggil (server mati);
     // bidang tidak muncul di sini lagi — bila aktif, klik ditangani BhumiIdentify.
@@ -615,33 +618,17 @@ const AtrbpnLayers = {
       ? '<div class="mp-coord">⚠ Kawasan Hutan: server sedang mati — tidak ikut dibaca (sementara).</div>'
       : '';
 
-    // Judul sendiri; pilihan layer tampil sebagai baris ringkas di bawahnya.
     const header = `
       <div class="mp-header">
         <span class="mp-title">🧭 ATRBPN</span>
         <button class="mp-close" onclick="MapPopup.hide()" title="Tutup">✕</button>
-      </div>
-      <div class="mp-layer-options" aria-label="Layer ATR/BPN">
-        ${[['rtrp','RTRW Provinsi'],['rtrw','RTRW Kabupaten'],['lsd','LSD'],['kp2b','KP2B']].map(([key,label]) =>
-          `<span class="mp-layer-chip${active.includes(key) ? ' is-active' : ''}">${active.includes(key) ? '✓ ' : ''}${label}</span>`).join('')}
       </div>`;
 
     // Preview sebelum data benar-benar tampil: satu baris loading penuh
     // "Load ATRBPN……" (berkedip, lihat CSS .mp-loading) — dua kolom hanya
     // muncul setelah hasil GFI provinsi & kabupaten masuk.
-    if (zoneRes && zoneRes.pending) {
-      return `
-        ${header}
-        <div class="mp-cand mp-loading">Load ATRBPN……</div>
-        ${notes}
-        <div class="mp-coord">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
-      `;
-    }
-
-    // Hanya kolom yang berisi yang dirender (flex .mp-zone-col = 1/2 lebar per
-    // anak → satu kolom tunggal otomatis melebar penuh, tanpa celah kosong).
-    const zoneCols = [kabSection, provSection].filter(Boolean)
-      .map(h => `<div class="mp-zone-col">${h}</div>`).join('');
+    const zoneCols = [kabSection, provSection, visualOnlySection('lsd', 'LSD'),
+      visualOnlySection('kp2b', 'KP2B')].filter(Boolean).join('');
     const zones = zoneCols ? `<div class="mp-zones">${zoneCols}</div>` : '';
 
     return `
