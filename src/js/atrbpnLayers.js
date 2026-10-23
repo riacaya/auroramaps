@@ -76,6 +76,9 @@ const RTRW_LAYER = 'rtr-online:rtrw_kabkot_1_indonesia';
 const BHUMI_RTRW_PATH = '/expapi/rtrw/wms';
 const BHUMI_RTRW_LAYER = 'petabpn:rtrw_kabkot_merge';
 const BHUMI_RTRW_STYLE = 'petabpn:highlight_rtrw_kabkot';
+const BHUMI_RDTR_LAYER = 'rdtr_purwokerto';
+const BHUMI_RDTR_STYLE = 'rdtr_purwokerto_nomin';
+const BHUMI_RDTR_BOUNDS = { west: 109.1915283, south: -7.5001984, east: 109.2840882, north: -7.3671789 };
 
 // ArcGIS Identify GISTARU dari HAR gistaru.atrbpn.go.id.har. Service ini
 // berisi 35 layer RTR kabupaten/kota di Jawa Tengah; properties mencakup
@@ -274,12 +277,15 @@ const AtrbpnLayers = {
     //   tanpa keduanya (mis. hanya LSD/SHGU) → popup tanpa kolom zona,
     //   dan GFI zona TIDAK dipanggil sama sekali (hemat: rantai gistaru
     //   yang 15+15 dtk saat server tak terjangkau jadi tidak dijalankan).
-    const want = { prov: active.includes('rtrp'), kab: active.includes('rtrw') };
+    const want = {
+      prov: active.includes('rtrp'), kab: active.includes('rtrw'),
+      rdtr: (active.includes('rtrp') || active.includes('rtrw')) && this._isBhumiRdtrPoint(lat, lng)
+    };
     const seq = (this._clickSeq = (this._clickSeq || 0) + 1);
     // Kartu loading penuh "Load ATRBPN……" hanya bila ada kolom zona yang
     // diminta; tanpa zona → langsung kartu final (header + koordinat).
     MapPopup.show(this._zonePopupHtml(
-      active, (want.prov || want.kab) ? { pending: true } : null, lat, lng));
+      active, (want.prov || want.kab || want.rdtr) ? { pending: true } : null, lat, lng));
     // Render bertahap (14 Okt 2026): tiap GFI berjalan paralel TETAPI kartu
     // popup diperbarui setiap hasil masuk — bagian RTRW (WMS bhumi via worker,
     // ±2–4 dtk) langsung tampil tanpa menunggu rantai GISTARU (bisa 15+15 dtk
@@ -288,6 +294,7 @@ const AtrbpnLayers = {
     const state = {};
     if (want.prov) state.prov = { pending: true };
     if (want.kab) state.kab = { pending: true };
+    if (want.rdtr) state.rdtr = { pending: true };
     const settle = (key, res) => {
       state[key] = res || { rows: [], count: 0, error: 'gagal' };
       // Buang hasil lama HANYA bila kartu pending sudah tidak tampil / sudah
@@ -318,6 +325,7 @@ const AtrbpnLayers = {
     };
     if (want.prov) this._gfiZone(RTRP_UUID, RTRP_LAYER, lat, lng).then(r => settle('prov', r));
     if (want.kab) this._gfiKabZone(lat, lng).then(r => settle('kab', r));
+    if (want.rdtr) this._gfiBhumiRdtr(lat, lng).then(r => settle('rdtr', r));
   },
 
   // Layer yang sedang tampil (on + benar-benar menempel di peta).
@@ -373,14 +381,24 @@ const AtrbpnLayers = {
   },
 
   // Zona RTRW Kab/Kota — ArcGIS Identify GISTARU Jateng memberi rincian zona,
-  // dasar Perda, serta tautan dokumen. Titik di luar cakupan / relay belum
-  // tersedia → fallback ke WMS BHUMI nasional (nama zona).
+  // dasar Perda, serta tautan dokumen. Utamakan WMS BHUMI yang live dan
+  // nasional; bila kosong/gagal, coba GISTARU untuk rincian Perda.
   async _gfiKabZone(lat, lng) {
-    const g = await this._gfiGistaruRtrw(lat, lng);
-    if (g && !g.error && g.count > 0) return g;
     const b = await this._gfiBhumiRtrw(lat, lng);
     if (b && !b.error && b.count > 0) return b;
+    const g = await this._gfiGistaruRtrw(lat, lng);
+    if (g && !g.error && g.count > 0) return g;
     return g && g.error ? g : (b || g || { rows: [], count: 0 });
+  },
+
+  _isBhumiRdtrPoint(lat, lng) {
+    const b = BHUMI_RDTR_BOUNDS;
+    return lng >= b.west && lng <= b.east && lat >= b.south && lat <= b.north;
+  },
+
+  async _gfiBhumiRdtr(lat, lng) {
+    if (!this._isBhumiRdtrPoint(lat, lng)) return { rows: [], count: 0, skip: true };
+    return this._gfiBhumiWms(lat, lng, BHUMI_RDTR_LAYER, BHUMI_RDTR_STYLE);
   },
 
   // ArcGIS MapServer Identify — service pada HAR meliputi 35 kab/kota Jawa
@@ -542,6 +560,9 @@ const AtrbpnLayers = {
         'Wilayah Administrasi Kecamatan': 'Kecamatan', nothpr: 'Dasar Perda', NOTHPR: 'Dasar Perda',
         'Nomor dan Tahun Peraturan': 'Dasar Perda', PP: 'Peta Perda', 'Peta Perda': 'Peta Perda',
         BT: 'Batang Tubuh Perda', 'Batang Tubuh': 'Batang Tubuh Perda',
+        bwp: 'BWP', blok: 'Blok', zona: 'Zona RDTR', subzona: 'Subzona',
+        kode: 'Kode Zona', klasifikas: 'Klasifikasi', luas: 'Luas (ha)',
+        keterang_1: 'Keterangan',
         LUASHA: 'Luas (ha)', 'Luas (ha)': 'Luas (ha)',
         KKOP_1: 'Kawasan Keselamatan Operasi Penerbangan',
         KP2B_2: 'Kawasan Pertanian Pangan Berkelanjutan',
@@ -594,6 +615,9 @@ const AtrbpnLayers = {
       zoneRes && (zoneRes.pending ? zoneRes : zoneRes.prov)) : '';
     const kabSection = wantKab ? section('Zona RTRW Kab/Kota',
       zoneRes && (zoneRes.pending ? zoneRes : zoneRes.kab)) : '';
+    const wantRdtr = (wantProv || wantKab) && this._isBhumiRdtrPoint(lat, lng);
+    const rdtrSection = wantRdtr ? section('Zona RDTR Purwokerto',
+      zoneRes && (zoneRes.pending ? zoneRes : zoneRes.rdtr)) : '';
 
     // Endpoint kawasan hutan sengaja tidak dipanggil (server mati);
     // bidang tidak muncul di sini lagi — bila aktif, klik ditangani BhumiIdentify.
@@ -626,7 +650,7 @@ const AtrbpnLayers = {
 
     // Hanya kolom yang berisi yang dirender (flex .mp-zone-col = 1/2 lebar per
     // anak → satu kolom tunggal otomatis melebar penuh, tanpa celah kosong).
-    const zoneCols = [kabSection, provSection].filter(Boolean)
+    const zoneCols = [kabSection, provSection, rdtrSection].filter(Boolean)
       .map(h => `<div class="mp-zone-col">${h}</div>`).join('');
     const zones = zoneCols ? `<div class="mp-zones">${zoneCols}</div>` : '';
 
