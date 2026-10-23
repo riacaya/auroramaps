@@ -236,6 +236,14 @@ const AtrbpnLayers = {
       bidangEntry.layer = null;
     }
 
+    // Arsip batas persil nasional PMTiles (shard sesuai area tampilan),
+    // terpisah dari layer Bidang Tanah WMS agar dapat dicentang sendiri.
+    const batasPersil = new ParcelShardLayer(this._map);
+    const batasPersilEntry = {
+      label: 'Batas Persil Indonesia', on: false, opacity: 0.85,
+      layer: batasPersil.layer
+    };
+
     const hutanEntry = {
       label: 'Kawasan Hutan', on: false, opacity: 0.7,
       note: bhumiBase ? '' : 'perlu proxy — lihat README'
@@ -294,6 +302,7 @@ const AtrbpnLayers = {
 
     this._layers = {
       bidang: bidangEntry,
+      batasPersil: batasPersilEntry,
       lsd:  lsdEntry,
       rtrp: { label: 'RTR Provinsi (RTRW)', on: false, opacity: 0.7, layer: attachTileRetry(L.tileLayer.wms(RTRP_URL, LIGHT('atrbpnRtrpPane', 21, {
               layers: RTRP_LAYER, version: '1.3.0',

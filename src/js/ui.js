@@ -405,7 +405,7 @@ const UI = {
     const cfg = Config.baseLayers[key] || {};
     const nativeMax = cfg.maxNativeZoom ?? cfg.maxZoom ?? '—';
     const maxZoom = cfg.maxZoom ?? '—';
-    const label = key === 'satellite' ? 'Satellite' : key === 'topo' ? 'Topo' : key === 'dark' ? 'Dark' : 'Street';
+    const label = key === 'satellite' ? 'Satellite' : key === 'topo' ? 'Topo' : key === 'dark' ? 'Rupabumi Indonesia' : 'Street';
     const basemapEl = document.getElementById('status-basemap');
     if (basemapEl) {
       const overNative = Number.isFinite(nativeMax) && Number.isFinite(zoom) && zoom > nativeMax;
