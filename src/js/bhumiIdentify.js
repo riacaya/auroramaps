@@ -473,12 +473,24 @@ const BhumiIdentify = {
 
     Toast.show('Mengidentifikasi bidang\u2026', 'info');
     try {
-      const span = 0.001;
+      // BHUMI mengirim bbox geographic viewport yang tampak dan posisi klik
+      // dalam piksel viewport, bukan kotak tetap ±0,001° dengan klik di tengah.
+      // Gunakan extent peta yang sedang dilihat supaya hit-test memilih persil
+      // tepat di bawah koordinat yang diklik.
+      const size = MapManager.map.getSize();
+      const bounds = MapManager.map.getBounds();
+      const northWest = bounds.getNorthWest();
+      const southEast = bounds.getSouthEast();
+      const clickPoint = MapManager.map.latLngToContainerPoint([lat, lng]);
+      const pixel = {
+        x: Math.max(0, Math.min(size.x - 1, Math.round(clickPoint.x))),
+        y: Math.max(0, Math.min(size.y - 1, Math.round(clickPoint.y)))
+      };
       const features = await this._gfiFeatures({
         service_layer_name: 'umum:Persil',
-        width: 256, height: 256,
-        bbox: [lng - span, lat - span, lng + span, lat + span].map(v => v.toFixed(6)).join(','),
-        x: 128, y: 128,
+        width: size.x, height: size.y,
+        bbox: [northWest.lng, southEast.lat, southEast.lng, northWest.lat].join(','),
+        x: pixel.x, y: pixel.y,
         query_layers: 'umum:Persil',
         url: '/expapi/getPersil',
         service: '/bhumigs/umum'
