@@ -23,6 +23,12 @@ const BhumiIdentify = {
     try {
       const q = new URLSearchParams(location.search).get('bhumiWorker');
       if (q) return q.replace(/\/+$/, '');
+      // Saat berjalan di PC melalui local-server.mjs, gunakan relay lokal
+      // yang juga dipakai layer ATR/BPN. Jangan biarkan URL Worker global
+      // pada config.js mengambil alih request identifikasi bidang tanah.
+      const lokal = location.protocol === 'http:' &&
+        (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+      if (lokal) return '/bhumi-proxy';
       if (window.BHUMI_WORKER_URL) return String(window.BHUMI_WORKER_URL).replace(/\/+$/, '');
       const ls = localStorage.getItem('bhumiWorkerUrl');
       if (ls) return ls.replace(/\/+$/, '');
