@@ -76,6 +76,11 @@ const RTRW_LAYER = 'rtr-online:rtrw_kabkot_1_indonesia';
 const BHUMI_RTRW_PATH = '/expapi/rtrw/wms';
 const BHUMI_RTRW_LAYER = 'petabpn:rtrw_kabkot_merge';
 const BHUMI_RTRW_STYLE = 'petabpn:highlight_rtrw_kabkot';
+// Layer provinsi yang tersedia pada WMS BHUMI aktif. Capabilities
+// membatasi extent ke Jawa Tengah (108.54–111.70 BT, 8.21–5.73 LS).
+const BHUMI_RTRP_LAYER = 'rtrw_jateng';
+const BHUMI_RTRP_STYLE = 'rtrw_jateng_nomin';
+const BHUMI_RTRP_BOUNDS = { west: 108.5415, south: -8.2119, east: 111.6994, north: -5.7257 };
 
 // ArcGIS Identify GISTARU dari HAR gistaru.atrbpn.go.id.har. Service ini
 // berisi 35 layer RTR kabupaten/kota di Jawa Tengah; properties mencakup
@@ -113,11 +118,13 @@ const AtrbpnLayers = {
     const G = 'https://gisliner.atrbpn.go.id';
     const xyz = (c, ts) => G + '/layers/tms/public/' + c + '/{z}/{x}/{y}/?tileSize=' + ts;
 
-    // WMS RTR Provinsi sesuai request GetMap sukses pada zonaprokab.har:
-    // WMS 1.3.0, EPSG:3857, tile 512. Uji direct tanpa Referer dari mesin ini
-    // membalas 403, jadi route /gistaru di worker diperlukan untuk browser app.
-    const gBase = this._gistaruBase();
-    const RTRP_URL = (gBase ? gBase + '/interoppublic/api/wms/' : GISTARU_WMS) + RTRP_UUID;
+    // WMS RTRW Provinsi Jawa Tengah lewat worker BHUMI (200 image/png).
+    // Route GISTARU melalui worker live membalas 522; layer fallback ini
+    // hanya mencakup Jawa Tengah menurut GetCapabilities BHUMI.
+    const rtrpBhumiBase = this._resolveBhumiBase();
+    const RTRP_URL = rtrpBhumiBase
+      ? rtrpBhumiBase.replace(/\/$/, '') + BHUMI_RTRW_PATH
+      : GISTARU_WMS + RTRP_UUID;
 
     // Pane terpisah per layer agar urutannya stabil (belakang → depan):
     //   LSD (300) < RTR Provinsi (305) < RTRW (310) < Bidang Tanah (320)
@@ -221,9 +228,10 @@ const AtrbpnLayers = {
     this._layers = {
       bidang: bidangEntry,
       lsd:  { label: 'LSD Nasional',      on: false, opacity: 0.8, layer: attachTileRetry(L.tileLayer(xyz('269_lsd_', 1024), LIGHT('atrbpnLsdPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false }))) },
-      rtrp: { label: 'RTR Provinsi Jawa', on: false, opacity: 0.7, layer: attachTileRetry(L.tileLayer.wms(RTRP_URL, LIGHT('atrbpnRtrpPane', 21, {
-              layers: RTRP_LAYER, version: '1.3.0',
-              crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true, styles: '',
+      rtrp: { label: 'RTRW Provinsi Jawa Tengah', on: false, opacity: 0.7, layer: attachTileRetry(L.tileLayer.wms(RTRP_URL, LIGHT('atrbpnRtrpPane', 21, {
+              layers: rtrpBhumiBase ? BHUMI_RTRP_LAYER : RTRP_LAYER, version: '1.3.0',
+              crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true,
+              styles: rtrpBhumiBase ? BHUMI_RTRP_STYLE : '',
               format: 'image/png', transparent: true, attribution: 'RTR (gistaru-app)'
             }))) },
       rtrw: { label: 'RTRW Kab/Kota',     on: false, opacity: 0.7, layer: attachTileRetry(L.tileLayer(xyz('212_rtrwkbpt', 1024), LIGHT('atrbpnRtrwPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false }))) },
@@ -317,7 +325,7 @@ const AtrbpnLayers = {
         `);
       }
     };
-    if (want.prov) this._gfiZone(RTRP_UUID, RTRP_LAYER, lat, lng).then(r => settle('prov', r));
+    if (want.prov) this._gfiBhumiRtrp(lat, lng).then(r => settle('prov', r));
     if (want.kab) this._gfiKabZone(lat, lng).then(r => settle('kab', r));
   },
 
@@ -384,6 +392,18 @@ const AtrbpnLayers = {
     return g && g.error ? g : (b || g || { rows: [], count: 0 });
   },
 
+  // Identify WMS RTRW Provinsi Jawa Tengah yang dilayani worker live.
+  // Cakupan dibatasi menurut GetCapabilities; di luar Jateng tidak query.
+  async _gfiBhumiRtrp(lat, lng) {
+    const b = this._resolveBhumiBase();
+    if (!b) return this._gfiZone(RTRP_UUID, RTRP_LAYER, lat, lng);
+    const box = BHUMI_RTRP_BOUNDS;
+    if (lng < box.west || lng > box.east || lat < box.south || lat > box.north) {
+      return { rows: [], count: 0, skip: true };
+    }
+    return this._gfiBhumiWms(lat, lng, BHUMI_RTRP_LAYER, BHUMI_RTRP_STYLE, b);
+  },
+
   // ArcGIS MapServer Identify — service pada HAR meliputi 35 kab/kota Jawa
   // Tengah. EPSG:102100 setara Web Mercator; mapExtent/imageDisplay mengikuti
   // viewport agar tolerance piksel memilih poligon tepat di titik klik.
@@ -424,24 +444,31 @@ const AtrbpnLayers = {
   async _gfiBhumiRtrw(lat, lng) {
     const b = this._resolveBhumiBase();
     if (!b || !/^https?:\/\//i.test(b)) return { rows: [], count: 0, skip: true };
+    const r = await this._gfiBhumiWms(lat, lng, BHUMI_RTRW_LAYER, BHUMI_RTRW_STYLE, b);
+    if (r.error || !r.rows || !r.rows.length) return r || { rows: [], count: 0 };
+    // Normalisasi field: layer merge hanya punya objectid + keterangan →
+    // samakan dengan nama field GISTARU (namobj) supaya popup tanpa perubahan.
+    r.rows = r.rows.map(o => (o.namobj ? o : Object.assign({ namobj: o.keterangan || '' }, o)));
+    return r;
+  },
+
+  async _gfiBhumiWms(lat, lng, layer, style, base) {
+    const b = base || this._resolveBhumiBase();
+    if (!b) return { rows: [], count: 0, skip: true };
     // bbox kotak ±40 m di sekitar titik klik, koordinat meter EPSG:3857
-    // (persis pola live-test yang berhasil; span kecil = respons ringan).
+    // span kecil menjaga identify tetap terfokus pada titik klik.
     const span = 40;
     const x = lng * 20037508.34 / 180;
     const y = Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)) * 20037508.34 / Math.PI;
     const qs = '?version=1.1.1&request=GetFeatureInfo&info_format=application/json' +
-      '&layers=' + encodeURIComponent(BHUMI_RTRW_LAYER) +
-      '&query_layers=' + encodeURIComponent(BHUMI_RTRW_LAYER) +
-      '&styles=' + encodeURIComponent(BHUMI_RTRW_STYLE) +
+      '&layers=' + encodeURIComponent(layer) +
+      '&query_layers=' + encodeURIComponent(layer) +
+      '&styles=' + encodeURIComponent(style || '') +
       '&CRS=EPSG:3857&srs=EPSG:3857&width=256&height=256&x=128&y=128' +
       '&bbox=' + [x - span, y - span, x + span, y + span].map(v => v.toFixed(2)).join(',') +
       '&FEATURE_COUNT=5';
     const url = b.replace(/\/$/, '') + BHUMI_RTRW_PATH + qs;
     const r = await this._gfiFetch(url);
-    if (r.error || !r.rows || !r.rows.length) return r || { rows: [], count: 0 };
-    // Normalisasi field: layer merge hanya punya objectid + keterangan →
-    // samakan dengan nama field GISTARU (namobj) supaya popup tanpa perubahan.
-    r.rows = r.rows.map(o => (o.namobj ? o : Object.assign({ namobj: o.keterangan || '' }, o)));
     return r;
   },
 
