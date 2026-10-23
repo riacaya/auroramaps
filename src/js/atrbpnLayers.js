@@ -120,6 +120,7 @@ const AtrbpnLayers = {
     // /gistaru untuk Referer ATR/BPN bila tersedia.
     const gBase = this._gistaruBase();
     const RTRP_URL = (gBase ? gBase + '/interoppublic/api/wms/' : GISTARU_WMS) + RTRP_UUID;
+    const RTRW_URL = (gBase ? gBase + '/interoppublic/api/wms/' : GISTARU_WMS) + RTRW_UUID;
 
     // Pane terpisah per layer agar urutannya stabil (belakang → depan):
     //   LSD (300) < RTR Provinsi (305) < RTRW (310) < Bidang Tanah (320)
@@ -223,12 +224,16 @@ const AtrbpnLayers = {
     this._layers = {
       bidang: bidangEntry,
       lsd:  { label: 'LSD Nasional',      on: false, opacity: 0.8, layer: attachTileRetry(L.tileLayer(xyz('269_lsd_', 1024), LIGHT('atrbpnLsdPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false }))) },
-      rtrp: { label: 'RTR Provinsi Jawa', on: false, opacity: 0.7, layer: attachTileRetry(L.tileLayer.wms(RTRP_URL, LIGHT('atrbpnRtrpPane', 21, {
+      rtrp: { label: 'RTRW Provinsi', on: false, opacity: 0.7, layer: attachTileRetry(L.tileLayer.wms(RTRP_URL, LIGHT('atrbpnRtrpPane', 21, {
               layers: RTRP_LAYER, version: '1.3.0',
               crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true, styles: '',
               format: 'image/png', transparent: true, attribution: 'RTR (gistaru-app)'
             }))) },
-      rtrw: { label: 'RTRW Kab/Kota',     on: false, opacity: 0.7, layer: attachTileRetry(L.tileLayer(xyz('212_rtrwkbpt', 1024), LIGHT('atrbpnRtrwPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false }))) },
+      rtrw: { label: 'RTRW Kab/Kota', on: false, opacity: 0.7, layer: attachTileRetry(L.tileLayer.wms(RTRW_URL, LIGHT('atrbpnRtrwPane', 21, {
+              layers: RTRW_LAYER, version: '1.3.0',
+              crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true, styles: '',
+              format: 'image/png', transparent: true, attribution: 'RTR (gistaru-app)'
+            }))) },
       hutan: hutanEntry
       ,shgu: shguEntry
     };
