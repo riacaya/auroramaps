@@ -9,6 +9,24 @@
 const MapPopup = {
   _el: null,
 
+  _fitBetweenBars() {
+    if (!this._el) return;
+    const header = document.getElementById('header');
+    const toolbar = document.getElementById('toolbar');
+    const footer = document.getElementById('statusbar');
+    const headerBottom = header?.getBoundingClientRect().bottom || 0;
+    const toolbarBottom = toolbar && getComputedStyle(toolbar).display !== 'none'
+      ? toolbar.getBoundingClientRect().bottom : headerBottom;
+    const footerTop = footer && getComputedStyle(footer).display !== 'none'
+      ? footer.getBoundingClientRect().top : window.innerHeight;
+    const gap = 8;
+    const top = Math.max(headerBottom, toolbarBottom) + gap;
+    const bottom = Math.max(0, window.innerHeight - footerTop) + gap;
+    this._el.style.top = `${top}px`;
+    this._el.style.bottom = `${bottom}px`;
+    this._el.style.maxHeight = `calc(100dvh - ${top + bottom}px)`;
+  },
+
   _ensureEl() {
     if (this._el) return;
     this._el = document.createElement('div');
@@ -26,6 +44,7 @@ const MapPopup = {
     this._ensureEl();
     this._el.innerHTML = html;
     this._bindTabs();
+    this._fitBetweenBars();
     this._el.style.opacity = '0';
     this._el.style.transform = 'translateY(8px)';
     this._el.style.display = '';
@@ -57,5 +76,14 @@ const MapPopup = {
 
   hide() {
     if (this._el) this._el.style.display = 'none';
+  },
+
+  _resizeBound: false,
+  bindResize() {
+    if (this._resizeBound) return;
+    this._resizeBound = true;
+    window.addEventListener('resize', () => this._fitBetweenBars());
   }
 };
+
+MapPopup.bindResize();
