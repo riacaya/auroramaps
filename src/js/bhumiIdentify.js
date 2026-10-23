@@ -39,26 +39,12 @@ const BhumiIdentify = {
   // ── Token Management ──
   async _ensureToken() {
     if (this._token && Date.now() < this._tokenExp) return this._token;
-    let res;
-    try {
-      res = await fetch(this._proxyBase + '/expapi/loginApi', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: 'user', password: 'password' })
-      });
-    } catch (e) {
-      // Endpoint down / offline — jangan teruskan request SHM/NIB/NIBEL dgn
-      // galat 'Failed to fetch' yg membingungkan.
-      throw new Error('Server BHUMI tidak merespons — periksa koneksi, ulangi lagi');
-    }
-    if (!res.ok) throw new Error('Login gagal: HTTP ' + res.status);
-    const data = await res.json();
-    this._token = typeof data === 'string' ? data : JSON.stringify(data);
-    try {
-      const payload = JSON.parse(atob(this._token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-      this._tokenExp = (payload.exp - 60) * 1000;
-    } catch { this._tokenExp = Date.now() + 50 * 60 * 1000; }
-    return this._token;
+    // loginApi BHUMI sekarang mensyaratkan token reCAPTCHA v3 yang hanya
+    // dapat diterbitkan pada domain yang diizinkan pemilik site key. Uji dari
+    // AuroraMaps localhost ditolak Google; kredensial contoh sebelumnya juga
+    // selalu gagal verifikasi CAPTCHA. Jangan kirim request palsu atau membuat
+    // token sendiri karena hanya ATR/BPN yang dapat mengizinkan domain ini.
+    throw new Error('Login pencarian bidang BHUMI memerlukan reCAPTCHA dari domain yang diizinkan ATR/BPN. Domain AuroraMaps ini belum diizinkan; minta ATR/BPN menambahkan domain app atau menyediakan endpoint autentikasi resmi.');
   },
 
   // ── MD5 (exact copy from nib.html) ──
