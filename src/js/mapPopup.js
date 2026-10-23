@@ -25,6 +25,7 @@ const MapPopup = {
   show(html) {
     this._ensureEl();
     this._el.innerHTML = html;
+    this._bindTabs();
     this._el.style.opacity = '0';
     this._el.style.transform = 'translateY(8px)';
     this._el.style.display = '';
@@ -33,6 +34,25 @@ const MapPopup = {
       this._el.style.opacity = '1';
       this._el.style.transform = 'none';
     });
+  },
+
+  _bindTabs() {
+    if (!this._el) return;
+    const tabs = Array.from(this._el.querySelectorAll('[data-mp-tab]'));
+    const panes = Array.from(this._el.querySelectorAll('[data-mp-pane]'));
+    const selectTab = id => {
+      if (!tabs.some(tab => tab.dataset.mpTab === id)) return;
+      this._activeTab = id;
+      tabs.forEach(tab => {
+        const selected = tab.dataset.mpTab === id;
+        tab.classList.toggle('active', selected);
+        tab.setAttribute('aria-selected', String(selected));
+      });
+      panes.forEach(pane => { pane.hidden = pane.dataset.mpPane !== id; });
+    };
+    tabs.forEach(button => button.addEventListener('click', () => selectTab(button.dataset.mpTab)));
+    if (tabs.some(tab => tab.dataset.mpTab === this._activeTab)) selectTab(this._activeTab);
+    else this._activeTab = tabs.find(tab => tab.getAttribute('aria-selected') === 'true')?.dataset.mpTab || '';
   },
 
   hide() {

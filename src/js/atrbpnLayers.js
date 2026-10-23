@@ -553,10 +553,7 @@ const AtrbpnLayers = {
 
   // Susun HTML popup. zoneRes: null = tanpa query zona;
   // { pending } = sedang membaca; { prov, kab } = hasil perintah GetFeatureInfo.
-  // Layout kolom (.mp-zones): kiri = RTRW Kab/Kota, kanan = RTR Provinsi
-  // (5 Okt 2026) + font kecil non-tebal (lihat CSS .mp-zones) supaya popup
-  // tidak terlalu tinggi. HANYA kolom layer yang dicentang yang dirender
-  // (14 Okt 2026) — tanpa centang RTR Provinsi/RTRW, blok zona tidak muncul.
+  // Popup portrait dengan tab per layer ATRBPN; tiap pane memuat detail dan sumbernya.
   _zonePopupHtml(active, zoneRes, lat, lng) {
     const esc = (v) => Utils.escapeHtml(String(v));
     const fieldLabels = {
@@ -609,8 +606,8 @@ const AtrbpnLayers = {
       [['namobj', 'Jenis Kawasan'], ['jnsrpr', 'Kategori'], ['wadmpr', 'Provinsi'],
        ['wadmkk', 'Kab/Kota'], ['wadmkc', 'Kecamatan'], ['nothpr', 'Dasar Perda'], ['meta', 'Wilayah']]) : '';
     const visualOnlySection = (key, title) => active.includes(key)
-      ? `<div class="mp-zone-col"><div class="mp-cand">${title}</div><div class="mp-zone-note">Endpoint tile belum menyediakan atribut untuk titik ini.</div></div>`
-      : '';
+      ? `<div class="mp-zone-note">Endpoint tile belum menyediakan atribut untuk titik ini.</div>`
+      : `<div class="mp-zone-note">Layer ${title} belum aktif.</div>`;
 
     // Endpoint kawasan hutan sengaja tidak dipanggil (server mati);
     // bidang tidak muncul di sini lagi — bila aktif, klik ditangani BhumiIdentify.
@@ -628,9 +625,16 @@ const AtrbpnLayers = {
     // Preview sebelum data benar-benar tampil: satu baris loading penuh
     // "Load ATRBPN……" (berkedip, lihat CSS .mp-loading) — dua kolom hanya
     // muncul setelah hasil GFI provinsi & kabupaten masuk.
-    const zoneCols = [kabSection, provSection, visualOnlySection('lsd', 'LSD'),
-      visualOnlySection('kp2b', 'KP2B')].filter(Boolean).join('');
-    const zones = zoneCols ? `<div class="mp-zones">${zoneCols}</div>` : '';
+    const tabDefs = [
+      { id: 'rtrp', label: 'RTRW Pro', title: 'RTRW Provinsi', content: provSection || `<div class="mp-zone-col"><div class="mp-cand">RTRW Provinsi</div><div class="mp-zone-note">Layer RTRW Provinsi belum aktif.</div></div>` },
+      { id: 'rtrw', label: 'RTRW Kab', title: 'RTRW Kab/Kota', content: kabSection || `<div class="mp-zone-col"><div class="mp-cand">RTRW Kab/Kota</div><div class="mp-zone-note">Layer RTRW Kab/Kota belum aktif.</div></div>` },
+      { id: 'lsd', label: 'LSD', title: 'LSD', content: `<div class="mp-zone-col"><div class="mp-cand">LSD</div>${visualOnlySection('lsd', 'LSD')}</div>` },
+      { id: 'kp2b', label: 'KP2B', title: 'KP2B', content: `<div class="mp-zone-col"><div class="mp-cand">KP2B</div>${visualOnlySection('kp2b', 'KP2B')}</div>` }
+    ];
+    const activeTab = tabDefs.find(tab => active.includes(tab.id))?.id || 'rtrw';
+    const tabButtons = tabDefs.map(tab => `<button type="button" class="mp-tab${tab.id === activeTab ? ' active' : ''}" data-mp-tab="${tab.id}" role="tab" aria-selected="${tab.id === activeTab}" title="${tab.title}">${tab.label}</button>`).join('');
+    const tabPanes = tabDefs.map(tab => `<div class="mp-tabpane" data-mp-pane="${tab.id}" role="tabpanel"${tab.id === activeTab ? '' : ' hidden'}>${tab.content}</div>`).join('');
+    const zones = `<div class="mp-tabs" role="tablist" aria-label="Informasi ATRBPN">${tabButtons}</div><div class="mp-tabpanes">${tabPanes}</div>`;
 
     return `
       ${header}

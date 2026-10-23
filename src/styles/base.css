@@ -253,11 +253,14 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
   color: #fff; font: inherit; font-size: 11px; cursor: pointer;
 }
 .map-popup-panel .mp-share:hover { filter: brightness(1.1); }
-/* Layer jadi judul bagian; atribut ditumpuk di bawah tiap judul. */
-.map-popup-panel .mp-zones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.map-popup-panel .mp-zone-col { min-width: 0; border-right: 1px solid var(--border); }
-.map-popup-panel .mp-zone-col:nth-child(2n) { border-right: 0; }
-.map-popup-panel .mp-zone-col:nth-child(n+3) { border-top: 1px solid var(--border); }
+/* Popup ATRBPN portrait dengan empat tab seperti Cari Bidang. */
+.map-popup-panel .mp-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 7px 8px 5px; border-bottom: 1px solid var(--border); }
+.map-popup-panel .mp-tab { min-width: 0; padding: 7px 3px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-hover); color: var(--text-secondary); font: inherit; font-size: 10px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.map-popup-panel .mp-tab:hover { border-color: var(--accent); color: var(--accent); }
+.map-popup-panel .mp-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.map-popup-panel .mp-tabpane[hidden] { display: none; }
+.map-popup-panel .mp-tabpane .mp-zone-col { min-width: 0; }
+.map-popup-panel .mp-tabpane .mp-cand { font-size: 11px; padding: 7px 10px; }
 .map-popup-panel .mp-zone-note { padding: 6px 8px; color: var(--text-muted); font-size: 10px; line-height: 1.4; }
 .map-popup-panel .mp-zones .mp-cand { font-size: 11px; padding: 5px 8px; }
 .map-popup-panel .mp-fields { padding: 2px 8px 5px; }
@@ -2239,14 +2242,11 @@ input[type="range"]:focus-visible { outline: none; }
 
   /* ── MAP POPUP (mobile) ── */
   .map-popup-panel {
-    bottom: 60px; left: 8px; right: 8px;
-    max-width: none; min-width: 0;
-    border-radius: 8px;
+    bottom: 60px; left: 8px; right: 8px; width: auto;
+    max-width: none; min-width: 0; border-radius: 8px;
   }
-  /* Popup ATR/BPN menjadi satu kolom pada layar ponsel. */
-  .map-popup-panel .mp-zones { grid-template-columns: minmax(0, 1fr); }
-  .map-popup-panel .mp-zone-col { border-right: 0; }
-  .map-popup-panel .mp-zone-col + .mp-zone-col { border-top: 1px solid var(--border); }
+  .map-popup-panel .mp-tabs { gap: 3px; padding-inline: 6px; }
+  .map-popup-panel .mp-tab { font-size: 9px; }
 }
 
 /* Panel UI selalu bersudut siku; geometri peta dan kontrol bundar tetap utuh. */
