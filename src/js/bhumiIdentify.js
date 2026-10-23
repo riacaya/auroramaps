@@ -107,8 +107,8 @@ const BhumiIdentify = {
     return out;
   },
 
-  async _decryptBhumi(encB64) {
-    const PASS = 's3CRetCR1pT0';
+  async _decryptBhumi(encB64, passphrase = '') {
+    const PASS = passphrase || 's3CRetCR1pT0';
     const full = this._base64ToBytes(encB64);
     if (full.length < 16) throw new Error('data terlalu pendek');
     const salt = full.slice(8, 16);
@@ -127,20 +127,55 @@ const BhumiIdentify = {
   },
 
   // ── API Call ──
+  async _newIdentifySession() {
+    const [keyPair, ticketRes] = await Promise.all([
+      crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits']),
+      fetch(this._proxyBase + '/expapi/auth-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+    ]);
+    if (!ticketRes.ok) throw new Error('BHUMI auth-ticket: HTTP ' + ticketRes.status);
+    const ticket = await ticketRes.json();
+    if (!ticket?.ticketId || !ticket?.challengeSeed) throw new Error('BHUMI auth-ticket tidak lengkap');
+    const publicKey = new Uint8Array(await crypto.subtle.exportKey('raw', keyPair.publicKey));
+    const clientPubKey = Array.from(publicKey, b => b.toString(16).padStart(2, '0')).join('');
+    return { keyPair, ticketId: ticket.ticketId, challengeSeed: ticket.challengeSeed, clientPubKey };
+  },
+
+  async _ecdhPassphrase(serverPubKey, privateKey, challengeSeed) {
+    const bytes = new Uint8Array((serverPubKey.match(/.{2}/g) || []).map(x => parseInt(x, 16)));
+    const publicKey = await crypto.subtle.importKey('raw', bytes, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+    const secret = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: publicKey }, privateKey, 256));
+    const sharedHex = Array.from(secret, b => b.toString(16).padStart(2, '0')).join('');
+    const material = new TextEncoder().encode(`${sharedHex}:${challengeSeed}`);
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', material));
+    return Array.from(digest, b => b.toString(16).padStart(2, '0')).join('');
+  },
+
   async _gfiFeatures(body) {
-    // Klik identify mengikuti bidtan.har: POST /expapi/getPersil berjalan
-    // tanpa Authorization (200 application/json). Token loginApi hanya
-    // diperlukan oleh endpoint pencarian sertifikat/NIB, bukan identify ini.
+    // Alur terbaru BHUMI (bidtan.har): auth-ticket + ECDH P-256 untuk setiap
+    // getPersil. Header challenge diteruskan melalui proxy; respons dienkripsi
+    // dengan kunci turunan ECDH dan challengeSeed.
+    const session = await this._newIdentifySession();
     const res = await fetch(this._proxyBase + '/expapi/getPersil', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Client-Pubkey': session.clientPubKey,
+        'X-Ticket-Id': session.ticketId,
+        'X-Timestamp': String(Date.now())
+      },
       body: JSON.stringify(body)
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     let fc;
     if (data && data.encrypted && data.data) {
-      fc = JSON.parse(await this._decryptBhumi(data.data));
+      const passphrase = data.ecdh && data.serverPubKey
+        ? await this._ecdhPassphrase(data.serverPubKey, session.keyPair.privateKey, session.challengeSeed)
+        : '';
+      fc = JSON.parse(await this._decryptBhumi(data.data, passphrase));
     } else {
       fc = data;
     }
@@ -411,8 +446,9 @@ const BhumiIdentify = {
 
   // AKTIF lagi (5 Okt 2026): server bhumi pulih — klik bidang diverifikasi
   // live dari rekaman situs C:\Users\rc99\Downloads\bidang.har:
-  //   POST /expapi/getPersil (JWT loginApi) → 200 {encrypted,data} → dekripsi
-  //   AES s3CRetCR1pT0 → FeatureCollection; highlight via
+  //   POST /expapi/auth-ticket → POST /expapi/getPersil (ECDH headers)
+  //   → 200 {encrypted,ecdh,serverPubKey,data} → dekripsi
+  //   ECDH passphrase → FeatureCollection; highlight via
   //   GET /expapi/umum/wms?layer=Persil&filter=<persilpasifid>&BBOX=…
   // Saat layer bidang aktif, klik peta DITANGANI DI SINI (AtrbpnLayers
   // menyerahkan popup zona RTR/RW ke handler ini — lihat _onMapClick).

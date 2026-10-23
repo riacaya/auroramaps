@@ -24,7 +24,7 @@ function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,HEAD,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Authorization,Content-Type",
+    "Access-Control-Allow-Headers": "Authorization,Content-Type,X-Client-Pubkey,X-Ticket-Id,X-Timestamp",
     "Access-Control-Max-Age": "86400"
   };
 }
@@ -103,6 +103,10 @@ var bhumi_tile_worker_default = {
       });
       const auth2 = request.headers.get("Authorization");
       if (auth2) headers2.set("Authorization", auth2);
+      for (const name of ["X-Client-Pubkey", "X-Ticket-Id", "X-Timestamp"]) {
+        const value = request.headers.get(name);
+        if (value) headers2.set(name, value);
+      }
       const upstream2 = await fetch(BHUMI_BASE + path, {
         method: "POST",
         headers: headers2,
