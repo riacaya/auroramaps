@@ -127,8 +127,9 @@ const BHUMI_LSD_LAYERS = ['umum:lsd_merge_8_provinsi', 'umum:lsd_merge'];
 // Bila sumber aktif gagal terus-menerus, _attachBidangFallback otomatis
 // berganti ke sumber berikutnya (mirip fallback basemap dark).
 const BIDANG_SOURCES = [
-  { path: '/expapi/bhumigeos/umum/wms', layers: 'umum:Persil' },
+  // Sumber utama mengikuti bidtan.har: /mprx/service + bhumi_persil (200 PNG).
   { path: '/mprx/service',              layers: 'bhumi_persil' },
+  { path: '/expapi/bhumigeos/umum/wms', layers: 'umum:Persil' },
   { path: '/expapi/bhumigs/umum/wms',   layers: 'umum:Persil' }
 ];
 
@@ -574,20 +575,20 @@ const AtrbpnLayers = {
       if (!res) return '';
       // Pesan tunggal untuk semua kasus kosong/gagal — hindari crash & tabel
       // kosong saat kabupaten/tsb tidak punya data atau server tak merespons.
-      const unavailable = (why) => `<div class="mp-cand">${title}</div><table><tr><td>⚠ ${why}</td></tr></table>`;
-      if (res.pending) return `<div class="mp-cand">${title} — membaca…</div>`;
+      const unavailable = (why) => `<div class="mp-zone-col"><div class="mp-cand">${title}</div><div class="mp-zone-note">⚠ ${why}</div></div>`;
+      if (res.pending) return `<div class="mp-zone-col"><div class="mp-cand">${title} — membaca…</div></div>`;
       if (res.error) return unavailable(`Gagal membaca: ${esc(res.error)}`);
       const f = (res.rows || [])[0];
       if (!f) return unavailable('Data tidak tersedia di titik ini');
       const preferred = fields.filter(([key]) => f[key]);
       const known = new Set(preferred.map(([key]) => key.toLowerCase()));
       const extra = Object.entries(f).filter(([key, value]) => value != null && String(value).trim() && !known.has(key.toLowerCase()));
-      const rows = preferred.map(([key, label]) => `<tr><th>${esc(label)}</th><td>${esc(f[key])}</td></tr>`)
-        .concat(extra.map(([key, value]) => `<tr><th>${esc(labelField(key))}</th><td>${esc(value)}</td></tr>`))
+      const rows = preferred.map(([key, label]) => `<div class="mp-detail"><div class="mp-detail-label">${esc(label)}</div><div class="mp-detail-value">${esc(f[key])}</div></div>`)
+        .concat(extra.map(([key, value]) => `<div class="mp-detail"><div class="mp-detail-label">${esc(labelField(key))}</div><div class="mp-detail-value">${esc(value)}</div></div>`))
         .join('');
       if (!rows) return unavailable('Data tidak tersedia di titik ini');
-      const more = res.count > 1 ? `<tr><th>Zona lain</th><td>+${res.count - 1}</td></tr>` : '';
-      return `<div class="mp-cand">${title}</div><table>${rows}${more}</table>`;
+      const more = res.count > 1 ? `<div class="mp-detail"><div class="mp-detail-label">Zona lain</div><div class="mp-detail-value">+${res.count - 1}</div></div>` : '';
+      return `<div class="mp-zone-col"><div class="mp-cand">${title}</div><div class="mp-fields">${rows}${more}</div></div>`;
     };
 
     // Kolom zona hanya untuk layer ATRBPN yang DICENTANG (14 Okt 2026):

@@ -128,13 +128,12 @@ const BhumiIdentify = {
 
   // ── API Call ──
   async _gfiFeatures(body) {
-    await this._ensureToken();
+    // Klik identify mengikuti bidtan.har: POST /expapi/getPersil berjalan
+    // tanpa Authorization (200 application/json). Token loginApi hanya
+    // diperlukan oleh endpoint pencarian sertifikat/NIB, bukan identify ini.
     const res = await fetch(this._proxyBase + '/expapi/getPersil', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': this._token
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);

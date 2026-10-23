@@ -219,7 +219,7 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
   position: fixed; bottom: 52px; left: 12px; z-index: 7500;
   background: var(--bg-surface); border: 1px solid var(--border); border-radius: 10px;
   box-shadow: 0 6px 20px rgba(0,0,0,.4); padding: 0; min-width: 200px; max-width: min(760px, calc(100vw - 24px));
-  font-size: 12px; overflow: hidden;
+  font-size: 12px; overflow: hidden; max-height: calc(100vh - 110px); overflow-y: auto;
 }
 .map-popup-panel .mp-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -253,19 +253,18 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
   color: #fff; font: inherit; font-size: 11px; cursor: pointer;
 }
 .map-popup-panel .mp-share:hover { filter: brightness(1.1); }
-/* Zona RTR/RW — dua kolom berdampingan (kiri Kab/Kota, kanan Provinsi):
-   font serendah mungkin & tanpa tebal supaya popup tidak terlalu tinggi. */
-.map-popup-panel .mp-zones { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+/* Layer jadi judul bagian; atribut ditumpuk di bawah tiap judul. */
+.map-popup-panel .mp-zones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .map-popup-panel .mp-zone-col { min-width: 0; border-right: 1px solid var(--border); }
-.map-popup-panel .mp-zone-col:last-child { border-right: 0; }
+.map-popup-panel .mp-zone-col:nth-child(2n) { border-right: 0; }
+.map-popup-panel .mp-zone-col:nth-child(n+3) { border-top: 1px solid var(--border); }
 .map-popup-panel .mp-zone-note { padding: 6px 8px; color: var(--text-muted); font-size: 10px; line-height: 1.4; }
-.map-popup-panel .mp-zones .mp-cand { font-size: 10px; padding: 3px 8px; }
-.map-popup-panel .mp-zones table th,
-.map-popup-panel .mp-zones table td {
-  font-size: 10px; font-weight: 400; padding: 3px 8px; vertical-align: top;
-}
-.map-popup-panel .mp-zones table th { width: auto; }
-.map-popup-panel .mp-zones table td { word-break: break-word; }
+.map-popup-panel .mp-zones .mp-cand { font-size: 11px; padding: 5px 8px; }
+.map-popup-panel .mp-fields { padding: 2px 8px 5px; }
+.map-popup-panel .mp-detail { padding: 4px 0; border-bottom: 1px solid var(--border); }
+.map-popup-panel .mp-detail:last-child { border-bottom: 0; }
+.map-popup-panel .mp-detail-label { color: var(--text-muted); font-size: 10px; font-weight: 500; }
+.map-popup-panel .mp-detail-value { color: var(--text-primary); font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
 /* Loading preview ATRBPN — berkedip sampai data zona masuk */
 .map-popup-panel .mp-loading { animation: mpPulse 1.2s ease-in-out infinite; letter-spacing: .3px; }
 @keyframes mpPulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
@@ -2244,10 +2243,10 @@ input[type="range"]:focus-visible { outline: none; }
     max-width: none; min-width: 0;
     border-radius: 8px;
   }
-  /* Popup ATR/BPN: empat panel di desktop, dua kolom pada layar sempit. */
-  .map-popup-panel .mp-zones { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .map-popup-panel .mp-zone-col:nth-child(2n) { border-right: 0; }
-  .map-popup-panel .mp-zone-col:nth-child(n+3) { border-top: 1px solid var(--border); }
+  /* Popup ATR/BPN menjadi satu kolom pada layar ponsel. */
+  .map-popup-panel .mp-zones { grid-template-columns: minmax(0, 1fr); }
+  .map-popup-panel .mp-zone-col { border-right: 0; }
+  .map-popup-panel .mp-zone-col + .mp-zone-col { border-top: 1px solid var(--border); }
 }
 
 /* Panel UI selalu bersudut siku; geometri peta dan kontrol bundar tetap utuh. */
