@@ -76,11 +76,6 @@ const RTRW_LAYER = 'rtr-online:rtrw_kabkot_1_indonesia';
 const BHUMI_RTRW_PATH = '/expapi/rtrw/wms';
 const BHUMI_RTRW_LAYER = 'petabpn:rtrw_kabkot_merge';
 const BHUMI_RTRW_STYLE = 'petabpn:highlight_rtrw_kabkot';
-// Layer provinsi yang tersedia pada WMS BHUMI aktif. Capabilities
-// membatasi extent ke Jawa Tengah (108.54–111.70 BT, 8.21–5.73 LS).
-const BHUMI_RTRP_LAYER = 'rtrw_jateng';
-const BHUMI_RTRP_STYLE = 'rtrw_jateng_nomin';
-const BHUMI_RTRP_BOUNDS = { west: 108.5415, south: -8.2119, east: 111.6994, north: -5.7257 };
 
 // ArcGIS Identify GISTARU dari HAR gistaru.atrbpn.go.id.har. Service ini
 // berisi 35 layer RTR kabupaten/kota di Jawa Tengah; properties mencakup
@@ -118,13 +113,10 @@ const AtrbpnLayers = {
     const G = 'https://gisliner.atrbpn.go.id';
     const xyz = (c, ts) => G + '/layers/tms/public/' + c + '/{z}/{x}/{y}/?tileSize=' + ts;
 
-    // WMS RTRW Provinsi Jawa Tengah lewat worker BHUMI (200 image/png).
-    // Route GISTARU melalui worker live membalas 522; layer fallback ini
-    // hanya mencakup Jawa Tengah menurut GetCapabilities BHUMI.
-    const rtrpBhumiBase = this._resolveBhumiBase();
-    const RTRP_URL = rtrpBhumiBase
-      ? rtrpBhumiBase.replace(/\/$/, '') + BHUMI_RTRW_PATH
-      : GISTARU_WMS + RTRP_UUID;
+    // Layer RTR Provinsi resmi dari GISTARU sesuai HAR. Gunakan worker
+    // /gistaru untuk Referer ATR/BPN bila tersedia.
+    const gBase = this._gistaruBase();
+    const RTRP_URL = (gBase ? gBase + '/interoppublic/api/wms/' : GISTARU_WMS) + RTRP_UUID;
 
     // Pane terpisah per layer agar urutannya stabil (belakang → depan):
     //   LSD (300) < RTR Provinsi (305) < RTRW (310) < Bidang Tanah (320)
@@ -228,10 +220,9 @@ const AtrbpnLayers = {
     this._layers = {
       bidang: bidangEntry,
       lsd:  { label: 'LSD Nasional',      on: false, opacity: 0.8, layer: attachTileRetry(L.tileLayer(xyz('269_lsd_', 1024), LIGHT('atrbpnLsdPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false }))) },
-      rtrp: { label: 'RTRW Provinsi Jawa Tengah', on: false, opacity: 0.7, layer: attachTileRetry(L.tileLayer.wms(RTRP_URL, LIGHT('atrbpnRtrpPane', 21, {
-              layers: rtrpBhumiBase ? BHUMI_RTRP_LAYER : RTRP_LAYER, version: '1.3.0',
-              crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true,
-              styles: rtrpBhumiBase ? BHUMI_RTRP_STYLE : '',
+      rtrp: { label: 'RTR Provinsi Jawa', on: false, opacity: 0.7, layer: attachTileRetry(L.tileLayer.wms(RTRP_URL, LIGHT('atrbpnRtrpPane', 21, {
+              layers: RTRP_LAYER, version: '1.3.0',
+              crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true, styles: '',
               format: 'image/png', transparent: true, attribution: 'RTR (gistaru-app)'
             }))) },
       rtrw: { label: 'RTRW Kab/Kota',     on: false, opacity: 0.7, layer: attachTileRetry(L.tileLayer(xyz('212_rtrwkbpt', 1024), LIGHT('atrbpnRtrwPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false }))) },
@@ -325,7 +316,7 @@ const AtrbpnLayers = {
         `);
       }
     };
-    if (want.prov) this._gfiBhumiRtrp(lat, lng).then(r => settle('prov', r));
+    if (want.prov) this._gfiZone(RTRP_UUID, RTRP_LAYER, lat, lng).then(r => settle('prov', r));
     if (want.kab) this._gfiKabZone(lat, lng).then(r => settle('kab', r));
   },
 
@@ -390,18 +381,6 @@ const AtrbpnLayers = {
     const b = await this._gfiBhumiRtrw(lat, lng);
     if (b && !b.error && b.count > 0) return b;
     return g && g.error ? g : (b || g || { rows: [], count: 0 });
-  },
-
-  // Identify WMS RTRW Provinsi Jawa Tengah yang dilayani worker live.
-  // Cakupan dibatasi menurut GetCapabilities; di luar Jateng tidak query.
-  async _gfiBhumiRtrp(lat, lng) {
-    const b = this._resolveBhumiBase();
-    if (!b) return this._gfiZone(RTRP_UUID, RTRP_LAYER, lat, lng);
-    const box = BHUMI_RTRP_BOUNDS;
-    if (lng < box.west || lng > box.east || lat < box.south || lat > box.north) {
-      return { rows: [], count: 0, skip: true };
-    }
-    return this._gfiBhumiWms(lat, lng, BHUMI_RTRP_LAYER, BHUMI_RTRP_STYLE, b);
   },
 
   // ArcGIS MapServer Identify — service pada HAR meliputi 35 kab/kota Jawa
