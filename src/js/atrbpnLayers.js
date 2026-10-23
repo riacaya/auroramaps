@@ -348,6 +348,13 @@ const AtrbpnLayers = {
   // absolut (worker) yang dipakai; basis relatif '/bhumi-proxy' (server lokal
   // statis) tidak mengenal rute /gistaru → langsung jatuh ke URL asli.
   _gistaruBase() {
+    // Saat dijalankan di PC, serve-local.py menyediakan relay same-origin
+    // /gistaru dan menyisipkan Referer BHUMI sebelum meneruskan ke GISTARU.
+    // Worker hosted tetap dipakai untuk GitHub Pages/Blogger.
+    const host = location.hostname;
+    if (location.protocol === 'http:' && (host === 'localhost' || host === '127.0.0.1')) {
+      return location.origin;
+    }
     const b = this._resolveBhumiBase();
     if (!b || !/^https?:\/\//i.test(b)) return '';
     return b.replace(/\/$/, '') + '/gistaru';
@@ -389,6 +396,14 @@ const AtrbpnLayers = {
   // dasar Perda, serta tautan dokumen. Utamakan WMS BHUMI yang live dan
   // nasional; bila kosong/gagal, coba GISTARU untuk rincian Perda.
   async _gfiKabZone(lat, lng) {
+    const host = location.hostname;
+    const isLocal = location.protocol === 'http:' && (host === 'localhost' || host === '127.0.0.1');
+    // Pada server lokal, query langsung ke Identify GISTARU melalui relay PC
+    // agar atribut RTRW/Perda ikut dipakai bila tersedia.
+    if (isLocal) {
+      const g = await this._gfiGistaruRtrw(lat, lng);
+      if (g && !g.error && g.count > 0) return g;
+    }
     const b = await this._gfiBhumiRtrw(lat, lng);
     if (b && !b.error && b.count > 0) return b;
     const g = await this._gfiGistaruRtrw(lat, lng);
@@ -410,7 +425,9 @@ const AtrbpnLayers = {
   // Tengah. EPSG:102100 setara Web Mercator; mapExtent/imageDisplay mengikuti
   // viewport agar tolerance piksel memilih poligon tepat di titik klik.
   async _gfiGistaruRtrw(lat, lng) {
-    const base = this._resolveBhumiBase();
+    const host = location.hostname;
+    const isLocal = location.protocol === 'http:' && (host === 'localhost' || host === '127.0.0.1');
+    const base = isLocal ? location.origin : this._resolveBhumiBase();
     if (!base || !/^https?:\/\//i.test(base)) return { rows: [], count: 0, skip: true };
     const project = p => ({
       x: p.lng * 20037508.34 / 180,
