@@ -55,9 +55,6 @@ const MapManager = {
     this.baseLayers['street'].addTo(this.map);
     this.activeBaselayer = 'street';
 
-    // Ganti tile Dark Maps Esri dengan basemap Rupabumi Indonesia dari WMTS BIG.
-    this._loadRupabumiBasemap();
-
     // Urutan layer dari belakang ke depan (z-index pane Leaflet):
     //   200 Basemap (tilePane) < 250 Overlay JPG < 300 LSD < 310 RTRW
     //   < 320 Bidang Tanah (persil, aktif 18 Agu) < 400 Data import (GeoJSON/KMZ/KML)
@@ -140,62 +137,6 @@ const MapManager = {
     // Perbarui status bar agar nama basemap & level native ikut berubah
     UI.updateStatusBar();
     AppConsole.log(`Switched to ${key} basemap`, 'info');
-  },
-
-  async _loadRupabumiBasemap() {
-    const capabilitiesUrl = 'https://geoservices.big.go.id/rbi/rest/services/BASEMAP/Rupabumi_Indonesia/MapServer/WMTS/1.0.0/WMTSCapabilities.xml';
-    try {
-      const response = await fetch(capabilitiesUrl);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const xml = new DOMParser().parseFromString(await response.text(), 'application/xml');
-      if (xml.querySelector('parsererror')) throw new Error('Dokumen WMTS BIG tidak valid');
-      const text = node => node?.textContent?.trim() || '';
-      const layers = [...xml.getElementsByTagNameNS('*', 'Layer')];
-      let layerNode = null;
-      for (const node of layers) {
-        const links = [...node.getElementsByTagNameNS('*', 'TileMatrixSet')];
-        if (links.some(link => text(link) === 'GoogleMapsCompatible')) { layerNode = node; break; }
-      }
-      if (!layerNode) throw new Error('WMTS GoogleMapsCompatible tidak ditemukan');
-      const resource = [...layerNode.getElementsByTagNameNS('*', 'ResourceURL')]
-        .find(node => (node.getAttribute('resourceType') || '').toLowerCase() === 'tile');
-      let tileUrl = resource?.getAttribute('template') || '';
-      if (!tileUrl) throw new Error('Template tile Rupabumi tidak ditemukan');
-      tileUrl = tileUrl.replaceAll('{Style}', 'default')
-        .replaceAll('{TileMatrixSet}', 'GoogleMapsCompatible')
-        .replaceAll('{TileMatrix}', '{z}')
-        .replaceAll('{TileRow}', '{y}')
-        .replaceAll('{TileCol}', '{x}');
-
-      let maxNativeZoom = 18;
-      for (const matrixSet of [...xml.getElementsByTagNameNS('*', 'TileMatrixSet')]) {
-        if (text(matrixSet.getElementsByTagNameNS('*', 'Identifier')[0]) !== 'GoogleMapsCompatible') continue;
-        const levels = [...matrixSet.getElementsByTagNameNS('*', 'TileMatrix')]
-          .map(matrix => Number.parseInt(text(matrix.getElementsByTagNameNS('*', 'Identifier')[0]), 10))
-          .filter(Number.isFinite);
-        if (levels.length) maxNativeZoom = Math.max(...levels);
-        break;
-      }
-
-      const oldLayer = this.baseLayers.dark;
-      const newLayer = OfflineManager.tileLayer(tileUrl, {
-        attribution: '© Badan Informasi Geospasial — Rupabumi Indonesia',
-        maxZoom: 22,
-        maxNativeZoom
-      });
-      if (this.map.hasLayer(oldLayer)) this.map.removeLayer(oldLayer);
-      this.baseLayers.dark = newLayer;
-      Config.baseLayers.dark.url = tileUrl;
-      Config.baseLayers.dark.attribution = '© Badan Informasi Geospasial — Rupabumi Indonesia';
-      Config.baseLayers.dark.maxNativeZoom = maxNativeZoom;
-      if (this.activeBaselayer === 'dark' && !this._cesiumViewer) newLayer.addTo(this.map);
-      if (this._cesiumViewer && State.currentBasemap === 'dark') this._add3DBaseLayer('dark');
-      UI.updateStatusBar();
-      AppConsole.log('Dark Maps memakai Rupabumi Indonesia (WMTS BIG)', 'success');
-    } catch (error) {
-      // Esri Dark Gray tetap menjadi fallback jika WMTS BIG tidak terjangkau.
-      AppConsole.log(`WMTS Rupabumi BIG gagal dimuat; Dark Maps memakai fallback: ${error.message}`, 'warn');
-    }
   },
 
   _onDrawCreated(e) {

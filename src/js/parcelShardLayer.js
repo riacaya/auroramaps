@@ -6,7 +6,8 @@ class ParcelShardLayer {
   constructor(map) {
     this.map = map;
     this.registryUrl = 'https://api.studiopolygon.id/bhumi-integration/registry.json';
-    this.shardBaseUrl = 'https://api.studiopolygon.id/bhumi-integration/shards/';
+    const workerUrl = String(window.BHUMI_WORKER_URL || 'https://orange-smoke-f6f5.riacaya99.workers.dev').replace(/\/$/, '');
+    this.shardBaseUrl = `${workerUrl}/parcel-shards/`;
     this.registryPromise = null;
     this.shards = new Map();
     this.enabled = false;

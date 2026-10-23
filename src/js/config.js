@@ -104,13 +104,12 @@ const Config = {
       maxZoom: 22,
       maxNativeZoom: 19
     },
-    // Peta gelap: Esri Dark Gray Canvas, tanpa autentikasi domain atau API key.
-    // Data detail area ini tersedia sampai z16; z17+ berupa placeholder.
+    // Tombol Dark Maps memakai Rupabumi Indonesia (BIG) WMTS GoogleMapsCompatible.
     dark: {
-      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-      attribution: '© Esri, HERE, Garmin, © OpenStreetMap contributors, GIS user community',
+      url: 'https://geoservices.big.go.id/rbi/rest/services/BASEMAP/Rupabumi_Indonesia/MapServer/WMTS/tile/1.0.0/BASEMAP_Rupabumi_Indonesia/default/GoogleMapsCompatible/{z}/{y}/{x}.png',
+      attribution: '© Badan Informasi Geospasial — Rupabumi Indonesia',
       maxZoom: 22,
-      maxNativeZoom: 16
+      maxNativeZoom: 18
     }
   }
 };
