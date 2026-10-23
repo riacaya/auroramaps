@@ -219,6 +219,11 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
   box-shadow: 0 6px 20px rgba(0,0,0,.4); padding: 0; min-width: 200px; max-width: 440px;
   font-size: 12px; overflow: hidden;
 }
+.map-popup-panel.mp-wide {
+  width: min(920px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
+}
 .map-popup-panel .mp-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 8px 12px; background: var(--bg-elevated); border-bottom: 1px solid var(--border);
@@ -257,8 +262,9 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
 .map-popup-panel .mp-zones table td {
   font-size: 10px; font-weight: 400; padding: 3px 8px; vertical-align: top;
 }
-.map-popup-panel .mp-zones table th { width: auto; }
-.map-popup-panel .mp-zones table td { word-break: break-word; }
+.map-popup-panel .mp-zone-col table { width: 100%; table-layout: fixed; }
+.map-popup-panel .mp-zones table th { width: 42%; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
+.map-popup-panel .mp-zones table td { width: 58%; overflow-wrap: anywhere; word-break: normal; }
 /* Loading preview ATRBPN — berkedip sampai data zona masuk */
 .map-popup-panel .mp-loading { animation: mpPulse 1.2s ease-in-out infinite; letter-spacing: .3px; }
 @keyframes mpPulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
@@ -2117,6 +2123,7 @@ input[type="range"]:focus-visible { outline: none; }
     max-width: none; min-width: 0;
     border-radius: 8px;
   }
+  .map-popup-panel.mp-wide { width: auto; max-width: none; }
   /* Popup peta (mobile): seluruh kolom ditumpuk vertikal */
   .map-popup-panel .mp-zones { grid-template-columns: minmax(0, 1fr); }
   .map-popup-panel .mp-zone-col + .mp-zone-col {
