@@ -165,6 +165,8 @@ const AtrbpnLayers = {
     this._map.getPane('atrbpnRtrpPane').style.zIndex = 305;
     this._map.createPane('atrbpnRtrwPane');
     this._map.getPane('atrbpnRtrwPane').style.zIndex = 310;
+    this._map.createPane('atrbpnKp2bPane');
+    this._map.getPane('atrbpnKp2bPane').style.zIndex = 312;
     this._map.createPane('atrbpnHutanPane');
     this._map.getPane('atrbpnHutanPane').style.zIndex = 318;
     this._map.createPane('atrbpnShguPane');
@@ -254,37 +256,12 @@ const AtrbpnLayers = {
     }));
     else shguEntry.note = 'perlu auth key — gunakan ?shguAuthKey=...';
 
-    // ── RTRW Kab/Kota: rantai sumber tile ──────────────────────────────────
-    // Urut prioritas (riset HAR bhumiatrbpn2.har + uji langsung 22 Okt 2026):
-    //   1) WMS gistaru-app UUID 78abbda6 [rtr-online:rtrw_kabkot_1_indonesia]
-    //      = pola PERSIS rekaman situs BHUMI (178 request GetMap 200, TILED
-    //      512px, tile poligon 7,5–587 KB). WAF gistaru hanya menerima Referer
-    //      bhumi.atrbpn.go.id → lewat proxy /gistaru; dari jaringan cloud
-    //      worker kini membalas 522/530 (gistaru tak terjangkau dari luar) →
-    //      otomatis maju ke sumber berikutnya lewat _attachRtrwFallback.
-    //   2) WMS BHUMI /expapi/rtrw/wms + petabpn:rtrw_kabkot_merge (STYLES
-    //      petabpn:highlight_rtrw_kabkot WAJIB) — terverifikasi 200 + data
-    //      nyata (12 KB/tile) lewat worker hari ini; GFI kabkot juga memakai
-    //      endpoint ini sebagai cadangan (lihat _gfiKabZone).
-    //   3) TMS gisliner 212_rtrwkbpt (sumber lama) — sejak 22 Okt 2026 semua
-    //      tile = PNG transparan 235 B dengan md5 SAMA untuk koordinat &
-    //      zoom apa pun (datanya dimatikan) → hanya cadangan terakhir.
-    const rtrwSources = [
-      { name: 'gistaru-app WMS (pola HAR)', make: () => L.tileLayer.wms(RTRW_URL, LIGHT('atrbpnRtrwPane', 21, {
-          layers: RTRW_LAYER, version: '1.3.0',
-          crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true,
-          format: 'image/png', transparent: true, attribution: 'RTRW (gistaru-app)'
-        })) },
-      { name: 'bhumi /expapi/rtrw/wms (merge)', make: bhumiBase ? () => L.tileLayer.wms(bhumiBase + BHUMI_RTRW_PATH, {
-          layers: BHUMI_RTRW_LAYER, styles: BHUMI_RTRW_STYLE, version: '1.3.0',
-          crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true,
-          format: 'image/png', transparent: true, maxZoom: 22, maxNativeZoom: 21,
-          minZoom: 7, pane: 'atrbpnRtrwPane', attribution: 'RTRW (bhumi)'
-        }) : null },
-      { name: 'gisliner TMS (cadangan)', make: () => L.tileLayer(xyz('212_rtrwkbpt', 1024),
-          LIGHT('atrbpnRtrwPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false })) }
-    ].filter(s => typeof s.make === 'function');
-    this._rtrwSources = rtrwSources;
+    // RTRW Kab/Kota dari HAR pengguna: GISLINER TMS 212_rtrwkbpt.
+    const rtrwLayer = attachTileRetry(L.tileLayer(xyz('212_rtrwkbpt', 1024),
+      LIGHT('atrbpnRtrwPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false })));
+    // KP2B dari HAR pengguna: GISLINER TMS 235_kp2b.
+    const kp2bLayer = attachTileRetry(L.tileLayer(xyz('235_kp2b', 1024),
+      LIGHT('atrbpnKp2bPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false })));
 
     // ── LSD (Lahan Sawah Dilindungi) ────────────────────────────────────────
     // Dua WMS Geoserver bhumi (rantai cakupan, lihat BHUMI_LSD_* di atas)
@@ -321,12 +298,11 @@ const AtrbpnLayers = {
               crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true,
               format: 'image/png', transparent: true, attribution: 'RTR Provinsi (gistaru-app)'
             }))) },
-      rtrw: { label: 'RTRW Kab/Kota',     on: false, opacity: 0.7, layer: attachTileRetry(rtrwSources[0].make()) },
+      rtrw: { label: 'RTRW Kab/Kota',     on: false, opacity: 0.7, layer: rtrwLayer },
+      kp2b: { label: 'KP2B',              on: false, opacity: 0.7, layer: kp2bLayer },
       hutan: hutanEntry
       ,shgu: shguEntry
     };
-    this._rtrwIdx = 0;
-    this._attachRtrwFallback(this._layers.rtrw);
 
     // Klik peta → baca layer ATR/BPN yang aktif (lihat _onMapClick).
     this._map.on('click', (e) => this._onMapClick(e));
@@ -713,134 +689,12 @@ const AtrbpnLayers = {
     });
   },
 
-  // ── Fallback sumber tile RTRW Kab/Kota ────────────────────────────────
-  // Pemicu: ≥6 tileerror berturut-turut tanpa satu pun tile sukses di
-  // antaranya (tiap tile sudah di-retry 2x oleh attachTileRetry). Tile
-  // 200-tapi-kosong TIDAK memicu tileerror, jadi sumber yang sehat (mis.
-  // bhumi merge) tidak akan tergantikan selama masih memuat tile.
-  // Setelah semua sumber dicoba, PUTAR BALIK ke sumber #1 dengan cooldown
-  // 20 dtk supaya rantai tidak muter cepat saat semua sumber flaky.
-  // PENTING: ganti sumber = TUKAR OBJEK layer (bukan setUrl) karena opsi
-  // tile tiap sumber berbeda (WMS 512px vs TMS XYZ 1024px + zoomOffset -2).
-  _rtrwIdx: 0,
-  _rtrwErr: 0,
-  _rtrwLastWrap: 0,
-  _rtrwProbed: false,
-  // Probe cepat sumber #0 (sekali per sesi, maks 12 dtk) — dipanggil saat
-  // layer RTRW pertama dinyalakan. gistaru-app sering TAK terjangkau dari
-  // jaringan cloud (worker 522 ±21 dtk per tile) → tanpa probe, layer kosong
-  // ±40 dtk sampai rantai maju ke bhumi. Kalau probe gagal/timeout, langsung
-  // mulai dari sumber bhumi tanpa toast (layer belum sempat tampil).
-  async _probeRtrwStart(entry) {
-    this._rtrwProbed = true;
-    if (this._rtrwIdx !== 0 || !this._rtrwSources || this._rtrwSources.length < 2) return;
-    if (await this._probeRtrwOk()) return;  // sumber #0 (endpoint HAR) sehat
-    if (this._rtrwIdx !== 0 || !entry || entry !== this._layers.rtrw) return;
-    this._swapRtrwSource(entry, 1, true);
-  },
-  // URL probe sumber #0: GetMap 8×8 px (murah) ke WMS gistaru endpoint HAR.
-  _probeRtrwUrl() {
-    const base = this._gistaruBase();
-    if (!base) return '';
-    return base + '/interoppublic/api/wms/' + RTRW_UUID +
-      '?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&FORMAT=image%2Fpng&TRANSPARENT=true' +
-      '&LAYERS=' + encodeURIComponent(RTRW_LAYER) + '&STYLES=&CRS=EPSG:3857&WIDTH=8&HEIGHT=8&BBOX=0,0,1000,1000';
-  },
-  async _probeRtrwOk() {
-    const url = this._probeRtrwUrl();
-    if (!url) return false;
-    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timer = setTimeout(() => { try { ctrl && ctrl.abort(); } catch (e) { /* abaikan */ } }, PROBE_TIMEOUT_MS);
-    try {
-      const r = await fetch(url, ctrl ? { signal: ctrl.signal } : {});
-      return !!r.ok;
-    } catch (e) { return false; } // gagal / dibatalkan → sumber #0 dianggap mati
-    finally { clearTimeout(timer); }
-  },
-  // ── Pemulihan otomatis ke sumber #0 (endpoint HAR) ───────────────────────
-  // Sumber #0 (WMS gistaru, pola zonaprokab.har) adalah sumber utama yang
-  // diminta user; cadangan bhumi hanya untuk jaringan yang TIDAK bisa
-  // menjangkau gistaru (worker cloud 522). DNS/jaringan PC lokal sering pulih
-  // sendiri (terbukti 22 Okt 2026: resolver lokal gagal resolve
-  // gistaru-app.atrbpn.go.id sesaat lalu normal lagi) → bila sedang memakai
-  // cadangan, coba ulang tiap 60 dtk dan pindah SENYAP ke sumber #0 begitu
-  // endpoint HAR menjawab, tanpa menunggu reload halaman.
-  _rtrwRestoreTimer: null,
-  _armRtrwRestore(entry) {
-    if (this._rtrwRestoreTimer) return;
-    this._rtrwRestoreTimer = setTimeout(async () => {
-      this._rtrwRestoreTimer = null;
-      const e = this._layers && this._layers.rtrw;
-      if (!e || e !== entry || !e.on || this._rtrwIdx === 0) return; // selesai / dimatikan
-      if (await this._probeRtrwOk()) {
-        this._swapRtrwSource(entry, 0, true);
-        AppConsole.log('Sumber tile RTRW kembali → gistaru-app WMS (pola HAR)', 'warn');
-        return;
-      }
-      this._armRtrwRestore(entry); // masih mati → coba lagi 60 dtk lagi
-    }, 60000);
-  },
-  // Nyalakan layer saat masih di cadangan → langsung coba sumber #0 dulu
-  // (bukan menunggu 60 dtk); gagal → jadwal coba ulang seperti biasa.
-  async _probeRtrwRestore(entry) {
-    if (!entry || this._rtrwIdx === 0) return;
-    if (await this._probeRtrwOk()) { this._swapRtrwSource(entry, 0, true); return; }
-    this._armRtrwRestore(entry);
-  },
-  _attachRtrwFallback(entry) {
-    const layer = entry && entry.layer;
-    if (!layer) return;
-    layer.on('tileload', () => { this._rtrwErr = 0; });
-    layer.on('tileerror', () => {
-      if (!this._rtrwSources || this._rtrwSources.length < 2) return;
-      this._rtrwErr++;
-      if (this._rtrwErr < 6) return;
-      this._rtrwErr = 0;
-      const next = (this._rtrwIdx + 1) % this._rtrwSources.length;
-      if (next === 0) {
-        if (Date.now() - this._rtrwLastWrap < 20000) return; // jeda antar putaran
-        this._rtrwLastWrap = Date.now();
-      }
-      this._swapRtrwSource(entry, next);
-    });
-  },
-  _swapRtrwSource(entry, idx, silent) {
-    const src = this._rtrwSources && this._rtrwSources[idx];
-    if (!src || !entry || !this._map) return;
-    const old = entry.layer;
-    const wasOn = !!entry.on && !!old && this._map.hasLayer(old);
-    if (old) {
-      if (this._map.hasLayer(old)) this._map.removeLayer(old);
-      old.remove(); // lepas listener retry lama agar tidak menumpuk
-    }
-    this._rtrwIdx = idx;
-    const next = attachTileRetry(src.make());
-    next.setOpacity(entry.opacity);
-    entry.layer = next;
-    this._attachRtrwFallback(entry);
-    if (wasOn) this._map.addLayer(next);
-    // Sumber cadangan → jadwalkan pemulihan ke sumber #0 (endpoint HAR);
-    // kembali ke #0 → hentikan jadwal itu.
-    if (idx !== 0) this._armRtrwRestore(entry);
-    else if (this._rtrwRestoreTimer) { clearTimeout(this._rtrwRestoreTimer); this._rtrwRestoreTimer = null; }
-    if (silent) return; // pergantian perencanaan (probe awal) — tanpa toast
-    AppConsole.log('Sumber tile RTRW → ' + src.name, 'warn');
-    Toast.show('Sumber data RTRW berganti (endpoint sebelumnya gagal)', 'info');
-  },
-
   _apply(key) {
     const entry = this._layers[key];
     if (!entry.layer) return; // layer tak tersedia (tanpa proxy)
     entry.layer.setOpacity(entry.opacity);
     if (entry.on && !this._map.hasLayer(entry.layer)) this._map.addLayer(entry.layer);
     if (!entry.on && this._map.hasLayer(entry.layer)) this._map.removeLayer(entry.layer);
-    // RTRW dinyalakan → pastikan mulai dari sumber #0 (endpoint HAR):
-    //   • baru pertama kali → probe cepat gistaru (maks 12 dtk, _probeRtrwStart);
-    //   • sedang di cadangan → langsung coba kembali ke #0 (_probeRtrwRestore).
-    if (key === 'rtrw' && entry.on) {
-      if (!this._rtrwProbed) this._probeRtrwStart(entry);
-      else if (this._rtrwIdx !== 0) this._probeRtrwRestore(entry);
-    }
   },
 
   // #modal-body di-clone agar listener lama ikut hilang — tapi clone juga ikut
