@@ -147,6 +147,11 @@ const BIDANG_SOURCES = [
 // URL. Tanpa ekstensi (ACK tidak datang dalam 800 ms) relai dimatikan dan tile
 // dimuat lewat jalur proxy lama — persis perilaku sebelumnya.
 const BHUMI_TILE_ORIGIN = 'https://bhumi.atrbpn.go.id';
+const GISTARU_ORIGIN = 'https://gistaru-app.atrbpn.go.id';
+// PC lokal tidak memakai relai gistaru: rute /gistaru di local-server.mjs
+// sudah membalas 200 (Referer bhumi di-inject di sana), tanpa putaran ekstensi.
+const IS_LOCAL_APP = location.protocol === 'http:' &&
+  (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
 const BhumiTileRelay = {
   _pending: new Map(),  // requestId → {acked, ackTimer, timer, resolve, reject}
   _cache: new Map(),    // url → object URL (dibatasi supaya hemat memori)
@@ -274,7 +279,7 @@ const BhumiTileRelay = {
 // bridge aktif; bila relai menolak, tile dimuat lewat basis URL lama (proxy)
 // sehingga tanpa ekstensi perilaku layer tidak berubah.
 let _RelayWmsClass = null;
-function relayWmsLayer(url, options, proxyBase) {
+function relayWmsLayer(url, options, proxyBase, relayMode = 'bhumi') {
   if (!_RelayWmsClass) {
     // Leaflet 1.9.4: createTile menyetel tile.src LANGSUNG (metode _loadTile
     // sudah tidak ada di build ini) → override createTile, bukan _loadTile.
@@ -292,23 +297,37 @@ function relayWmsLayer(url, options, proxyBase) {
         try { direct = this.getTileUrl(coords); } catch (e) { direct = ''; }
         if (!direct) { tile.dispatchEvent(new Event('error')); return tile; }
         const strip = this._relayStrip || '';
-        let relayUrl = direct;
-        if (strip && direct.startsWith(strip)) relayUrl = BHUMI_TILE_ORIGIN + direct.slice(strip.length);
-        else if (!direct.startsWith(BHUMI_TILE_ORIGIN)) {
+        let relayUrl = '';
+        if (this._relayMode === 'gistaru') {
+          // RTRW Provinsi: URL direct melewati proxy worker yang522 dari cloud
+          // (dan dari PC lokal sudah ditangani server lokal) → relai memakai
+          // URL asli gistaru, dijalankan dari halaman BHUMI (Referer otomatis).
+          const idx = direct.indexOf('/interoppublic/api/wms/');
+          if (idx >= 0 && !IS_LOCAL_APP) relayUrl = GISTARU_ORIGIN + direct.slice(idx);
+        } else if (strip && direct.startsWith(strip)) {
+          relayUrl = BHUMI_TILE_ORIGIN + direct.slice(strip.length);
+        } else if (!direct.startsWith(BHUMI_TILE_ORIGIN)) {
           let rest = direct;
           while (rest.startsWith('/')) rest = rest.slice(1);
           relayUrl = BHUMI_TILE_ORIGIN + '/' + rest;
+        } else {
+          relayUrl = direct;
         }
-        BhumiTileRelay.get(relayUrl).then(
-          (objectUrl) => { tile.src = objectUrl; },
-          () => { tile.src = direct; } // tanpa relai / relai gagal → jalur lama
-        );
+        if (relayUrl) {
+          BhumiTileRelay.get(relayUrl).then(
+            (objectUrl) => { tile.src = objectUrl; },
+            () => { tile.src = direct; } // tanpa relai / relai gagal → jalur lama
+          );
+        } else {
+          tile.src = direct;
+        }
         return tile;
       }
     });
   }
   const layer = new _RelayWmsClass(url, options);
   layer._relayStrip = proxyBase || '';
+  layer._relayMode = relayMode;
   return layer;
 }
 
@@ -430,12 +449,12 @@ const AtrbpnLayers = {
       note: bhumiBase ? '' : 'perlu proxy — lihat README'
     };
     if (bhumiBase) {
-      hutanEntry.layer = attachTileRetry(L.tileLayer.wms(bhumiBase + '/expapi/bhumigeos/umum/wms', {
+      hutanEntry.layer = attachTileRetry(relayWmsLayer(bhumiBase + '/expapi/bhumigeos/umum/wms', {
         layers: 'umum:penunjukan_kawasan_hutan', format: 'image/png',
         transparent: true, version: '1.3.0', uppercase: true, tiled: true,
         tileSize: 512, crs: L.CRS.EPSG3857, maxZoom: 22, maxNativeZoom: 18,
         minZoom: 5, pane: 'atrbpnHutanPane', attribution: 'ATR/BPN — Kawasan Hutan'
-      }));
+      }, bhumiBase));
     } else hutanEntry.layer = null;
     const shguEntry = { label: 'SHGU / HGU (WMS)', on: false, opacity: 0.75, layer: null };
     let shguKey = '';
@@ -468,8 +487,7 @@ const AtrbpnLayers = {
     });
     let lsdEntry;
     if (bhumiBase) {
-      const lsdLayers = BHUMI_LSD_LAYERS.map(n =>
-        attachTileRetry(L.tileLayer.wms(bhumiBase + BHUMI_LSD_PATH, lsdOpt(n))));
+      const lsdLayers = BHUMI_LSD_LAYERS.map(n =>          attachTileRetry(relayWmsLayer(bhumiBase + BHUMI_LSD_PATH, lsdOpt(n), bhumiBase)));
       const lsdGroup = L.layerGroup(lsdLayers);
       // Panel ATRBPN memanggil setOpacity() pada objek layer; LayerGroup
       // tidak punya metode itu → teruskan ke kedua anak.
@@ -485,11 +503,11 @@ const AtrbpnLayers = {
       bidang: bidangEntry,
       batasPersil: batasPersilEntry,
       lsd:  lsdEntry,
-      rtrp: { label: 'RTR Provinsi (RTRW)', on: false, opacity: 0.7, layer: attachTileRetry(L.tileLayer.wms(RTRP_URL, LIGHT('atrbpnRtrpPane', 21, {
+      rtrp: { label: 'RTR Provinsi (RTRW)', on: false, opacity: 0.7, layer: attachTileRetry(relayWmsLayer(RTRP_URL, LIGHT('atrbpnRtrpPane', 21, {
               layers: RTRP_LAYER, version: '1.3.0',
               crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true,
               format: 'image/png', transparent: true, attribution: 'RTR Provinsi (gistaru-app)'
-            }))) },
+            })), '', 'gistaru') },
       rtrw: { label: 'RTRW Kab/Kota',     on: false, opacity: 0.7, layer: rtrwLayer },
       kp2b: { label: 'KP2B',              on: false, opacity: 0.7, layer: kp2bLayer },
       hutan: hutanEntry
