@@ -91,6 +91,10 @@ const BHUMI_RTRW_PATH = '/expapi/rtrw/wms';
 // 4 dtk dulu terlalu galak & sering membuat sumber HAR (yang sebenarnya
 // sehat) salah dianggap mati sehingga pindah ke cadangan bhumi.
 const PROBE_TIMEOUT_MS = 12000;
+// Jeda antar siklus penuh (semua sumber Bidang Tanah gagal) — penutupan WAF
+// ATR/BPN selama ini bersifat sementara, jadi coba lagi tiap 10 menit tanpa
+// spam toast "sumber berganti" tiap 6 tile error.
+const BIDANG_RETRY_MS = 10 * 60 * 1000;
 const BHUMI_RTRW_LAYER = 'petabpn:rtrw_kabkot_merge';
 const BHUMI_RTRW_STYLE = 'petabpn:highlight_rtrw_kabkot';
 
@@ -133,12 +137,188 @@ const BIDANG_SOURCES = [
   { path: '/expapi/bhumigs/umum/wms',   layers: 'umum:Persil' }
 ];
 
+// ── Relai tile Bidang Tanah lewat tab BHUMI (ekstensi AuroraMaps Bridge) ──
+// Sejak 23 Okt 2026 WAF ATR/BPN menolak permintaan cross-site & non-browser ke
+// ruang /mprx dan /expapi: relay lokal (Node) dibalas 403, dan <img> langsung
+// dari origin app pun ditolak (uji 24 Okt 2026, bahkan tanpa Referer). Yang
+// masih dilayani hanya permintaan dari DALAM halaman bhumi.atrbpn.go.id
+// (same-site, sesi & cookie tab itu) → ekstensi meneruskan URL tile ke tab
+// BHUMI, gambar diambil di sana, lalu bytes-nya dikembalikan sebagai object
+// URL. Tanpa ekstensi (ACK tidak datang dalam 800 ms) relai dimatikan dan tile
+// dimuat lewat jalur proxy lama — persis perilaku sebelumnya.
+const BHUMI_TILE_ORIGIN = 'https://bhumi.atrbpn.go.id';
+const BhumiTileRelay = {
+  _pending: new Map(),  // requestId → {acked, ackTimer, timer, resolve, reject}
+  _cache: new Map(),    // url → object URL (dibatasi supaya hemat memori)
+  _order: [],
+  _queue: [],
+  _active: 0,
+  _maxActive: 4,        // jangan membanjiri pesan ke tab BHUMI
+  _avail: null,         // null = belum tahu, false = tanpa ekstensi
+  _availAt: 0,
+  _logged: false,
+  _inited: false,
+
+  init() {
+    if (this._inited) return;
+    this._inited = true;
+    window.addEventListener('message', (event) => {
+      if (event.source !== window || event.origin !== location.origin) return;
+      const data = event.data || {};
+      const pending = this._pending.get(data.requestId);
+      if (!pending) return;
+      if (data.type === 'AURORAMAPS_BHUMI_TILE_ACK') {
+        if (pending.acked) return;
+        pending.acked = true;
+        clearTimeout(pending.ackTimer);
+        this._setAvail(true);
+        pending.timer = setTimeout(() => pending.reject(new Error('Tab BHUMI tidak mengirim tile (timeout).')), 25000);
+        return;
+      }
+      if (data.type !== 'AURORAMAPS_BHUMI_TILE_RESULT') return;
+      clearTimeout(pending.ackTimer);
+      clearTimeout(pending.timer);
+      this._pending.delete(data.requestId);
+      if (typeof data.base64 === 'string' && data.base64) {
+        try { pending.resolve(this._remember(String(data.url || ''), data.base64, data.mime)); return; }
+        catch (e) { /* base64 rusak → tangani sebagai galat di bawah */ }
+      }
+      pending.reject(new Error(data.error || 'Tile tidak tersedia dari tab BHUMI.'));
+    });
+  },
+
+  _setAvail(value) {
+    if (this._avail === value) return;
+    this._avail = value;
+    this._availAt = Date.now();
+    if (value && !this._logged) {
+      this._logged = true;
+      AppConsole.log('Tile Bidang Tanah dimuat lewat tab BHUMI (ekstensi bridge).', 'info');
+    }
+  },
+
+  // URL object untuk bytes tile, disimpan per URL agar pan/zoom bolak-balik
+  // tidak mengulang jaringan. Cache maksimum 200 tile; yang terbuang dicabut.
+  _objectUrl(base64, mime) {
+    const bin = atob(base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return URL.createObjectURL(new Blob([bytes], { type: mime || 'image/png' }));
+  },
+  _remember(url, base64, mime) {
+    const hit = url && this._cache.get(url);
+    if (hit) return hit;
+    const objectUrl = this._objectUrl(base64, mime);
+    if (!url) return objectUrl;
+    this._cache.set(url, objectUrl);
+    this._order.push(url);
+    while (this._order.length > 200) {
+      const old = this._order.shift();
+      if (old === url) continue;
+      const oldUrl = this._cache.get(old);
+      this._cache.delete(old);
+      if (oldUrl) { try { URL.revokeObjectURL(oldUrl); } catch (e) { /* abaikan */ } }
+    }
+    return objectUrl;
+  },
+
+  get(url) {
+    const cached = this._cache.get(url);
+    if (cached) return Promise.resolve(cached);
+    // Setelah relai dipastikan tidak ada, coba lagi paling cepat tiap 30 detik
+    // (mis. pengguna baru memasang ekstensi).
+    if (this._avail === false && Date.now() - this._availAt < 30000) {
+      return Promise.reject(Object.assign(new Error('Relai tile tidak aktif.'), { relay: false }));
+    }
+    return new Promise((resolve, reject) => {
+      this._queue.push({ url, resolve, reject });
+      this._pump();
+    });
+  },
+  _pump() {
+    while (this._active < this._maxActive && this._queue.length) {
+      const task = this._queue.shift();
+      this._active++;
+      const settle = () => { this._active--; this._pump(); };
+      this._send(task.url).then(task.resolve, task.reject).then(settle, settle);
+    }
+  },
+  _send(url) {
+    const requestId = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random()).toString();
+    return new Promise((resolve, reject) => {
+      const done = (fn, value) => {
+        const p = this._pending.get(requestId);
+        if (p) {
+          clearTimeout(p.ackTimer);
+          clearTimeout(p.timer);
+          this._pending.delete(requestId);
+        }
+        fn(value);
+      };
+      this._pending.set(requestId, {
+        acked: false,
+        ackTimer: setTimeout(() => {
+          this._setAvail(false);
+          done(reject, Object.assign(new Error('Ekstensi BHUMI Bridge tidak aktif.'), { relay: false }));
+        }, 800),
+        timer: null,
+        resolve: (value) => done(resolve, value),
+        reject: (error) => done(reject, error)
+      });
+      window.postMessage({ type: 'AURORAMAPS_BHUMI_TILE', requestId, url }, location.origin);
+    });
+  }
+};
+
+// L.TileLayer.WMS yang mengambil tiap tile lewat BhumiTileRelay bila ekstensi
+// bridge aktif; bila relai menolak, tile dimuat lewat basis URL lama (proxy)
+// sehingga tanpa ekstensi perilaku layer tidak berubah.
+let _RelayWmsClass = null;
+function relayWmsLayer(url, options, proxyBase) {
+  if (!_RelayWmsClass) {
+    // Leaflet 1.9.4: createTile menyetel tile.src LANGSUNG (metode _loadTile
+    // sudah tidak ada di build ini) → override createTile, bukan _loadTile.
+    _RelayWmsClass = L.TileLayer.WMS.extend({
+      createTile(coords, done) {
+        const tile = document.createElement('img');
+        L.DomEvent.on(tile, 'load', this._tileOnLoad.bind(this, done, tile));
+        L.DomEvent.on(tile, 'error', this._tileOnError.bind(this, done, tile));
+        if (this.options.crossOrigin || this.options.crossOrigin === '') {
+          tile.crossOrigin = this.options.crossOrigin === true ? '' : this.options.crossOrigin;
+        }
+        if (typeof this.options.referrerPolicy === 'string') tile.referrerPolicy = this.options.referrerPolicy;
+        tile.alt = '';
+        let direct = '';
+        try { direct = this.getTileUrl(coords); } catch (e) { direct = ''; }
+        if (!direct) { tile.dispatchEvent(new Event('error')); return tile; }
+        const strip = this._relayStrip || '';
+        let relayUrl = direct;
+        if (strip && direct.startsWith(strip)) relayUrl = BHUMI_TILE_ORIGIN + direct.slice(strip.length);
+        else if (!direct.startsWith(BHUMI_TILE_ORIGIN)) {
+          let rest = direct;
+          while (rest.startsWith('/')) rest = rest.slice(1);
+          relayUrl = BHUMI_TILE_ORIGIN + '/' + rest;
+        }
+        BhumiTileRelay.get(relayUrl).then(
+          (objectUrl) => { tile.src = objectUrl; },
+          () => { tile.src = direct; } // tanpa relai / relai gagal → jalur lama
+        );
+        return tile;
+      }
+    });
+  }
+  const layer = new _RelayWmsClass(url, options);
+  layer._relayStrip = proxyBase || '';
+  return layer;
+}
+
 const AtrbpnLayers = {
   _map: null,
   _layers: null,   // { lsd: {...}, rtrp: {...}, rtrw: {...} }
 
   init() {
     this._map = MapManager.map;
+    BhumiTileRelay.init();
     const G = 'https://gisliner.atrbpn.go.id';
     const xyz = (c, ts) => G + '/layers/tms/public/' + c + '/{z}/{x}/{y}/?tileSize=' + ts;
 
@@ -202,9 +382,10 @@ const AtrbpnLayers = {
     });
 
     // Bidang Tanah (persil): WMS TILED 512px lewat rantai sumber BIDANG_SOURCES
-    // (lihat konstanta di atas — #1 terverifikasi live 5 Okt 2026). WAF bhumi
-    // butuh Referer .atrbpn.go.id → tile harus lewat proxy server-side (browser
-    // tak bisa spoof Referer). Basis URL dipilih otomatis, prioritas:
+    // (lihat konstanta di atas — #1 terverifikasi live 5 Okt 2026). Sejak 23 Okt
+    // 2026 WAF menolak permintaan cross-site & non-browser → tiap tile dicoba
+    // lewat relai ekstensi (tab BHUMI) dulu, lalu jatuh ke basis URL di bawah
+    // bila relai tidak tersedia. Basis URL dipilih otomatis, prioritas:
     //   1) URL param ?bhumiWorker=<url>     (override uji, contoh di README)
     //   2) PC lokal (localhost/127.0.0.1) → /bhumi-proxy (local-server.mjs)
     //   3) window.BHUMI_WORKER_URL           (di-set config.js setelah deploy worker)
@@ -230,7 +411,7 @@ const AtrbpnLayers = {
       note: bhumiBase ? '' : 'perlu proxy — lihat README (deploy worker)'
     };
     if (bhumiBase) {
-      bidangEntry.layer = attachTileRetry(L.tileLayer.wms(bhumiBase + BIDANG_SOURCES[0].path, bidang('bidangPane')));
+      bidangEntry.layer = attachTileRetry(relayWmsLayer(bhumiBase + BIDANG_SOURCES[0].path, bidang('bidangPane'), bhumiBase));
       this._attachBidangFallback(bidangEntry, bhumiBase);
     } else {
       bidangEntry.layer = null;
@@ -689,17 +870,26 @@ const AtrbpnLayers = {
       layer.setUrl(bhumiBase + src.path); // setUrl → redraw dengan sumber baru
       entry.note = 'sumber: ' + src.path + ' (' + src.layers + ')';
       AppConsole.log(`Sumber tile Bidang Tanah → ${src.path} [${src.layers}]`, 'warn');
-      Toast.show('Sumber data bidang berganti (endpoint sebelumnya gagal)', 'info');
     };
-    layer.on('tileload', () => { this._bidangErrCount = 0; });
+    layer.on('tileload', () => { this._bidangErrCount = 0; this._bidangLastWrap = 0; });
     layer.on('tileerror', () => {
       this._bidangErrCount++;
       if (this._bidangErrCount < 6) return;
       this._bidangErrCount = 0;
       const next = (this._bidangSourceIdx + 1) % BIDANG_SOURCES.length;
-      if (next === 0) { // baru saja keliling penuh → jeda dulu
-        if (Date.now() - this._bidangLastWrap < 20000) return;
+      if (next === 0) {
+        // Sudah keliling penuh SEMUA sumber → kemungkinan besar WAF ATR/BPN
+        // yang menutup /mprx & /expapi (berlaku sejak 23 Okt 2026 untuk
+        // klien tanpa sesi login), bukan satu endpoint yang mati. Beri tahu
+        // SEKALI per 10 menit, kembali ke sumber utama, lalu jeda — jangan
+        // spam toast tiap 6 tile error seperti sebelumnya.
+        if (Date.now() - this._bidangLastWrap < BIDANG_RETRY_MS) return;
         this._bidangLastWrap = Date.now();
+        AppConsole.log('Semua sumber tile Bidang Tanah gagal (kemungkinan WAF ATR/BPN menutup /mprx & /expapi)', 'warn');
+        Toast.show('Tile Bidang Tanah sedang ditutup WAF ATR/BPN — dicoba ulang tiap 10 menit. Alternatif sementara: layer "Batas Persil Indonesia".', 'warn');
+        this._bidangSourceIdx = 0;
+        applySource(0);
+        return;
       }
       this._bidangSourceIdx = next;
       applySource(next);

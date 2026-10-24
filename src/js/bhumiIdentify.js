@@ -12,10 +12,64 @@ const BhumiIdentify = {
   _desaBaruP: null,        // memo assets/desanew.js (hasil download)
   _hlLayers: null,
   _searchLayer: null,
+  _bridgePending: new Map(),
 
   init() {
     this._proxyBase = this._resolveProxy();
+    window.addEventListener('message', (event) => {
+      if (event.source !== window || event.origin !== location.origin) return;
+      const data = event.data || {};
+      if (data.type !== 'AURORAMAPS_BHUMI_BRIDGE_ACK' && data.type !== 'AURORAMAPS_BHUMI_BRIDGE_RESULT') return;
+      const pending = this._bridgePending.get(data.requestId);
+      if (!pending) return;
+      if (data.type === 'AURORAMAPS_BHUMI_BRIDGE_ACK') {
+        pending.ack = true;
+        return;
+      }
+      pending.completed = true;
+      clearTimeout(pending.timer);
+      this._bridgePending.delete(data.requestId);
+      if (data.error) pending.reject(new Error(data.error));
+      else pending.resolve(Array.isArray(data.features) ? data.features : []);
+    });
     MapManager.map.on('click', (e) => this._onMapClick(e));
+  },
+
+  // Kirim pesan apa pun (identify/search) ke konten-ekstensi lalu tunggu ACK
+  // 700 ms. Tanpa ACK = ekstensi tidak terpasang → resolve(null) supaya
+  // pemanggil jatuh ke jalur langsung. Setelah ACK, hasil/error datang lewat
+  // AURORAMAPS_BHUMI_BRIDGE_RESULT (dilayani listener di init()).
+  _requestBridge(message, waitMs = 60000) {
+    const requestId = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`).toString();
+    let resolveResult, rejectResult;
+    const result = new Promise((resolve, reject) => { resolveResult = resolve; rejectResult = reject; });
+    const pending = { ack: false, completed: false, resolve: resolveResult, reject: rejectResult, timer: null };
+    this._bridgePending.set(requestId, pending);
+    window.postMessage({ ...message, requestId }, location.origin);
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        if (!pending.ack) {
+          this._bridgePending.delete(requestId);
+          resolve(null);
+          return;
+        }
+        if (pending.completed) {
+          result.then(resolve, reject);
+          return;
+        }
+        pending.timer = setTimeout(() => {
+          this._bridgePending.delete(requestId);
+          reject(new Error('Waktu tunggu bridge BHUMI habis; pastikan tab BHUMI terbuka, sudah login, dan ekstensi aktif.'));
+        }, waitMs);
+        result.then(resolve, reject);
+      }, 700);
+    });
+  },
+
+  // Kompatibilitas lama: identifikasi klik peta lewat bridge ekstensi.
+  _requestBrowserBridge(body, lat, lng) {
+    return this._requestBridge({ type: 'AURORAMAPS_BHUMI_IDENTIFY',
+      body: { ...body, latitude: lat, longitude: lng } }, 60000);
   },
 
   // ── Proxy resolution ──
@@ -36,15 +90,69 @@ const BhumiIdentify = {
     return 'https://orange-smoke-f6f5.riacaya99.workers.dev';
   },
 
-  // ── Token Management ──
-  async _ensureToken() {
-    if (this._token && Date.now() < this._tokenExp) return this._token;
-    // loginApi BHUMI sekarang mensyaratkan token reCAPTCHA v3 yang hanya
-    // dapat diterbitkan pada domain yang diizinkan pemilik site key. Uji dari
-    // AuroraMaps localhost ditolak Google; kredensial contoh sebelumnya juga
-    // selalu gagal verifikasi CAPTCHA. Jangan kirim request palsu atau membuat
-    // token sendiri karena hanya ATR/BPN yang dapat mengizinkan domain ini.
-    throw new Error('Login pencarian bidang BHUMI memerlukan reCAPTCHA dari domain yang diizinkan ATR/BPN. Domain AuroraMaps ini belum diizinkan; minta ATR/BPN menambahkan domain app atau menyediakan endpoint autentikasi resmi.');
+  // ── Pesan layanan tertutup ──
+  // Sejak 23 Okt 2026 ATR/BPN menutup akses langsung ruang /expapi & /mprx
+  // bhumi.atrbpn.go.id (balas 404/403 "Forbidden" untuk klien tanpa sesi
+  // login — teruji dari IP rumah, IP worker cloud, maupun browser tanpa
+  // login; hanya /api dan /panel yang masih terbuka). Galat ini BUKAN salah
+  // aplikasi; jalur yang masih bisa bekerja adalah tab BHUMI yang sudah login
+  // melalui ekstensi AuroraMaps BHUMI Bridge.
+  _wafMessage(path) {
+    return `Layanan ${path} BHUMI sedang ditutup untuk akses langsung (WAF ATR/BPN). ` +
+      'Buka tab bhumi.atrbpn.go.id yang sudah login, lalu pasang ekstensi AuroraMaps BHUMI Bridge (tools/bhumi-bridge) supaya klik & cari bidang tetap berfungsi.';
+  },
+
+  // ── Pencarian bidang: getBidang / getBidang2 ──
+  // Rantai: (1) bridge ekstensi — satu-satunya jalur saat WAF menutup /expapi;
+  // (2) POST langsung lewat proxy lokal/worker, tanpa token login (loginApi
+  // kini berpagar reCAPTCHA domain) — dipertahankan untuk bila WAF membuka
+  // lagi. Galat 401/403/404 diterjemahkan menjadi pesan yang bisa ditindak-
+  // lanjuti, bukan angka HTTP mentah.
+  async _searchFeatures(path, body) {
+    let bridgeErr = null;
+    try {
+      const bridged = await this._requestBridge({ type: 'AURORAMAPS_BHUMI_SEARCH', path, body }, 35000);
+      if (bridged) return bridged;
+    } catch (e) { bridgeErr = e; }
+    const headers = { 'Content-Type': 'application/json' };
+    if (this._token) headers.Authorization = this._token;
+    const res = await fetch(this._proxyBase + path, { method: 'POST', headers, body: JSON.stringify(body) });
+    if (!res.ok) {
+      if (bridgeErr) throw bridgeErr; // ekstensi ada tapi tab BHUMI bermasalah → pesan spesifik
+      if (res.status === 401) throw new Error('Pencarian bidang butuh login BHUMI. Buka tab bhumi.atrbpn.go.id yang sudah login lalu pasang ekstensi AuroraMaps BHUMI Bridge.');
+      if (res.status === 403 || res.status === 404) throw new Error(this._wafMessage(path));
+      throw new Error('Pencarian bidang gagal: HTTP ' + res.status);
+    }
+    return this._flattenSearch(await res.json());
+  },
+
+  // Balasan getBidang: array feature-collection (wrapper null hasil 'tidak
+  // ditemukan' disaring) ATAU FeatureCollection tunggal → samakan menjadi
+  // array fitur datar. Wrapper null dulu pernah membuat L.geoJSON crash.
+  _flattenSearch(data) {
+    if (Array.isArray(data)) {
+      return data.flatMap(x => (x == null ? [] :
+        (Array.isArray(x.features) ? x.features : (x.type === 'FeatureCollection' ? [] : x))));
+    }
+    return (data && Array.isArray(data.features)) ? data.features : [];
+  },
+
+  // Sorot hasil pencarian: pasang view (HGU/HPL tetap setView, sisanya
+  // fitBounds), lalu popup + overlay bidang langsung dari fitur hasil.
+  // getPersil TIDAK dipanggil ulang — respons getBidang sudah membawa
+  // geometry, jadi putaran jaringan kedua (yang ikut kena WAF) dihindari.
+  _focusSearchResult(features, tipehak = '') {
+    if (this._searchLayer) { this._searchLayer.remove(); this._searchLayer = null; }
+    const first = features.find(f => f?.geometry && f.geometry.coordinates);
+    if (!first) return;
+    const bounds = L.geoJSON(first).getBounds();
+    if (!bounds.isValid()) return;
+    const center = bounds.getCenter();
+    if (tipehak === 'hgu_hpl') MapManager.map.setView(center, Math.max(MapManager.map.getZoom(), 17));
+    else MapManager.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 20 });
+    const main = features.find(x => x?.properties?.nib) || first;
+    this._showInfo(main, features.length, center.lat, center.lng);
+    this._drawPolygon(features, center.lat, center.lng);
   },
 
   // ── MD5 (exact copy from nib.html) ──
@@ -127,6 +235,10 @@ const BhumiIdentify = {
         headers: { 'Content-Type': 'application/json' }
       })
     ]);
+    // 401/403/404 = WAF ATR/BPN menutup /expapi utk akses tanpa sesi login.
+    if (ticketRes.status === 401 || ticketRes.status === 403 || ticketRes.status === 404) {
+      throw new Error(this._wafMessage('/expapi/auth-ticket'));
+    }
     if (!ticketRes.ok) throw new Error('BHUMI auth-ticket: HTTP ' + ticketRes.status);
     const ticket = await ticketRes.json();
     if (!ticket?.ticketId || !ticket?.challengeSeed) throw new Error('BHUMI auth-ticket tidak lengkap');
@@ -160,7 +272,11 @@ const BhumiIdentify = {
       },
       body: JSON.stringify(body)
     });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) {
+      if (res.status === 401) throw new Error('Identifikasi bidang butuh login BHUMI (HTTP 401).');
+      if (res.status === 403 || res.status === 404) throw new Error(this._wafMessage('/expapi/getPersil'));
+      throw new Error('BHUMI getPersil: HTTP ' + res.status);
+    }
     const data = await res.json();
     let fc;
     if (data && data.encrypted && data.data) {
@@ -189,30 +305,10 @@ const BhumiIdentify = {
     this._ensureBidangVisible();
     if (!desaId) throw new Error('Pilih kabupaten dulu');
     const value = String(nomor || '').replace(/\D/g, '');
-    if (!/^\d{5}$/.test(value)) throw new Error('Nomor hak harus 5 digit');
-    await this._ensureToken();
-    const res = await fetch(this._proxyBase + '/expapi/getBidang', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: this._token },
-      body: JSON.stringify({ desaId, nomor: value, search: 'nomorhak', tipehak })
-    });
-    if (!res.ok) throw new Error('Pencarian SHM gagal: HTTP ' + res.status);
-    const data = await res.json();
-    // Balasan 'tidak ditemukan' = [{type:'FeatureCollection', features:null}]
-    // — jangan biarkan wrapper null ikut masuk (L.geoJSON crash di .length).
-    const features = Array.isArray(data) ? data.flatMap(x => (x == null ? [] : (Array.isArray(x.features) ? x.features : (x.type === 'FeatureCollection' ? [] : x)))) : (data?.features || []);
+    if (!/^\d{5}$/.test(value)) throw new Error('Nomor hak harus 5 digit');    const features = await this._searchFeatures('/expapi/getBidang',
+      { desaId, nomor: value, search: 'nomorhak', tipehak });
     if (!features.length) return [];
-    const first = features.find(f => f?.geometry) || features[0];
-    const c = first.geometry?.coordinates?.[0]?.[0];
-    if (Array.isArray(c) && c.length >= 2) {
-      const [lng, lat] = c;
-      if (this._searchLayer) { this._searchLayer.remove(); this._searchLayer = null; }
-      const bounds = L.geoJSON(first).getBounds();
-      const center = bounds.getCenter();
-      if (tipehak === 'hgu_hpl') MapManager.map.setView(center, Math.max(MapManager.map.getZoom(), 17));
-      else MapManager.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 20 });
-      await this.identify(center.lat, center.lng);
-    }
+    this._focusSearchResult(features, tipehak);
     return features;
   },
 
@@ -221,40 +317,20 @@ const BhumiIdentify = {
     if (!desaId) throw new Error('Pilih kabupaten dulu');
     const value = String(nomor || '').replace(/\D/g, '');
     if (!/^\d{5}$/.test(value)) throw new Error('NIB harus 5 digit');
-    await this._ensureToken();
-    const res = await fetch(this._proxyBase + '/expapi/getBidang', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: this._token },
-      body: JSON.stringify({ desaId, nomor: value, search: 'nib', tipehak })
-    });
-    if (!res.ok) throw new Error('Pencarian NIB gagal: HTTP ' + res.status);
-    const data = await res.json();
-    const features = Array.isArray(data) ? data.flatMap(x => (x == null ? [] : (Array.isArray(x.features) ? x.features : (x.type === 'FeatureCollection' ? [] : x)))) : (data?.features || []);
+    const features = await this._searchFeatures('/expapi/getBidang',
+      { desaId, nomor: value, search: 'nib', tipehak });
     if (!features.length) return [];
-    const bounds = L.geoJSON(features[0]).getBounds();
-    const center = bounds.getCenter();
-    if (tipehak === 'hgu_hpl') MapManager.map.setView(center, Math.max(MapManager.map.getZoom(), 17));
-      else MapManager.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 20 });
-      await this.identify(center.lat, center.lng);
-      return features;
+    this._focusSearchResult(features, tipehak);
+    return features;
   },
 
   async searchNibel(nibel) {
     this._ensureBidangVisible();
     const value = String(nibel || '').trim();
     if (!value) throw new Error('NIBEL wajib diisi');
-    await this._ensureToken();
-    const res = await fetch(this._proxyBase + '/expapi/getBidang2', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: this._token },
-      body: JSON.stringify({ nibel: value })
-    });
-    if (!res.ok) throw new Error('Pencarian NIBEL gagal: HTTP ' + res.status);
-    const data = await res.json();
-    const features = Array.isArray(data) ? data.flatMap(x => (x == null ? [] : (Array.isArray(x.features) ? x.features : (x.type === 'FeatureCollection' ? [] : x)))) : (data?.features || []);
+    const features = await this._searchFeatures('/expapi/getBidang2', { nibel: value });
     if (!features.length) return [];
-    const bounds = L.geoJSON(features[0]).getBounds();
-    MapManager.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 20 });
-    const center = bounds.getCenter();
-    await this.identify(center.lat, center.lng);
+    this._focusSearchResult(features, '1');
     return features;
   },
 
@@ -486,7 +562,7 @@ const BhumiIdentify = {
         x: Math.max(0, Math.min(size.x - 1, Math.round(clickPoint.x))),
         y: Math.max(0, Math.min(size.y - 1, Math.round(clickPoint.y)))
       };
-      const features = await this._gfiFeatures({
+      const requestBody = {
         service_layer_name: 'umum:Persil',
         width: size.x, height: size.y,
         bbox: [northWest.lng, southEast.lat, southEast.lng, northWest.lat].join(','),
@@ -494,7 +570,9 @@ const BhumiIdentify = {
         query_layers: 'umum:Persil',
         url: '/expapi/getPersil',
         service: '/bhumigs/umum'
-      });
+      };
+      const bridged = await this._requestBrowserBridge(requestBody, lat, lng);
+      const features = bridged || await this._gfiFeatures(requestBody);
 
       if (!features.length) {
         Toast.show('Tidak ada bidang di titik ini', 'warn');
@@ -570,7 +648,7 @@ const BhumiIdentify = {
     const shareData = { title: 'Lokasi lahan - AuroraMaps', text: `Lokasi lahan ${coord}`, url };
     try {
       if (navigator.share) await navigator.share(shareData);
-      else { await navigator.clipboard.writeText(url.href); Toast.show('Link lokasi disalin', 'success'); }
+      else { await navigator.clipboard.writeText(url); Toast.show('Link lokasi disalin', 'success'); }
     } catch (e) {
       if (e.name !== 'AbortError') Toast.show('Gagal membagikan lokasi', 'error');
     }
