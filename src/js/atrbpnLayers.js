@@ -144,7 +144,8 @@ const BIDANG_SOURCES = [
 // masih dilayani hanya permintaan dari DALAM halaman bhumi.atrbpn.go.id
 // (same-site, sesi & cookie tab itu) → ekstensi meneruskan URL tile ke tab
 // BHUMI, gambar diambil di sana, lalu bytes-nya dikembalikan sebagai object
-// URL. Tanpa ekstensi (ACK tidak datang dalam 800 ms) relai dimatikan dan tile
+// URL. Tanpa ekstensi (ACK tidak datang dalam 3 detik — termasuk jeda bangun
+// service worker MV3) relai dimatikan dan tile
 // dimuat lewat jalur proxy lama — persis perilaku sebelumnya.
 const BHUMI_TILE_ORIGIN = 'https://bhumi.atrbpn.go.id';
 const GISTARU_ORIGIN = 'https://gistaru-app.atrbpn.go.id';
@@ -265,7 +266,7 @@ const BhumiTileRelay = {
         ackTimer: setTimeout(() => {
           this._setAvail(false);
           done(reject, Object.assign(new Error('Ekstensi BHUMI Bridge tidak aktif.'), { relay: false }));
-        }, 800),
+        }, 3000),
         timer: null,
         resolve: (value) => done(resolve, value),
         reject: (error) => done(reject, error)
@@ -507,7 +508,7 @@ const AtrbpnLayers = {
               layers: RTRP_LAYER, version: '1.3.0',
               crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true,
               format: 'image/png', transparent: true, attribution: 'RTR Provinsi (gistaru-app)'
-            })), '', 'gistaru') },
+            }), '', 'gistaru')) },
       rtrw: { label: 'RTRW Kab/Kota',     on: false, opacity: 0.7, layer: rtrwLayer },
       kp2b: { label: 'KP2B',              on: false, opacity: 0.7, layer: kp2bLayer },
       hutan: hutanEntry
