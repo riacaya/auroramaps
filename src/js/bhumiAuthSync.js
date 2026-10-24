@@ -55,3 +55,6 @@ const AuroraBhumiAuth = {
     });
   }
 };
+// const top-level skrip klasik TIDAK menjadi properti window — ekspos
+// eksplisit supaya app.js / bhumiIdentify.js bisa memakai window.AuroraBhumiAuth.
+window.AuroraBhumiAuth = AuroraBhumiAuth;
