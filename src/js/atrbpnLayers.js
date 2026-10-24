@@ -237,8 +237,23 @@ const BhumiTileRelay = {
       return Promise.reject(Object.assign(new Error('Relai tile tidak aktif.'), { relay: false }));
     }
     return new Promise((resolve, reject) => {
-      this._queue.push({ url, resolve, reject });
-      this._pump();
+      // Galat sementara dari relay (mis. WAF ATR/BPN membalas 500 saat burst
+      // halaman BHUMI) dicoba ulang sekali lewat relai SELAMA 1.5 dtk sebelum
+      // tile jatuh ke basis URL langsung. Galat relay:false (ekstensi tidak
+      // ada / ACK lewat jendela 3 dtk) tidak diulang — memang tidak akan beda.
+      const attempt = (sisa) => {
+        this._queue.push({
+          url,
+          resolve,
+          reject: (err) => {
+            if (sisa > 0 && !(err && err.relay === false)) {
+              setTimeout(() => attempt(sisa - 1), 1500);
+            } else reject(err);
+          }
+        });
+        this._pump();
+      };
+      attempt(1);
     });
   },
   _pump() {
