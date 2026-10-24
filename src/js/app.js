@@ -23,6 +23,10 @@ function updateFPS() {
 // =====================================================
 const App = {
   async init() {
+    // App login/sesi terbuka → segarkan token BHUMI lewat tab BHUMI (jalur
+    // ekstensi; lihat bhumiAuthSync.js). Fire-and-forget: kegagalan hanya
+    // dicatat ke panel log, tidak menahan UI.
+    if (window.AuroraBhumiAuth) AuroraBhumiAuth.ensure().catch(() => {});
     document.getElementById('loader').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
 

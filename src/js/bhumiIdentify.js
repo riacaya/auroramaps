@@ -113,7 +113,15 @@ const BhumiIdentify = {
     try {
       const bridged = await this._requestBridge({ type: 'AURORAMAPS_BHUMI_SEARCH', path, body }, 35000);
       if (bridged) return bridged;
-    } catch (e) { bridgeErr = e; }
+    } catch (e) {
+      bridgeErr = e;
+      // Token BHUMI kedaluwarsa/tertolak (401) → minta tab BHUMI menyegarkan
+      // token via loginApi (AuroraBhumiAuth sudah di-debounce & menulis log
+      // sendiri); pencarian berikutnya langsung memakai token baru.
+      if (/HTTP 401/.test(String((e && e.message) || '')) && window.AuroraBhumiAuth) {
+        AuroraBhumiAuth.ensure(true).catch(() => {});
+      }
+    }
     const headers = { 'Content-Type': 'application/json' };
     if (this._token) headers.Authorization = this._token;
     const res = await fetch(this._proxyBase + path, { method: 'POST', headers, body: JSON.stringify(body) });
