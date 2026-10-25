@@ -14,7 +14,12 @@
 // dekripsi statis OpenSSL, alur auth-ticket ECDH, whitelist tile, dan
 // sinkron token loginApi + reCAPTCHA (chunk 8815 milik situs BHUMI).
 (() => {
-  if (window.AuroraBhumiSidecar) return; // idempotent (inject ulang navigasi)
+  const SIDECAR_V = 5;
+  // Idempotent untuk navigasi ulang, TETAPI versi lama (tanpa v) harus
+  // diganti saat sidecar di-restart — kalau tidak, kode lama yang tetap
+  // berjalan di tab yang tak dimuat ulang (guard 'return' lama dulu membuat
+  // perbaikan tak pernah sampai ke tab yang sedang terbuka).
+  if (window.AuroraBhumiSidecar && window.AuroraBhumiSidecar.v === SIDECAR_V) return;
 
   // ── Whitelist (sama dengan ekstensi) ─────────────────────────────────────
   // /expapi/umum/wms = gambar bidang transparan (overlay klik identify).
@@ -141,7 +146,7 @@
     : (data && Array.isArray(data.features) ? data.features : []);
 
   // ── search: getBidang / getBidang2 (sama persis dgn bhumi-main) ──────────
-  async function search({ path, body }) {
+  async function searchImpl({ path, body }) {
     if (!SEARCH_PATHS.includes(path)) throw new Error('Endpoint pencarian ditolak.');
     if (!body || typeof body !== 'object' || JSON.stringify(body).length > 8000) {
       throw new Error('Body pencarian tidak valid.');
@@ -168,7 +173,7 @@
   }
 
   // ── identify: auth-ticket + getPersil ber-ecdh ────────────────────────────
-  async function identify({ body }) {
+  async function identifyImpl({ body }) {
     if (!body || !Number.isFinite(body.latitude) || !Number.isFinite(body.longitude) ||
         !Number.isFinite(body.x) || !Number.isFinite(body.y) || typeof body.bbox !== 'string') {
       throw new Error('Parameter koordinat tidak valid.');
@@ -213,7 +218,7 @@
   }
 
   // ── tile: whitelist + ambil gambar dalam halaman → base64 ─────────────────
-  async function tile({ url }) {
+  async function tileImpl({ url }) {
     let u;
     try { u = new URL(String(url), location.origin); } catch (_) { throw new Error('URL tile tidak valid.'); }
     const isBhumi = u.origin === location.origin && TILE_PATHS.includes(u.pathname);
@@ -287,8 +292,91 @@
     return { status: 'ok' };
   }
 
+  // ── Penjaga sesi: token loginApi berumur pendek ────────────────────────────
+  // Token di localStorage basi dalam hitungan MENIT (terukur: ±15 menit); begitu
+  // basi, identify & search membalas 401 ATAU 403 dan tile 403 → tab Bidang
+  // tampil tanpa SHM & luas (padahal situs BHUMI sendiri masih menampilkan
+  // data — di sana penjadwal refresh milik situs, chunk 8815, terus berjalan;
+  // halaman pendamping headless tidak menjalankannya). Karena itu kesegaran
+  // dicek di sini, setiap panggilan:
+  //   1. token basi → sinkron dulu (loginApi + reCAPTCHA, tanpa paksa)
+  //   2. tetap 401/403 → sinkron paksa lalu ULANGI sekali
+  // Antrean bersama (syncFlight) mencegah puluhan tile serentak memicu
+  // loginApi/rate-limit yang sama.
+  let syncFlight = null;
+  const freshSync = (force) => {
+    if (!syncFlight) {
+      syncFlight = tokenSync({ force: !!force })
+        .catch(e => ({ status: String((e && e.message) || e) }))
+        .finally(() => { syncFlight = null; });
+    }
+    return syncFlight;
+  };
+  // ── "Saya Setuju" otomatis ───────────────────────────────────────────────────
+  // Disclaimer situs HANYA tampil saat sesi/token mati, dan tombolnya
+  // menjalankan alur login asli milik situs (chunk 8815 → loginApi 200 —
+  // teruji lebih andal daripada jalur buatan kita yang pernah kena 403).
+  // Jendela pendamping berjalan headless (tak terlihat), jadi tidak ada
+  // tangan yang bisa mengkliknya → klik otomatis:
+  //   • pengamat DOM + pemeriksaan berkala: tombol muncul → langsung diklik
+  //   • dipakai juga sebagai langkah PERTAMA pemulihan sesi (recoverSession)
+  let agreeAt = 0;
+  const agreeBtn = () => {
+    try {
+      return [...document.querySelectorAll('button, a')].find(el => {
+        const t = (el.textContent || '').trim().replace(/\s+/g, ' ');
+        if (!/^(saya setuju|setuju|agree|i agree|saya mengerti|understand)$/i.test(t)) return false;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0; // tampil (display:none → 0)
+      });
+    } catch (_) { return null; } // dokumen belum siap
+  };
+  const clickAgree = () => {
+    if (Date.now() - agreeAt < 8000) return false; // cegah loginApi dobel
+    const btn = agreeBtn();
+    if (!btn) return false;
+    agreeAt = Date.now();
+    try { btn.click(); } catch (_) { return false; }
+    return true;
+  };
+  // Pemeriksaan ringan tiap 2 dtk (querySelector saja — tanpa jaringan).
+  setInterval(() => { try { clickAgree(); } catch (_) { /* abaikan */ } }, 2000);
+  clickAgree();
+
+  // Pemulihan sesi berlapis:
+  //   1. token masih segar → tidak usah apa-apa
+  //   2. tombol disclaimer tampil → klik (alur asli situs) lalu tunggu token
+  //      baru sampai 7,5 dtk
+  //   3. belum juga segar → loginApi + reCAPTCHA milik kita
+  async function recoverSession(force) {
+    if (!force && storedTokenFresh()) return { status: 'ok', cached: true };
+    if (clickAgree()) {
+      for (let i = 0; i < 30; i++) {
+        await new Promise(r => setTimeout(r, 250));
+        if (storedTokenFresh()) return { status: 'ok', via: 'disclaimer' };
+      }
+    }
+    return freshSync(force);
+  }
+  async function withAuthRetry(run, retryRe) {
+    if (!storedTokenFresh()) await recoverSession(false).catch(() => null);
+    try {
+      return await run();
+    } catch (e) {
+      const msg = String((e && e.message) || e);
+      if (!retryRe.test(msg)) throw e;
+      const s = await recoverSession(true);
+      if (s && s.status && s.status !== 'ok') throw new Error(String(s.status));
+      return run();
+    }
+  }
+  const search = (arg) => withAuthRetry(() => searchImpl(arg), /HTTP 40[13]/);
+  const identify = (arg) => withAuthRetry(() => identifyImpl(arg), /HTTP 40[13]/);
+  const tile = (arg) => withAuthRetry(() => tileImpl(arg), /HTTP 40[13]/);
+
   const status = () => ({
     sidecar: true,
+    v: SIDECAR_V,
     loggedIn: storedTokenFresh(),
     url: location.href
   });
