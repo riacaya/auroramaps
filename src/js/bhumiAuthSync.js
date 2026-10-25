@@ -23,11 +23,35 @@ const AuroraBhumiAuth = {
   ensure(force) {
     if (!force && this._inflight) return this._inflight;
     if (!force && Date.now() - this._lastOk < 6 * 3600e3) return Promise.resolve('cached');
-    this._inflight = this._run(force).finally(() => { this._inflight = null; });
+    // Probe sidecar pertama (dijalankan saat DOM siap) belum tentu selesai
+    // saat App.init memanggil ensure() → tunggu maks 3 dtk supaya pilihan
+    // jalur (sidecar vs ekstensi) tidak salah dan memicu peringatan 15 dtk.
+    const sc = window.AuroraBhumiSidecarClient;
+    const ready = (sc && sc.state() === null) ? sc.ready(3000) : Promise.resolve(true);
+    this._inflight = ready.then(() => this._run(force)).finally(() => { this._inflight = null; });
     return this._inflight;
   },
 
   _run(force) {
+    // Prioritas: sidecar lokal (tanpa ekstensi, tools/bhumi-bridge) bila
+    // terdeteksi hidup — loginApi + reCAPTCHA dijalankan dari dalam tab
+    // BHUMI pendamping; hasilnya disamakan dengan jalur pesan ekstensi.
+    const sc = window.AuroraBhumiSidecarClient;
+    if (sc && sc.availableSync()) {
+      return sc.tokenSync(force).then((r) => {
+        if (r && r.status === 'ok') {
+          this._lastOk = Date.now();
+          if (r.cached) return 'cached';
+          AppConsole.log('Token BHUMI disegarkan lewat sidecar lokal — pencarian & identifikasi siap.', 'info');
+          return 'ok';
+        }
+        AppConsole.log('Sinkron token via sidecar gagal: ' + ((r && r.status) || 'tanpa balasan'), 'warn');
+        return 'fail';
+      }).catch((e) => {
+        AppConsole.log('Sinkron token via sidecar tidak terjangkau — jalankan jalankan-sidecar.bat.', 'warn');
+        return 'timeout';
+      });
+    }
     return new Promise((resolve) => {
       const requestId = 'tok-' + (crypto.randomUUID ? crypto.randomUUID() : Date.now());
       const onMsg = (event) => {

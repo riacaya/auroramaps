@@ -1,0 +1,6 @@
+# Jangan pernah commit berkas lokal/rahasia:
+# profil browser sidecar (sesi login BHUMI) & log
+tools/bhumi-bridge/.chrome-bhumi-profile/
+.chrome-bhumi-profile/
+*.log
+.tmp-*

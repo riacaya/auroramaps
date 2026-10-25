@@ -193,13 +193,13 @@ const BhumiTileRelay = {
     });
   },
 
-  _setAvail(value) {
+  _setAvail(value, via = 'ekstensi bridge') {
     if (this._avail === value) return;
     this._avail = value;
     this._availAt = Date.now();
     if (value && !this._logged) {
       this._logged = true;
-      AppConsole.log('Tile Bidang Tanah dimuat lewat tab BHUMI (ekstensi bridge).', 'info');
+      AppConsole.log('Tile Bidang Tanah dimuat lewat tab BHUMI (' + via + ').', 'info');
     }
   },
 
@@ -233,7 +233,8 @@ const BhumiTileRelay = {
     if (cached) return Promise.resolve(cached);
     // Setelah relai dipastikan tidak ada, coba lagi paling cepat tiap 30 detik
     // (mis. pengguna baru memasang ekstensi).
-    if (this._avail === false && Date.now() - this._availAt < 30000) {
+    const scOk = !!(window.AuroraBhumiSidecarClient && AuroraBhumiSidecarClient.availableSync());
+    if (!scOk && this._avail === false && Date.now() - this._availAt < 30000) {
       return Promise.reject(Object.assign(new Error('Relai tile tidak aktif.'), { relay: false }));
     }
     return new Promise((resolve, reject) => {
@@ -264,7 +265,19 @@ const BhumiTileRelay = {
       this._send(task.url).then(task.resolve, task.reject).then(settle, settle);
     }
   },
-  _send(url) {
+  async _send(url) {
+    // Prioritas: sidecar lokal (tanpa ekstensi, tools/bhumi-bridge) bila
+    // terdeteksi hidup — gambar diambil di dalam tab BHUMI pendamping.
+    const sc = window.AuroraBhumiSidecarClient;
+    // Probe pertama belum tentu selesai saat tile pertama dimuat → tunggu
+    // maks 2,5 dtk supaya pilihan jalur (sidecar vs ekstensi) konsisten.
+    if (sc && sc.state() === null) { try { await sc.ready(2500); } catch (e) { /* abaikan */ } }
+    if (sc && sc.availableSync()) {
+      return sc.tile(url).then(
+        (r) => { this._setAvail(true, 'sidecar lokal'); return this._remember(url, r.base64, r.mime); },
+        (err) => { throw err; }
+      );
+    }
     const requestId = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random()).toString();
     return new Promise((resolve, reject) => {
       const done = (fn, value) => {
@@ -547,26 +560,30 @@ const AtrbpnLayers = {
   //     RTR Provinsi & RTRW Kab/Kota.
   //   • Tidak ada yang aktif → klik dibiarkan; yang dibaca adalah poligon
   //     manual / layer fitur (handler fitur berhenti di sini via stopPropagation).
-  //   • Layer Bidang Tanah aktif → klik DISERAHKAN ke BhumiIdentify
-  //     (_clickIdentifyEnabled, POST /expapi/getPersil sesuai rekaman situs
-  //     bidang.har 5 Okt 2026) supaya dua popup tidak balapan. Zona RTR/RW
-  //     tetap dibaca bila layer bidang tidak aktif.
+  //   • Layer Bidang Tanah aktif → TAB "Bidang" di popup INI yang diisi
+  //     (POST /expapi/getPersil sesuai rekaman situs bidang.har 5 Okt 2026),
+  //     berdampingan dengan tab RTRW Pro/Kab, LSD, KP2B (penggabungan popup
+  //     25 Okt 2026) sehingga tidak ada lagi dua popup balapan.
   //   • Kawasan hutan masih DIABAIKAN (server sumbernya mati).
   _onMapClick(e) {
     if (State.activeDrawType) return;   // mode menggambar → klik dipakai vertex
     if (MapManager.isMeasuring) return; // mode pengukuran
     const active = this._activeKeys();
     if (!active.length) {
+      // Invalsidasi hasil yang masih melayang (GFI/persil) supaya kartu yang
+      // baru saja ditutup tidak dibuka lagi oleh balasan telat.
+      this._clickSeq = (this._clickSeq || 0) + 1;
       MapPopup.hide();
       return; // klik baca poligon manual (perilaku lama)
     }
-    // Bidang aktif → BhumiIdentify yang mengelola popup (fitur ditemukan →
-    // popup bidang; tidak ada / gagal → dia yang menutup/Memberi toast).
-    const bidangEntry = this._layers && this._layers.bidang;
-    if (bidangEntry && bidangEntry.on && bidangEntry.layer && this._map.hasLayer(bidangEntry.layer) &&
-        typeof BhumiIdentify !== 'undefined' && BhumiIdentify._clickIdentifyEnabled) return;
-
     const { lat, lng } = e.latlng;
+    // Tab Bidang (25 Okt 2026): persil di titik klik diambil paralel dengan
+    // GFI zona, hasilnya masuk ke state.bidang → tab pertama di popup ini.
+    const state0 = {};
+    if (active.includes('bidang')) {
+      const canId = typeof BhumiIdentify !== 'undefined' && BhumiIdentify._clickIdentifyEnabled;
+      state0.bidang = canId ? { pending: true } : { error: 'modul identifikasi belum termuat' };
+    }
     // Info zona MENGIKUTI layer ATRBPN yang dicentang (14 Okt 2026):
     //   ☑ RTR Provinsi (slot provinsi) → kolom provinsi saja (GFI GISTARU);
     //   ☑ RTRW Kab/Kota        → kolom kab/kota saja (GFI bhumi dulu);
@@ -576,32 +593,70 @@ const AtrbpnLayers = {
     //   yang 15+15 dtk saat server tak terjangkau jadi tidak dijalankan).
     const want = { prov: active.includes('rtrp'), kab: active.includes('rtrw') };
     const seq = (this._clickSeq = (this._clickSeq || 0) + 1);
-    // Kartu awal menampilkan panel untuk semua layer aktif, termasuk status
-    // identify LSD/KP2B yang belum disediakan endpoint TMS.
+    // Klik baru = kartu baru → lupakan pilihan tab klik sebelumnya, supaya
+    // kembali ke tab default (layer ATR/BPN aktif teratas, mis. Bidang).
+    // Pilihan tab TETAP dipertahankan selama kartu yang sama di-refresh
+    // oleh _refreshZones (lihat mapPopup._bindTabs).
+    MapPopup._activeTab = null;
+    // Kartu awal menampilkan panel untuk semua layer aktif — termasuk tab
+    // Bidang yang sedang membaca (state0) dan status identify LSD/KP2B yang
+    // belum disediakan endpoint TMS.
     MapPopup.show(this._zonePopupHtml(
-      active, (want.prov || want.kab) ? { pending: true } : null, lat, lng));
+      active, (want.prov || want.kab || state0.bidang) ? Object.assign({ pending: true }, state0) : null, lat, lng));
     // Render bertahap (14 Okt 2026): tiap GFI berjalan paralel TETAPI kartu
     // popup diperbarui setiap hasil masuk — bagian RTRW (WMS bhumi via worker,
     // ±2–4 dtk) langsung tampil tanpa menunggu rantai GISTARU (bisa 15+15 dtk
     // saat server tak terjangkau dari jaringan cloud). Tiap hasil memakai guard
     // seq yang sama seperti pola Promise.all lama.
-    const state = {};
+    const state = Object.assign({}, state0);
     if (want.prov) state.prov = { pending: true };
     if (want.kab) state.kab = { pending: true };
+    const settle = this._refreshZones(active, state, lat, lng, seq);
+
+    // Tab Bidang: getPersil ECDH di titik klik → hasil + overlay transparan
+    // diserahkan ke BhumiIdentify.adopt (AutoSave & tombol bagikan/gambar
+    // di tab tetap berfungsi), lalu tabnya dirender lewat settle.
+    if (state0.bidang && state0.bidang.pending) {
+      BhumiIdentify.readBidang(lat, lng).then(
+        features => {
+          // Balasan telat: buang HANYA bila kartu sudah bukan milik klik ini
+          // (klik peta baru / ditutup). Klik UI mana pun menaikkan _clickSeq
+          // (document capture), jadi guard-nya harus memakai _stillOurCard
+          // seperti settle — kalau tidak, tab bisa nyangkut di "membaca…".
+          if (seq !== this._clickSeq && !this._stillOurCard(lat)) return;
+          if (!features || !features.length) { settle('bidang', { empty: true }); return; }
+          const main = BhumiIdentify.adopt(features, lat, lng);
+          settle('bidang', { features, main, count: features.length });
+        },
+        err => settle('bidang', { error: (err && err.message) || 'gagal' })
+      );
+    }
+  },
+
+  // Kartu yang tampil masih milik klik pada `lat` ini?
+  // Dipakai saat balasan GFI/persil telat masuk: _clickSeq bisa naik karena
+  // KLIK UI APA PUN (document capture di init), jadi syaratnya adalah kartu
+  // masih terbuka, koordinatnya cocok, dan masih berstatus membaca
+  // ("Load ATRBPN……" = kartu pending lama).
+  _stillOurCard(lat) {
+    const el = MapPopup._el;
+    return !!(el && el.style.display === '' &&
+      el.textContent.includes(lat.toFixed(6)) &&
+      (el.textContent.includes('membaca') || el.textContent.includes('Load ATRBPN')));
+  },
+
+  // GFI zona (RTRW Provinsi & Kab/Kota) paralel untuk kartu yang sedang tampil.
+  // Mengembalikan settle(key, res): update state lalu susun ulang popup —
+  // guard seq mencegah hasil lama menimpa klik yang lebih baru.
+  _refreshZones(active, state, lat, lng, seq) {
+    const want = { prov: active.includes('rtrp'), kab: active.includes('rtrw') };
     const settle = (key, res) => {
       state[key] = res || { rows: [], count: 0, error: 'gagal' };
       // Buang hasil lama HANYA bila kartu pending sudah tidak tampil / sudah
       // diganti pihak lain (klik koordinat baru, klik fitur, atau ✕ tutup).
       // Klik UI lain tidak boleh membuang hasil — popup jangan nyangkut di
       // "membaca…" selamanya (tanpa auto-hide lagi).
-      if (seq !== this._clickSeq) {
-        const el = MapPopup._el;
-        // Kartu pending lama kini bertuliskan "Load ATRBPN……" (bukan "membaca").
-        const stillOurs = el && el.style.display === '' &&
-          el.textContent.includes(lat.toFixed(6)) &&
-          (el.textContent.includes('membaca') || el.textContent.includes('Load ATRBPN'));
-        if (!stillOurs) return;
-      }
+      if (seq !== this._clickSeq && !this._stillOurCard(lat)) return;
       try {
         MapPopup.show(this._zonePopupHtml(active, state, lat, lng));
       } catch (err) {
@@ -618,6 +673,29 @@ const AtrbpnLayers = {
     };
     if (want.prov) this._gfiZone(RTRP_UUID, RTRP_LAYER, lat, lng).then(r => settle('prov', r));
     if (want.kab) this._gfiKabZone(lat, lng).then(r => settle('kab', r));
+    return settle;
+  },
+
+  // ── Popup gabungan dipanggil dari BhumiIdentify ──────────────────────
+  // Polygon highlight bidang diklik ulang / info bidang hasil identify:
+  // tab Bidang langsung terisi TANPA getPersil ulang, zona RTRW dibaca
+  // seperti klik peta biasa. false = pemanggil memakai popup bidang lama.
+  showBidangPopup(features, main, lat, lng) {
+    const active = this._activeKeys();
+    if (!active.includes('bidang')) return false;
+    const bidang = {
+      features: features || [],
+      main: main || (features && features[0]) || null,
+      count: (features || []).length
+    };
+    const state = { bidang };
+    if (active.includes('rtrp')) state.prov = { pending: true };
+    if (active.includes('rtrw')) state.kab = { pending: true };
+    const seq = (this._clickSeq = (this._clickSeq || 0) + 1);
+    MapPopup._activeTab = null; // kartu baru → tab default (lihat _onMapClick)
+    MapPopup.show(this._zonePopupHtml(active, state, lat, lng));
+    this._refreshZones(active, state, lat, lng, seq);
+    return true;
   },
 
   // Layer yang sedang tampil (on + benar-benar menempel di peta).
@@ -833,8 +911,40 @@ const AtrbpnLayers = {
       ? `<div class="mp-zone-note">Endpoint tile belum menyediakan atribut untuk titik ini.</div>`
       : `<div class="mp-zone-note">Layer ${title} belum aktif.</div>`;
 
+    // ── Tab Bidang Tanah (25 Okt 2026) ──────────────────────────────
+    // Hasil getPersil dari BhumiIdentify; format barisnya mengikuti kartu
+    // bidang lama (NIB, luas, tipe hak, desa/kec, akurasi) + tombol
+    // bagikan/gambar yang sama. Sengaja memakai .mp-fields/.mp-detail
+    // agar identik dengan tab zona lainnya.
+    const bidangPane = () => {
+      const wrap = (inner) => `<div class="mp-zone-col">${inner}</div>`;
+      const note = (t) => wrap(`<div class="mp-cand">Bidang Tanah</div><div class="mp-zone-note">${t}</div>`);
+      if (!active.includes('bidang')) return note('Layer Bidang Tanah belum aktif.');
+      const res = zoneRes && zoneRes.bidang;
+      if (!res || res.pending) return wrap(`<div class="mp-cand">Bidang Tanah — membaca…</div>`);
+      if (res.error) return note(`⚠ Gagal membaca: ${esc(res.error)}`);
+      const main = res.main || (res.features && res.features[0]);
+      if (res.empty || !main) return note('Tidak ada bidang di titik ini');
+      const p = main.properties || {};
+      const rows = [
+        ['NIB', p.nib],
+        ['Luas', p.luas ? p.luas + ' m²' : null],
+        ['Tipe Hak', p.tipehak],
+        ['Desa', p.namadesa],
+        ['Kecamatan', p.namakecamatan],
+        ['Akurasi', p.akurasibidang]
+      ].filter(([, v]) => v != null && v !== '');
+      const detail = rows.map(([k, v]) =>
+        `<div class="mp-detail"><div class="mp-detail-label">${esc(k)}</div><div class="mp-detail-value">${esc(String(v))}</div></div>`).join('');
+      const more = res.count > 1 ? `<div class="mp-cand">${res.count} bidang di titik ini</div>` : '';
+      return wrap(`<div class="mp-cand">⬡ Bidang Tanah</div>${more}
+        <div class="mp-fields">${detail}</div>
+        <button class="mp-share" type="button" onclick="BhumiIdentify.shareLocation(${lat}, ${lng})">🔗 Bagikan lokasi lahan</button>
+        <button class="mp-share" type="button" onclick="BhumiIdentify.prepareDrawing()">📝 Gunakan data ini saat menggambar</button>`);
+    };
+
     // Endpoint kawasan hutan sengaja tidak dipanggil (server mati);
-    // bidang tidak muncul di sini lagi — bila aktif, klik ditangani BhumiIdentify.
+    // bidang kini ikut sebagai TAB pertama di popup ini (lihat bidangPane).
     const dead = active.filter(k => k === 'hutan');
     const notes = dead.length
       ? '<div class="mp-coord">⚠ Kawasan Hutan: server sedang mati — tidak ikut dibaca (sementara).</div>'
@@ -850,6 +960,7 @@ const AtrbpnLayers = {
     // "Load ATRBPN……" (berkedip, lihat CSS .mp-loading) — dua kolom hanya
     // muncul setelah hasil GFI provinsi & kabupaten masuk.
     const tabDefs = [
+      { id: 'bidang', label: 'Bidang', title: 'Bidang Tanah (SHM: NIB & luas)', content: bidangPane() },
       { id: 'rtrp', label: 'RTRW Pro', title: 'RTRW Provinsi', content: provSection || `<div class="mp-zone-col"><div class="mp-cand">RTRW Provinsi</div><div class="mp-zone-note">Layer RTRW Provinsi belum aktif.</div></div>` },
       { id: 'rtrw', label: 'RTRW Kab', title: 'RTRW Kab/Kota', content: kabSection || `<div class="mp-zone-col"><div class="mp-cand">RTRW Kab/Kota</div><div class="mp-zone-note">Layer RTRW Kab/Kota belum aktif.</div></div>` },
       { id: 'lsd', label: 'LSD', title: 'LSD', content: `<div class="mp-zone-col"><div class="mp-cand">LSD</div>${visualOnlySection('lsd', 'LSD')}</div>` },

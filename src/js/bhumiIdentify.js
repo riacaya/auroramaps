@@ -39,7 +39,23 @@ const BhumiIdentify = {
   // 700 ms. Tanpa ACK = ekstensi tidak terpasang → resolve(null) supaya
   // pemanggil jatuh ke jalur langsung. Setelah ACK, hasil/error datang lewat
   // AURORAMAPS_BHUMI_BRIDGE_RESULT (dilayani listener di init()).
-  _requestBridge(message, waitMs = 60000) {
+  async _requestBridge(message, waitMs = 60000) {
+    // Prioritas: sidecar lokal (tanpa ekstensi, tools/bhumi-bridge) bila
+    // terdeteksi hidup — hasil disamakan dengan jalur bridge (array fitur)
+    // sehingga pemanggil (identify & _searchFeatures) tidak berubah. Galat
+    // sidecar diteruskan apa adanya (mis. "HTTP 401" → sinkron token).
+    const sc = window.AuroraBhumiSidecarClient;
+    const jenisBhumi = sc && (message.type === 'AURORAMAPS_BHUMI_IDENTIFY' ||
+      message.type === 'AURORAMAPS_BHUMI_SEARCH');
+    // Probe pertama belum tentu selesai saat user klik → tunggu maks 2,5 dtk
+    // sebelum memilih jalur supaya hasilnya konsisten.
+    if (jenisBhumi && sc.state() === null) { try { await sc.ready(2500); } catch (e) { /* abaikan */ } }
+    if (jenisBhumi && sc.availableSync()) {
+      const call = message.type === 'AURORAMAPS_BHUMI_SEARCH'
+        ? sc.search(message.path, message.body)
+        : sc.identify(message.body);
+      return call.then(r => (r && Array.isArray(r.features)) ? r.features : []);
+    }
     const requestId = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`).toString();
     let resolveResult, rejectResult;
     const result = new Promise((resolve, reject) => { resolveResult = resolve; rejectResult = reject; });
@@ -534,6 +550,11 @@ const BhumiIdentify = {
   _onMapClick(e) {
     if (!this._clickIdentifyEnabled) return;
     if (State.activeDrawType) return; // skip saat mode drawing
+    // Sejak penggabungan popup (25 Okt 2026): AtrbpnLayers mengelola SATU popup
+    // ber-tab yang kini memuat tab Bidang juga → biarkan dia menangani selama
+    // ada layer ATR/BPN aktif (termasuk Bidang sendiri). Handler ini hanya
+    // cadangan bila modul AtrbpnLayers belum termuat.
+    if (typeof AtrbpnLayers !== 'undefined' && AtrbpnLayers._layers && AtrbpnLayers._activeKeys().length) return;
     const bidangEntry = AtrbpnLayers._layers?.bidang;
     if (!bidangEntry || !bidangEntry.on || !bidangEntry.layer || !MapManager.map.hasLayer(bidangEntry.layer)) return;
     if (!this._proxyBase) return;
@@ -548,6 +569,49 @@ const BhumiIdentify = {
     if (!MapManager.map.hasLayer(entry.layer)) entry.layer.addTo(MapManager.map);
   },
 
+  // ── Ambil fitur bidang TANPA membuka popup ──────────────────────────────────
+  // Dipakai AtrbpnLayers untuk mengisi tab "Bidang" di popup ATR/BPN gabungan.
+  // Melempar Error bila gagal (pesan diteruskan apa adanya ke tab).
+  async readBidang(lat, lng) {
+    if (!isFinite(lat) || !isFinite(lng)) throw new Error('Koordinat tidak valid.');
+    if (!this._proxyBase) throw new Error('Proxy bhumi tidak tersedia.');
+    // BHUMI mengirim bbox geographic viewport yang tampak dan posisi klik
+    // dalam piksel viewport, bukan kotak tetap ±0,001° dengan klik di tengah.
+    // Gunakan extent peta yang sedang dilihat supaya hit-test memilih persil
+    // tepat di bawah koordinat yang diklik.
+    const size = MapManager.map.getSize();
+    const bounds = MapManager.map.getBounds();
+    const northWest = bounds.getNorthWest();
+    const southEast = bounds.getSouthEast();
+    const clickPoint = MapManager.map.latLngToContainerPoint([lat, lng]);
+    const pixel = {
+      x: Math.max(0, Math.min(size.x - 1, Math.round(clickPoint.x))),
+      y: Math.max(0, Math.min(size.y - 1, Math.round(clickPoint.y)))
+    };
+    const requestBody = {
+      service_layer_name: 'umum:Persil',
+      width: size.x, height: size.y,
+      bbox: [northWest.lng, southEast.lat, southEast.lng, northWest.lat].join(','),
+      x: pixel.x, y: pixel.y,
+      query_layers: 'umum:Persil',
+      url: '/expapi/getPersil',
+      service: '/bhumigs/umum'
+    };
+    const bridged = await this._requestBrowserBridge(requestBody, lat, lng);
+    return bridged || await this._gfiFeatures(requestBody);
+  },
+
+  // Catat hasil identify (state panel, AutoSave, overlay transparan) TANPA
+  // membuka popup — popup digabung di AtrbpnLayers. Kembalikan fitur utamanya.
+  adopt(features, lat, lng) {
+    const f = features.find(x => x.properties && x.properties.nib) || features[0];
+    this._currentFeature = { feature: f, lat, lng };
+    AutoSave.lastBhumi = { feature: f, features, count: features.length, lat, lng };
+    AutoSave.save();
+    this._drawPolygon(features, lat, lng);
+    return f;
+  },
+
   async identify(lat, lng) {
     if (!isFinite(lat) || !isFinite(lng)) return;
     if (!this._proxyBase) {
@@ -557,30 +621,7 @@ const BhumiIdentify = {
 
     Toast.show('Mengidentifikasi bidang\u2026', 'info');
     try {
-      // BHUMI mengirim bbox geographic viewport yang tampak dan posisi klik
-      // dalam piksel viewport, bukan kotak tetap ±0,001° dengan klik di tengah.
-      // Gunakan extent peta yang sedang dilihat supaya hit-test memilih persil
-      // tepat di bawah koordinat yang diklik.
-      const size = MapManager.map.getSize();
-      const bounds = MapManager.map.getBounds();
-      const northWest = bounds.getNorthWest();
-      const southEast = bounds.getSouthEast();
-      const clickPoint = MapManager.map.latLngToContainerPoint([lat, lng]);
-      const pixel = {
-        x: Math.max(0, Math.min(size.x - 1, Math.round(clickPoint.x))),
-        y: Math.max(0, Math.min(size.y - 1, Math.round(clickPoint.y)))
-      };
-      const requestBody = {
-        service_layer_name: 'umum:Persil',
-        width: size.x, height: size.y,
-        bbox: [northWest.lng, southEast.lat, southEast.lng, northWest.lat].join(','),
-        x: pixel.x, y: pixel.y,
-        query_layers: 'umum:Persil',
-        url: '/expapi/getPersil',
-        service: '/bhumigs/umum'
-      };
-      const bridged = await this._requestBrowserBridge(requestBody, lat, lng);
-      const features = bridged || await this._gfiFeatures(requestBody);
+      const features = await this.readBidang(lat, lng);
 
       if (!features.length) {
         Toast.show('Tidak ada bidang di titik ini', 'warn');
@@ -588,9 +629,8 @@ const BhumiIdentify = {
         return;
       }
 
-      const f = features.find(x => x.properties && x.properties.nib) || features[0];
+      const f = this.adopt(features, lat, lng);
       this._showInfo(f, features.length, lat, lng);
-      this._drawPolygon(features, lat, lng);
       Toast.show(`NIB ${f.properties?.nib || '?'} \u2014 ${f.properties?.luas || '?'} m\u00B2`, 'success');
     } catch (e) {
       Toast.show('Gagal identifikasi: ' + e.message, 'error');
@@ -600,6 +640,13 @@ const BhumiIdentify = {
   // ── Info Panel (via MapPopup) ──
   _showInfo(f, count, lat, lng) {
     this._currentFeature = { feature: f, lat, lng };
+    // Penggabungan popup (25 Okt 2026): selama layer Bidang aktif, info bidang
+    // dibuka sebagai TAB "Bidang" di popup ATR/BPN (AtrbpnLayers.showBidangPopup).
+    // Kartu popup terpisah di bawah hanya cadangan bila popup gabungan tak ada.
+    if (typeof AtrbpnLayers !== 'undefined' && AtrbpnLayers.showBidangPopup) {
+      const feats = (this._lastFeatures && this._lastFeatures.length) ? this._lastFeatures : [f];
+      if (AtrbpnLayers.showBidangPopup(feats, f, lat, lng)) return;
+    }
     AutoSave.lastBhumi = { feature: f, features: this._lastFeatures || [f], count, lat, lng };
     AutoSave.save();
     const p = f.properties || {};
@@ -692,7 +739,13 @@ const BhumiIdentify = {
     }).addTo(map);
     this._hlLayers.push(hitLayer);
 
-    // WMS imageOverlay — tampilkan gambar bidang dari bhumi
+    // WMS imageOverlay — tampilkan gambar bidang dari bhumi.
+    // Sejak WAF menutup /expapi untuk klien lintas-origin, URL relatif
+    // (workerBase/proxy) selalu gagal → gambar transparan tidak pernah muncul.
+    // Kini diminta lewat BhumiTileRelay (sidecar lokal dulu, lalu ekstensi)
+    // dengan URL absolut origin bhumi; bila keduanya tak ada, jatuh ke URL
+    // proxy lama persis seperti perilaku sebelumnya.
+    const BHUMI_ORIGIN = 'https://bhumi.atrbpn.go.id';
     features.forEach(f => {
       const pid = f?.properties?.persilpasifid;
       if (!pid) return;
@@ -703,7 +756,17 @@ const BhumiIdentify = {
           const ne = L.Projection.SphericalMercator.project(b.getNorthEast());
           const bbox = [sw.x, sw.y, ne.x, ne.y].map(v => v.toFixed(3)).join(',');
           img.alt = ''; img.width = 512; img.height = 512;
-          img.src = workerBase + '/expapi/umum/wms?layer=Persil&filter=' + encodeURIComponent(pid) + '&transparent=true&format=image/png&BBOX=' + bbox + '&WIDTH=512&HEIGHT=512';
+          const qs = 'layer=Persil&filter=' + encodeURIComponent(pid) +
+            '&transparent=true&format=image/png&BBOX=' + bbox + '&WIDTH=512&HEIGHT=512';
+          const direct = workerBase + '/expapi/umum/wms?' + qs;
+          if (typeof BhumiTileRelay !== 'undefined') {
+            BhumiTileRelay.get(BHUMI_ORIGIN + '/expapi/umum/wms?' + qs).then(
+              (objectUrl) => { img.src = objectUrl; },
+              () => { img.src = direct; } // tanpa relai → jalur proxy lama
+            );
+          } else {
+            img.src = direct;
+          }
           return img;
         }
       });

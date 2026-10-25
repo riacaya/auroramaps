@@ -22,6 +22,46 @@ Cara yang disarankan: buka `blogger-iframe-snippet.html`, salin seluruh isinya, 
 - `blogger-iframe-snippet.html`: kode semat untuk Blogger.
 - `src/js/panduan.js`: konten panduan yang dibuka di panel aplikasi dan mengikuti tema aktif.
 - `.nojekyll`: mencegah GitHub Pages memproses folder aset melalui Jekyll.
+- `local-server.mjs`: server statis + proxy lokal `/bhumi-proxy/*` (WAF bhumi
+  butuh Referer `https://bhumi.atrbpn.go.id/` yang tidak bisa dibuat browser).
+- `jalankan-auroramaps.bat`: jalankan server + sidecar di PC ini.
+- `jalankan-dari-github.bat`: tarik berkas terbaru dari GitHub lalu jalankan.
+- `tools/bhumi-bridge/`: sidecar BHUMI (browser pendamping headless).
+
+## Menjalankan di PC lain (tarik dari GitHub)
+
+Berkas dan peralatan diambil dari repo ini, tetapi **dijalankan sepenuhnya di PC
+tersebut** — tanpa Cloudflare, tanpa npm install, cukup Node.js.
+
+1. Pasang [Git](https://git-scm.com/download/win) dan [Node.js LTS](https://nodejs.org).
+2. Ambil berkas sekali: `git clone https://github.com/riacaya/auroramaps.git`
+   (atau unduh ZIP dari GitHub lalu ekstrak ke folder mana pun).
+3. Klik dua kali **`jalankan-dari-github.bat`**.
+
+Yang dilakukan launcher itu:
+
+- **Perbarui**: `git pull --ff-only` bila folder ini clone git, atau unduh
+  `main.zip` bila bukan — jadi tanpa Git pun tetap bisa.
+- **Jalankan**: `local-server.mjs` di `http://127.0.0.1:8321` (file statis +
+  proxy yang meng-inject Referer bhumi) lalu membuka browser.
+- **Sidecar (opsional)**: `tools/bhumi-bridge/sidecar-host.mjs` — Edge/Chrome
+  pendamping yang berjalan diam-diam (headless) dan menyimpan sesi login BHUMI
+  di `tools/bhumi-bridge/.chrome-bhumi-profile/`. Folder profil itu masuk
+  `.gitignore` dan **tidak akan pernah ikut ter-commit**.
+
+Pilihan perintah:
+
+| Perintah | Fungsi |
+|---|---|
+| `jalankan-dari-github.bat` | perbarui + jalankan (ditanya mau sidecar?) |
+| `jalankan-dari-github.bat sidecar` | perbarui + jalankan + sidecar langsung |
+| `jalankan-dari-github.bat --hanya-update` | perbarui berkas saja |
+| `jalankan-dari-github.bat --tanpa-update` | jalankan tanpa menarik update |
+| `tools\bhumi-bridge\jalankan-sidecar.bat --show` | login BHUMI sekali (jendela terbuka) |
+
+> Kenapa lokal, bukan dibuka dari `riacaya.github.io`: halaman https tidak boleh
+> memanggil `http://127.0.0.1` (mixed content + izin Local Network Access Chrome),
+> dan rute `/bhumi-proxy` hanya ada di server Node lokal.
 
 ## Panduan aplikasi
 
