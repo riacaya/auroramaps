@@ -907,9 +907,11 @@ const AtrbpnLayers = {
       zoneRes && (zoneRes.pending ? zoneRes : zoneRes.kab),
       [['namobj', 'Jenis Kawasan'], ['jnsrpr', 'Kategori'], ['wadmpr', 'Provinsi'],
        ['wadmkk', 'Kab/Kota'], ['wadmkc', 'Kecamatan'], ['nothpr', 'Dasar Perda'], ['meta', 'Wilayah']]) : '';
-    const visualOnlySection = (key, title) => active.includes(key)
-      ? `<div class="mp-zone-note">Endpoint tile belum menyediakan atribut untuk titik ini.</div>`
-      : `<div class="mp-zone-note">Layer ${title} belum aktif.</div>`;
+    // Tab LSD & KP2B DIHAPUS dari popup (25 Okt 2026): keduanya visual-only —
+    // sumber LSD adalah wrapper /expapi yang membalas PNG untuk GetFeatureInfo
+    // (uji ulang 25 Okt: 403 semua rute bhumi lewat relay), KP2B berasal dari
+    // TMS gisliner '235_kp2b' yang tidak punya antarmuka query sama sekali.
+    // Layer-nya tetap bisa dicentang di panel ATRBPN; hanya tab popup-nya hilang.
 
     // ── Tab Bidang Tanah (25 Okt 2026) ──────────────────────────────
     // Hasil getPersil dari BhumiIdentify; format barisnya mengikuti kartu
@@ -963,8 +965,6 @@ const AtrbpnLayers = {
       { id: 'bidang', label: 'Bidang', title: 'Bidang Tanah (SHM: NIB & luas)', content: bidangPane() },
       { id: 'rtrp', label: 'RTRW Pro', title: 'RTRW Provinsi', content: provSection || `<div class="mp-zone-col"><div class="mp-cand">RTRW Provinsi</div><div class="mp-zone-note">Layer RTRW Provinsi belum aktif.</div></div>` },
       { id: 'rtrw', label: 'RTRW Kab', title: 'RTRW Kab/Kota', content: kabSection || `<div class="mp-zone-col"><div class="mp-cand">RTRW Kab/Kota</div><div class="mp-zone-note">Layer RTRW Kab/Kota belum aktif.</div></div>` },
-      { id: 'lsd', label: 'LSD', title: 'LSD', content: `<div class="mp-zone-col"><div class="mp-cand">LSD</div>${visualOnlySection('lsd', 'LSD')}</div>` },
-      { id: 'kp2b', label: 'KP2B', title: 'KP2B', content: `<div class="mp-zone-col"><div class="mp-cand">KP2B</div>${visualOnlySection('kp2b', 'KP2B')}</div>` }
     ];
     const activeTab = tabDefs.find(tab => active.includes(tab.id))?.id || 'rtrw';
     const tabButtons = tabDefs.map(tab => `<button type="button" class="mp-tab${tab.id === activeTab ? ' active' : ''}" data-mp-tab="${tab.id}" role="tab" aria-selected="${tab.id === activeTab}" title="${tab.title}">${tab.label}</button>`).join('');
