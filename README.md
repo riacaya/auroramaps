@@ -26,7 +26,9 @@ Cara yang disarankan: buka `blogger-iframe-snippet.html`, salin seluruh isinya, 
   butuh Referer `https://bhumi.atrbpn.go.id/` yang tidak bisa dibuat browser).
 - `jalankan-auroramaps.bat`: jalankan server + sidecar di PC ini.
 - `jalankan-dari-github.bat`: tarik berkas terbaru dari GitHub lalu jalankan.
+- `pasang-auroramaps.bat`: pasang sebagai aplikasi Windows (pintasan + .exe).
 - `tools/bhumi-bridge/`: sidecar BHUMI (browser pendamping headless).
+- `tools/installer/AuroraMaps.cs`: sumber peluncur `AuroraMaps.exe`.
 
 ## Menjalankan di PC lain (tarik dari GitHub)
 
@@ -62,6 +64,31 @@ Pilihan perintah:
 > Kenapa lokal, bukan dibuka dari `riacaya.github.io`: halaman https tidak boleh
 > memanggil `http://127.0.0.1` (mixed content + izin Local Network Access Chrome),
 > dan rute `/bhumi-proxy` hanya ada di server Node lokal.
+
+## Memasang sebagai aplikasi Windows
+
+Agar AuroraMaps tampil seperti aplikasi biasa — ikon di Start Menu/Desktop dan
+jendela Chrome **tanpa tab serta bilah** (sama seperti hasil *Install app*) —
+dobel-klik `pasang-auroramaps.bat`:
+
+1. Pasang [Node.js LTS](https://nodejs.org) bila belum ada.
+2. Dobel-klik `pasang-auroramaps.bat`.
+3. Pilih **Y** saat ditanya ingin langsung dijalankan.
+
+Yang dilakukan installer:
+
+- menyalin berkas ke `%LOCALAPPDATA%\Programs\AuroraMaps` (tanpa administrator);
+  tambahkan argumen `--program-files` untuk `%ProgramFiles%\AuroraMaps`
+  (harus dengan *Run as administrator*);
+- mengompilasi `AuroraMaps.exe` memakai compiler bawaan Windows (`csc.exe`
+  dari .NET Framework) — tidak perlu memasang toolchain apa pun;
+- membuat pintasan **Start Menu** dan **Desktop**.
+
+Cara kerja `AuroraMaps.exe`: menyalakan `local-server.mjs` (jendela
+“AuroraMaps Server” diperkecil — tutup jendela itu untuk berhenti) dan sidecar
+BHUMI (headless), lalu membuka Chrome/Edge dengan `--app=http://127.0.0.1:8321/`.
+Argumen: `--tanpa-jalankan` (pasang saja), dan pada peluncur `--kering`
+(cetak rencana tanpa menjalankan) serta `--tanpa-sidecar`.
 
 ## Panduan aplikasi
 

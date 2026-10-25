@@ -3,4 +3,5 @@
 tools/bhumi-bridge/.chrome-bhumi-profile/
 .chrome-bhumi-profile/
 *.log
+*.exe
 .tmp-*
