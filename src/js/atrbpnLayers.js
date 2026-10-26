@@ -137,63 +137,33 @@ const BIDANG_SOURCES = [
   { path: '/expapi/bhumigs/umum/wms',   layers: 'umum:Persil' }
 ];
 
-// ── Relai tile Bidang Tanah lewat tab BHUMI (ekstensi AuroraMaps Bridge) ──
+// ── Relai tile Bidang Tanah lewat halaman pendamping (sidecar) ─────────
 // Sejak 23 Okt 2026 WAF ATR/BPN menolak permintaan cross-site & non-browser ke
 // ruang /mprx dan /expapi: relay lokal (Node) dibalas 403, dan <img> langsung
 // dari origin app pun ditolak (uji 24 Okt 2026, bahkan tanpa Referer). Yang
 // masih dilayani hanya permintaan dari DALAM halaman bhumi.atrbpn.go.id
-// (same-site, sesi & cookie tab itu) → ekstensi meneruskan URL tile ke tab
-// BHUMI, gambar diambil di sana, lalu bytes-nya dikembalikan sebagai object
-// URL. Tanpa ekstensi (ACK tidak datang dalam 3 detik — termasuk jeda bangun
-// service worker MV3) relai dimatikan dan tile
-// dimuat lewat jalur proxy lama — persis perilaku sebelumnya.
+// (same-site, sesi & cookie tab itu) → sidecar (tools/bhumi-bridge) mengambil
+// tile di dalam tab BHUMI pendamping lewat CDP, bytes-nya dikembalikan sebagai
+// object URL. Tanpa sidecar relai dimatikan dan tile dimuat lewat jalur proxy
+// lama — persis perilaku sebelumnya. Jalur ekstensi AuroraMaps Bridge dihapus
+// 26 Okt 2026.
 const BHUMI_TILE_ORIGIN = 'https://bhumi.atrbpn.go.id';
 const GISTARU_ORIGIN = 'https://gistaru-app.atrbpn.go.id';
 // PC lokal tidak memakai relai gistaru: rute /gistaru di local-server.mjs
-// sudah membalas 200 (Referer bhumi di-inject di sana), tanpa putaran ekstensi.
+// sudah membalas 200 (Referer bhumi di-inject di sana), tanpa putaran relay.
 const IS_LOCAL_APP = location.protocol === 'http:' &&
   (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
 const BhumiTileRelay = {
-  _pending: new Map(),  // requestId → {acked, ackTimer, timer, resolve, reject}
   _cache: new Map(),    // url → object URL (dibatasi supaya hemat memori)
   _order: [],
   _queue: [],
   _active: 0,
-  _maxActive: 4,        // jangan membanjiri pesan ke tab BHUMI
-  _avail: null,         // null = belum tahu, false = tanpa ekstensi
+  _maxActive: 4,        // jangan membanjiri sidecar
+  _avail: null,         // null = belum tahu, false = sidecar tidak aktif
   _availAt: 0,
   _logged: false,
-  _inited: false,
 
-  init() {
-    if (this._inited) return;
-    this._inited = true;
-    window.addEventListener('message', (event) => {
-      if (event.source !== window || event.origin !== location.origin) return;
-      const data = event.data || {};
-      const pending = this._pending.get(data.requestId);
-      if (!pending) return;
-      if (data.type === 'AURORAMAPS_BHUMI_TILE_ACK') {
-        if (pending.acked) return;
-        pending.acked = true;
-        clearTimeout(pending.ackTimer);
-        this._setAvail(true);
-        pending.timer = setTimeout(() => pending.reject(new Error('Tab BHUMI tidak mengirim tile (timeout).')), 25000);
-        return;
-      }
-      if (data.type !== 'AURORAMAPS_BHUMI_TILE_RESULT') return;
-      clearTimeout(pending.ackTimer);
-      clearTimeout(pending.timer);
-      this._pending.delete(data.requestId);
-      if (typeof data.base64 === 'string' && data.base64) {
-        try { pending.resolve(this._remember(String(data.url || ''), data.base64, data.mime)); return; }
-        catch (e) { /* base64 rusak → tangani sebagai galat di bawah */ }
-      }
-      pending.reject(new Error(data.error || 'Tile tidak tersedia dari tab BHUMI.'));
-    });
-  },
-
-  _setAvail(value, via = 'ekstensi bridge') {
+  _setAvail(value, via = 'sidecar lokal') {
     if (this._avail === value) return;
     this._avail = value;
     this._availAt = Date.now();
@@ -232,7 +202,7 @@ const BhumiTileRelay = {
     const cached = this._cache.get(url);
     if (cached) return Promise.resolve(cached);
     // Setelah relai dipastikan tidak ada, coba lagi paling cepat tiap 30 detik
-    // (mis. pengguna baru memasang ekstensi).
+    // (mis. sidecar baru dinyalakan).
     const scOk = !!(window.AuroraBhumiSidecarClient && AuroraBhumiSidecarClient.availableSync());
     if (!scOk && this._avail === false && Date.now() - this._availAt < 30000) {
       return Promise.reject(Object.assign(new Error('Relai tile tidak aktif.'), { relay: false }));
@@ -240,8 +210,8 @@ const BhumiTileRelay = {
     return new Promise((resolve, reject) => {
       // Galat sementara dari relay (mis. WAF ATR/BPN membalas 500 saat burst
       // halaman BHUMI) dicoba ulang sekali lewat relai SELAMA 1.5 dtk sebelum
-      // tile jatuh ke basis URL langsung. Galat relay:false (ekstensi tidak
-      // ada / ACK lewat jendela 3 dtk) tidak diulang — memang tidak akan beda.
+      // tile jatuh ke basis URL langsung. Galat relay:false (sidecar tidak
+      // aktif) tidak diulang — memang tidak akan beda.
       const attempt = (sisa) => {
         this._queue.push({
           url,
@@ -266,47 +236,27 @@ const BhumiTileRelay = {
     }
   },
   async _send(url) {
-    // Prioritas: sidecar lokal (tanpa ekstensi, tools/bhumi-bridge) bila
-    // terdeteksi hidup — gambar diambil di dalam tab BHUMI pendamping.
+    // Satu-satunya jalur: sidecar lokal (tools/bhumi-bridge) — gambar diambil
+    // di dalam tab BHUMI pendamping lewat CDP. Galat relay:false dipakai
+    // pemanggil untuk tidak mengulang saat sidecar memang tidak ada.
     const sc = window.AuroraBhumiSidecarClient;
     // Probe pertama belum tentu selesai saat tile pertama dimuat → tunggu
-    // maks 2,5 dtk supaya pilihan jalur (sidecar vs ekstensi) konsisten.
+    // maks 2,5 dtk sebelum memutuskan.
     if (sc && sc.state() === null) { try { await sc.ready(2500); } catch (e) { /* abaikan */ } }
-    if (sc && sc.availableSync()) {
-      return sc.tile(url).then(
-        (r) => { this._setAvail(true, 'sidecar lokal'); return this._remember(url, r.base64, r.mime); },
-        (err) => { throw err; }
-      );
+    if (!(sc && sc.availableSync())) {
+      this._setAvail(false);
+      throw Object.assign(new Error('Sidecar BHUMI tidak aktif — jalankan jalankan-auroramaps.bat.'), { relay: false });
     }
-    const requestId = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random()).toString();
-    return new Promise((resolve, reject) => {
-      const done = (fn, value) => {
-        const p = this._pending.get(requestId);
-        if (p) {
-          clearTimeout(p.ackTimer);
-          clearTimeout(p.timer);
-          this._pending.delete(requestId);
-        }
-        fn(value);
-      };
-      this._pending.set(requestId, {
-        acked: false,
-        ackTimer: setTimeout(() => {
-          this._setAvail(false);
-          done(reject, Object.assign(new Error('Ekstensi BHUMI Bridge tidak aktif.'), { relay: false }));
-        }, 3000),
-        timer: null,
-        resolve: (value) => done(resolve, value),
-        reject: (error) => done(reject, error)
-      });
-      window.postMessage({ type: 'AURORAMAPS_BHUMI_TILE', requestId, url }, location.origin);
-    });
+    return sc.tile(url).then(
+      (r) => { this._setAvail(true, 'sidecar lokal'); return this._remember(url, r.base64, r.mime); },
+      (err) => { throw err; }
+    );
   }
 };
 
-// L.TileLayer.WMS yang mengambil tiap tile lewat BhumiTileRelay bila ekstensi
-// bridge aktif; bila relai menolak, tile dimuat lewat basis URL lama (proxy)
-// sehingga tanpa ekstensi perilaku layer tidak berubah.
+// L.TileLayer.WMS yang mengambil tiap tile lewat BhumiTileRelay bila sidecar
+// aktif; bila relai menolak, tile dimuat lewat basis URL lama (proxy)
+// sehingga tanpa sidecar perilaku layer tidak berubah.
 let _RelayWmsClass = null;
 function relayWmsLayer(url, options, proxyBase, relayMode = 'bhumi') {
   if (!_RelayWmsClass) {
@@ -366,7 +316,6 @@ const AtrbpnLayers = {
 
   init() {
     this._map = MapManager.map;
-    BhumiTileRelay.init();
     const G = 'https://gisliner.atrbpn.go.id';
     const xyz = (c, ts) => G + '/layers/tms/public/' + c + '/{z}/{x}/{y}/?tileSize=' + ts;
 
@@ -432,7 +381,7 @@ const AtrbpnLayers = {
     // Bidang Tanah (persil): WMS TILED 512px lewat rantai sumber BIDANG_SOURCES
     // (lihat konstanta di atas — #1 terverifikasi live 5 Okt 2026). Sejak 23 Okt
     // 2026 WAF menolak permintaan cross-site & non-browser → tiap tile dicoba
-    // lewat relai ekstensi (tab BHUMI) dulu, lalu jatuh ke basis URL di bawah
+    // lewat relai sidecar (tab BHUMI pendamping) dulu, lalu jatuh ke basis URL di bawah
     // bila relai tidak tersedia. Basis URL dipilih otomatis, prioritas:
     //   1) URL param ?bhumiWorker=<url>     (override uji, contoh di README)
     //   2) PC lokal (localhost/127.0.0.1) → /bhumi-proxy (local-server.mjs)

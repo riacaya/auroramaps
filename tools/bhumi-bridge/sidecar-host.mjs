@@ -1,12 +1,13 @@
 // =====================================================
 // AURORAMAPS BHUMI SIDECAR — host Node (zero dependency)
 // =====================================================
-// Pengganti ekstensi untuk MODE LOKAL PC. Menjalankan jendela Chrome
+// Relai BHUMI untuk MODE LOKAL PC (jalur ekstensi dihapus 26 Okt 2026).
+// Menjalankan jendela Chrome
 // pendamping yang membuka https://bhumi.atrbpn.go.id/peta, menyisipkan
 // sidecar-inject.js ke dalam konteks halaman lewat CDP, lalu menyajikan
 // endpoint HTTP di 127.0.0.1:8322 yang dibaca AuroraMaps
-// (http://127.0.0.1:8321 / http://localhost:8321) sebagai pengganti relai
-// ekstensi. Semua request data dijalankan DI DALAM halaman BHUMI lewat
+// (http://127.0.0.1:8321 / http://localhost:8321).
+// Semua request data dijalankan DI DALAM halaman BHUMI lewat
 // Runtime.evaluate → ter-stempel Origin/Referer bhumi asli → lolos WAF.
 //
 // Pakai:
@@ -45,7 +46,7 @@ const HTTP_PORT = (() => {
 const PROFILE_DIR = path.join(__dirname, '.chrome-bhumi-profile');
 const INJECT_SRC = fs.readFileSync(path.join(__dirname, 'sidecar-inject.js'), 'utf8');
 
-// Whitelist ganda (server + halaman) — sama dengan ekstensi.
+// Whitelist ganda (server + halaman) — sama dengan ekstensi AuroraMaps lama.
 // /expapi/umum/wms = gambar bidang transparan (overlay hasil klik identify).
 const TILE_PATHS = ['/mprx/service', '/expapi/bhumigeos/umum/wms', '/expapi/bhumigs/umum/wms', '/expapi/umum/wms'];
 const GISTARU_ORIGIN = 'https://gistaru-app.atrbpn.go.id';

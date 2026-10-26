@@ -1,7 +1,7 @@
 @echo off
 rem =====================================================
 rem AURORAMAPS BHUMI SIDECAR - launcher
-rem Pengganti ekstensi untuk MODE LOKAL PC.
+rem Relai BHUMI untuk MODE LOKAL PC — jalur ekstensi sudah dihapus.
 rem Menjalankan browser pendamping - Edge bawaan Windows, cadangan Chrome
 rem (buka https://bhumi.atrbpn.go.id/peta,
 rem sisipkan sidecar-inject.js) + server HTTP 127.0.0.1:8322.

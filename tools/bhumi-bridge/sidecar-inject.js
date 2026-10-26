@@ -1,6 +1,6 @@
 // =====================================================
 // AURORAMAPS BHUMI SIDECAR — skrip yang DISISIPKAN ke halaman BHUMI
-// lewat CDP (tools/bhumi-bridge/sidecar-host.mjs), pengganti ekstensi.
+// lewat CDP (tools/bhumi-bridge/sidecar-host.mjs).
 // =====================================================
 // Berjalan di dalam konteks halaman https://bhumi.atrbpn.go.id/peta
 // (MAIN world) sehingga setiap fetch ter-stempel Origin/Referer bhumi
@@ -10,7 +10,7 @@
 //   window.AuroraBhumiSidecar.tile({url})            → {base64, mime}
 //   window.AuroraBhumiSidecar.tokenSync({force})     → {status:'ok'|..., cached}
 //   window.AuroraBhumiSidecar.status()               → {sidecar, loggedIn}
-// Logika identik dengan bhumi-main.js (ekstensi) — disalin dari sana:
+// Logika disalin dari ekstensi AuroraMaps lama (bhumi-main.js, kini dihapus):
 // dekripsi statis OpenSSL, alur auth-ticket ECDH, whitelist tile, dan
 // sinkron token loginApi + reCAPTCHA (chunk 8815 milik situs BHUMI).
 (() => {
@@ -21,7 +21,7 @@
   // perbaikan tak pernah sampai ke tab yang sedang terbuka).
   if (window.AuroraBhumiSidecar && window.AuroraBhumiSidecar.v === SIDECAR_V) return;
 
-  // ── Whitelist (sama dengan ekstensi) ─────────────────────────────────────
+  // ── Whitelist (sama dengan ekstensi AuroraMaps lama) ─────────────────────
   // /expapi/umum/wms = gambar bidang transparan (overlay klik identify).
   const TILE_PATHS = ['/mprx/service', '/expapi/bhumigeos/umum/wms', '/expapi/bhumigs/umum/wms', '/expapi/umum/wms'];
   const GISTARU_ORIGIN = 'https://gistaru-app.atrbpn.go.id';
@@ -29,7 +29,7 @@
   const TILE_MAX_BYTES = 2000000;
 
   // ── Dekripsi statis OpenSSL (EVP_BytesToKey MD5), passphrase
-  //    's3CRetCR1pT0' — port dari bhumi-main.js ──────────────────────────────
+  //    's3CRetCR1pT0' — passphrase peninggalan ekstensi lama ──────────────────
   function safeAdd(x, y) { const l = (x & 0xffff) + (y & 0xffff); const m = (x >> 16) + (y >> 16) + (l >> 16); return (m << 16) | (l & 0xffff); }
   function rotl(x, c) { return (x << c) | (x >>> (32 - c)); }
   const S = [7,12,17,22,7,12,17,22,7,12,17,22,7,12,17,22, 5,9,14,20,5,9,14,20,5,9,14,20,5,9,14,20, 4,11,16,23,4,11,16,23,4,11,16,23,4,11,16,23, 6,10,15,21,6,10,15,21,6,10,15,21,6,10,15,21];
@@ -145,7 +145,7 @@
         (Array.isArray(x.features) ? x.features : (x.type === 'FeatureCollection' ? [] : x))))
     : (data && Array.isArray(data.features) ? data.features : []);
 
-  // ── search: getBidang / getBidang2 (sama persis dgn bhumi-main) ──────────
+  // ── search: getBidang / getBidang2 (alur sama dengan ekstensi lama) ─────
   async function searchImpl({ path, body }) {
     if (!SEARCH_PATHS.includes(path)) throw new Error('Endpoint pencarian ditolak.');
     if (!body || typeof body !== 'object' || JSON.stringify(body).length > 8000) {

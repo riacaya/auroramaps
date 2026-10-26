@@ -12,80 +12,36 @@ const BhumiIdentify = {
   _desaBaruP: null,        // memo assets/desanew.js (hasil download)
   _hlLayers: null,
   _searchLayer: null,
-  _bridgePending: new Map(),
 
   init() {
     this._proxyBase = this._resolveProxy();
-    window.addEventListener('message', (event) => {
-      if (event.source !== window || event.origin !== location.origin) return;
-      const data = event.data || {};
-      if (data.type !== 'AURORAMAPS_BHUMI_BRIDGE_ACK' && data.type !== 'AURORAMAPS_BHUMI_BRIDGE_RESULT') return;
-      const pending = this._bridgePending.get(data.requestId);
-      if (!pending) return;
-      if (data.type === 'AURORAMAPS_BHUMI_BRIDGE_ACK') {
-        pending.ack = true;
-        return;
-      }
-      pending.completed = true;
-      clearTimeout(pending.timer);
-      this._bridgePending.delete(data.requestId);
-      if (data.error) pending.reject(new Error(data.error));
-      else pending.resolve(Array.isArray(data.features) ? data.features : []);
-    });
     MapManager.map.on('click', (e) => this._onMapClick(e));
   },
 
-  // Kirim pesan apa pun (identify/search) ke konten-ekstensi lalu tunggu ACK
-  // 700 ms. Tanpa ACK = ekstensi tidak terpasang → resolve(null) supaya
-  // pemanggil jatuh ke jalur langsung. Setelah ACK, hasil/error datang lewat
-  // AURORAMAPS_BHUMI_BRIDGE_RESULT (dilayani listener di init()).
-  async _requestBridge(message, waitMs = 60000) {
-    // Prioritas: sidecar lokal (tanpa ekstensi, tools/bhumi-bridge) bila
-    // terdeteksi hidup — hasil disamakan dengan jalur bridge (array fitur)
-    // sehingga pemanggil (identify & _searchFeatures) tidak berubah. Galat
-    // sidecar diteruskan apa adanya (mis. "HTTP 401" → sinkron token).
+  // Kirim identifikasi/pencarian ke sidecar lokal (tools/bhumi-bridge) —
+  // satu-satunya jalur sejak jalur ekstensi AuroraMaps dihapus (26 Okt 2026).
+  // Sidecar tidak ada / belum siap → null, supaya pemanggil jatuh ke jalur
+  // proxy langsung. Galat sidecar (mis. "HTTP 401") diteruskan apa adanya —
+  // pemanggil memakainya untuk memicu sinkron token.
+  async _requestBridge(message) {
     const sc = window.AuroraBhumiSidecarClient;
-    const jenisBhumi = sc && (message.type === 'AURORAMAPS_BHUMI_IDENTIFY' ||
-      message.type === 'AURORAMAPS_BHUMI_SEARCH');
+    const jenisBhumi = message.type === 'AURORAMAPS_BHUMI_IDENTIFY' ||
+      message.type === 'AURORAMAPS_BHUMI_SEARCH';
+    if (!jenisBhumi || !sc) return null;
     // Probe pertama belum tentu selesai saat user klik → tunggu maks 2,5 dtk
-    // sebelum memilih jalur supaya hasilnya konsisten.
-    if (jenisBhumi && sc.state() === null) { try { await sc.ready(2500); } catch (e) { /* abaikan */ } }
-    if (jenisBhumi && sc.availableSync()) {
-      const call = message.type === 'AURORAMAPS_BHUMI_SEARCH'
-        ? sc.search(message.path, message.body)
-        : sc.identify(message.body);
-      return call.then(r => (r && Array.isArray(r.features)) ? r.features : []);
-    }
-    const requestId = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`).toString();
-    let resolveResult, rejectResult;
-    const result = new Promise((resolve, reject) => { resolveResult = resolve; rejectResult = reject; });
-    const pending = { ack: false, completed: false, resolve: resolveResult, reject: rejectResult, timer: null };
-    this._bridgePending.set(requestId, pending);
-    window.postMessage({ ...message, requestId }, location.origin);
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (!pending.ack) {
-          this._bridgePending.delete(requestId);
-          resolve(null);
-          return;
-        }
-        if (pending.completed) {
-          result.then(resolve, reject);
-          return;
-        }
-        pending.timer = setTimeout(() => {
-          this._bridgePending.delete(requestId);
-          reject(new Error('Waktu tunggu bridge BHUMI habis; pastikan tab BHUMI terbuka, sudah login, dan ekstensi aktif.'));
-        }, waitMs);
-        result.then(resolve, reject);
-      }, 700);
-    });
+    // sebelum memutuskan, supaya hasilnya konsisten.
+    if (sc.state() === null) { try { await sc.ready(2500); } catch (e) { /* abaikan */ } }
+    if (!sc.availableSync()) return null;
+    const call = message.type === 'AURORAMAPS_BHUMI_SEARCH'
+      ? sc.search(message.path, message.body)
+      : sc.identify(message.body);
+    return call.then(r => (r && Array.isArray(r.features)) ? r.features : []);
   },
 
-  // Kompatibilitas lama: identifikasi klik peta lewat bridge ekstensi.
+  // Identifikasi klik peta lewat sidecar lokal (tools/bhumi-bridge).
   _requestBrowserBridge(body, lat, lng) {
     return this._requestBridge({ type: 'AURORAMAPS_BHUMI_IDENTIFY',
-      body: { ...body, latitude: lat, longitude: lng } }, 60000);
+      body: { ...body, latitude: lat, longitude: lng } });
   },
 
   // ── Proxy resolution ──
@@ -111,15 +67,15 @@ const BhumiIdentify = {
   // bhumi.atrbpn.go.id (balas 404/403 "Forbidden" untuk klien tanpa sesi
   // login — teruji dari IP rumah, IP worker cloud, maupun browser tanpa
   // login; hanya /api dan /panel yang masih terbuka). Galat ini BUKAN salah
-  // aplikasi; jalur yang masih bisa bekerja adalah tab BHUMI yang sudah login
-  // melalui ekstensi AuroraMaps BHUMI Bridge.
+  // aplikasi; jalur yang masih bisa bekerja adalah sidecar yang menjalankan
+  // request dari DALAM halaman BHUMI pendamping (tools/bhumi-bridge).
   _wafMessage(path) {
     return `Layanan ${path} BHUMI sedang ditutup untuk akses langsung (WAF ATR/BPN). ` +
-      'Buka tab bhumi.atrbpn.go.id yang sudah login, lalu pasang ekstensi AuroraMaps BHUMI Bridge (tools/bhumi-bridge) supaya klik & cari bidang tetap berfungsi.';
+      'Pastikan sidecar BHUMI berjalan (jalankan-auroramaps.bat atau jalankan-sidecar.bat) supaya klik & cari bidang tetap berfungsi.';
   },
 
   // ── Pencarian bidang: getBidang / getBidang2 ──
-  // Rantai: (1) bridge ekstensi — satu-satunya jalur saat WAF menutup /expapi;
+  // Rantai: (1) sidecar lokal — satu-satunya jalur saat WAF menutup /expapi;
   // (2) POST langsung lewat proxy lokal/worker, tanpa token login (loginApi
   // kini berpagar reCAPTCHA domain) — dipertahankan untuk bila WAF membuka
   // lagi. Galat 401/403/404 diterjemahkan menjadi pesan yang bisa ditindak-
@@ -127,11 +83,11 @@ const BhumiIdentify = {
   async _searchFeatures(path, body) {
     let bridgeErr = null;
     try {
-      const bridged = await this._requestBridge({ type: 'AURORAMAPS_BHUMI_SEARCH', path, body }, 35000);
+      const bridged = await this._requestBridge({ type: 'AURORAMAPS_BHUMI_SEARCH', path, body });
       if (bridged) return bridged;
     } catch (e) {
       bridgeErr = e;
-      // Token BHUMI kedaluwarsa/tertolak (401) → minta tab BHUMI menyegarkan
+      // Token BHUMI kedaluwarsa/tertolak (401) → minta sidecar menyegarkan
       // token via loginApi (AuroraBhumiAuth sudah di-debounce & menulis log
       // sendiri); pencarian berikutnya langsung memakai token baru.
       if (/HTTP 401/.test(String((e && e.message) || '')) && window.AuroraBhumiAuth) {
@@ -142,8 +98,8 @@ const BhumiIdentify = {
     if (this._token) headers.Authorization = this._token;
     const res = await fetch(this._proxyBase + path, { method: 'POST', headers, body: JSON.stringify(body) });
     if (!res.ok) {
-      if (bridgeErr) throw bridgeErr; // ekstensi ada tapi tab BHUMI bermasalah → pesan spesifik
-      if (res.status === 401) throw new Error('Pencarian bidang butuh login BHUMI. Buka tab bhumi.atrbpn.go.id yang sudah login lalu pasang ekstensi AuroraMaps BHUMI Bridge.');
+      if (bridgeErr) throw bridgeErr; // sidecar ada tapi sesi/tab bermasalah → pesan spesifik
+      if (res.status === 401) throw new Error('Pencarian bidang butuh sesi BHUMI — pastikan sidecar berjalan (jalankan-auroramaps.bat) lalu coba lagi.');
       if (res.status === 403 || res.status === 404) throw new Error(this._wafMessage(path));
       throw new Error('Pencarian bidang gagal: HTTP ' + res.status);
     }
@@ -742,8 +698,8 @@ const BhumiIdentify = {
     // WMS imageOverlay — tampilkan gambar bidang dari bhumi.
     // Sejak WAF menutup /expapi untuk klien lintas-origin, URL relatif
     // (workerBase/proxy) selalu gagal → gambar transparan tidak pernah muncul.
-    // Kini diminta lewat BhumiTileRelay (sidecar lokal dulu, lalu ekstensi)
-    // dengan URL absolut origin bhumi; bila keduanya tak ada, jatuh ke URL
+    // Kini diminta lewat BhumiTileRelay (sidecar lokal)
+    // dengan URL absolut origin bhumi; bila sidecar tak ada, jatuh ke URL
     // proxy lama persis seperti perilaku sebelumnya.
     const BHUMI_ORIGIN = 'https://bhumi.atrbpn.go.id';
     features.forEach(f => {

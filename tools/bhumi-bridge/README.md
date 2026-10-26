@@ -1,102 +1,103 @@
-# AuroraMaps BHUMI Bridge (uji lokal)
+# AuroraMaps BHUMI Bridge (sidecar lokal)
 
-Bridge ini meminta tab BHUMI yang sudah dibuka di Chrome/Edge melakukan identifikasi koordinat, lalu mengembalikan data fitur persil ke AuroraMaps lokal. Kredensial, cookie, token reCAPTCHA, auth-ticket, dan header autentikasi tidak diteruskan ke AuroraMaps.
+Bridge meminta **halaman pendamping** `https://bhumi.atrbpn.go.id/peta`
+melakukan identifikasi koordinat, pencarian bidang, dan pengambilan tile, lalu
+mengembalikan hasilnya ke AuroraMaps lokal. Kredensial, cookie, token
+reCAPTCHA, auth-ticket, dan header autentikasi tidak diteruskan ke AuroraMaps.
 
-## Mode Sidecar — tanpa ekstensi (baru, 25 Okt 2026)
+> Jalur ekstensi Chrome/Edge (`manifest.json`, `background.js`, `bhumi-main.js`
+> dsb.) **dihapus 26 Okt 2026** — sidecar menutupi semua kebutuhannya. Bila
+> ada sisa dokumen/tulisan lama yang menyebut "pasang ekstensi", abaikan;
+> cukup jalankan sidecar.
 
-Seluruh fungsi bridge kini juga tersedia sebagai **sidecar lokal** yang tidak
-memerlukan ekstensi sama sekali — khusus untuk mode lokal PC:
+## Menjalankan
 
 1. Jalankan `tools\bhumi-bridge\jalankan-sidecar.bat` (atau
-   `node tools/bhumi-bridge/sidecar-host.mjs`).
+   `node tools/bhumi-bridge/sidecar-host.mjs`) — lewat
+   `jalankan-auroramaps.bat` semuanya menyala otomatis.
 2. Browser pendamping (utama: **Edge bawaan Windows**, cadangan Chrome; profil
-   khusus) membuka `https://bhumi.atrbpn.go.id/peta` **dalam mode headless —
-   tanpa jendela, sepenuhnya di latar belakang**. Login BHUMI cukup sekali:
-   jalankan `jalankan-sidecar.bat --show` untuk membuka jendela, login di sana
-   (sesi tersimpan di profil `.chrome-bhumi-profile`), tutup, lalu jalankan
-   normal kembali. Bila belum login, statusnya dilaporkan lewat log host.
+   khusus `.chrome-bhumi-profile`) membuka `https://bhumi.atrbpn.go.id/peta`
+   **mode headless — tanpa jendela, sepenuhnya di latar belakang**.
 3. Host menyisipkan `sidecar-inject.js` ke dalam konteks halaman lewat CDP
-   (`Page.addScriptToEvaluateOnNewDocument`), lalu menyajikan API loopback
-   di `http://127.0.0.1:8322`:
-   `GET /status`, `POST /search`, `POST /identify`, `POST /tile`, `POST /token-sync`.
-4. AuroraMaps (mode Lokal) membaca `window.__AURORAMAPS_SIDECAR__` dan
-   memakai sidecar itu sebagai pengganti relai ekstensi; bila tidak ada,
-   otomatis kembali ke relai ekstensi / jalur proxy lama.
+   (`Page.addScriptToEvaluateOnNewDocument`), lalu menyajikan API loopback di
+   `http://127.0.0.1:8322`:
+   `GET /status`, `POST /search`, `POST /identify`, `POST /tile`,
+   `POST /token-sync`.
+4. AuroraMaps (mode Lokal) memakai sidecar itu sebagai jalur prioritas
+   (`src/js/bhumiSidecar.js`); bila tidak ada, tile/klik/cari jatuh ke jalur
+   proxy lama tanpa perubahan perilaku.
 
-Catatan: semua request data dijalankan **di dalam halaman BHUMI** lewat
+Opsi: `--port <n>`, `--attach <url-cdp>` (pakai Chrome yang sudah berjalan
+dengan `--remote-debugging-port`), `--show` / `--jendela` (buka jendela
+pendamping untuk login manual).
+
+## Sesi & token (penting)
+
+Semua request data dijalankan **di dalam halaman BHUMI** lewat
 `Runtime.evaluate` (Origin/Referer asli → lolos WAF); CORS server dibatasi
 origin `localhost`/`127.0.0.1` saja, dan whitelist tile/endpoint sama persis
-dengan ekstensi. Opsi: `--port <n>`, `--attach <url-cdp>` (pakai Chrome yang
-sudah berjalan dengan `--remote-debugging-port`).
+dengan ekstensi lama.
 
-## Pencarian bidang (baru, 24 Okt 2026)
+Token loginApi situs BHUMI **hanya berumur ±15 menit** (terukur 26 Okt 2026),
+sehingga `sidecar-inject.js` (v5) menjaga sesi otomatis:
 
-Sejak WAF ATR/BPN menutup akses langsung /expapi (403/404 "Forbidden" utk klien
-tanpa sesi login), pencarian SHM/NIB/NIBEL di AuroraMaps juga dapat dilewatkan
-lewat bridge: permintaan POST /expapi/getBidang atau /expapi/getBidang2
-dijalankan sebagai fetch dari dalam halaman BHUMI (memakai sesi login tab itu,
-termasuk token Authorization bila tersimpan di halaman), lalu hasil fitur
+- **Cek kesegaran setiap panggilan** (identify/search/tile): token basi →
+  sinkron dulu (loginApi + reCAPTCHA) sebelum request berjalan.
+- **Ditolak 401/403 → sinkron paksa lalu ulangi sekali**, dengan antrean
+  bersama supaya puluhan tile tidak memicu loginApi serentak.
+- **Auto-klik "Saya Setuju"**: disclaimer situs hanya muncul saat sesi mati
+  dan tombolnya menjalankan alur login asli situs (`loginApi → 200`); pengamat
+  DOM mengecek tiap 2 detik dan mengkliknya otomatis — jendela pendamping
+  headless tidak perlu disentuh.
+
+Kalau semua jalur otomatis mentok (mis. WAF menutup `/expapi` sama sekali),
+buka jendela pendamping (`jalankan-auroramaps.bat login`) dan klik
+"Saya Setuju" sekali di sana.
+
+## Pencarian bidang
+
+Sejak WAF ATR/BPN menutup akses langsung /expapi (403/404 "Forbidden" untuk
+klien tanpa sesi login), pencarian SHM/NIB/NIBEL dilewatkan lewat sidecar:
+POST `/expapi/getBidang` atau `/expapi/getBidang2` dijalankan sebagai fetch
+dari dalam halaman BHUMI (memakai sesi login halaman itu), lalu hasil fitur
 dikembalikan ke AuroraMaps. Endpoint dibatasi ketat hanya dua rute itu dan
-ukuran body maksimal 8 KB; tab BHUMI tidak dinavigasi ulang untuk pencarian.
+ukuran body maksimal 8 KB; halaman pendamping tidak dinavigasi ulang untuk
+pencarian.
 
-Selain itu bhumi-main.js kini mendekripsi sendiri envelope getPersil yang
-terenkripsi statis ({encrypted,data} tanpa ecdh) — sebelumnya respons seperti
-ini dibuang sehingga klik bidang menggantung sampai timeout 60 detik.
+`sidecar-inject.js` juga mendekripsi sendiri envelope getPersil yang
+terenkripsi statis (`{encrypted,data}` tanpa ecdh) — respons seperti ini
+dulu dibuang sehingga klik bidang menggantung sampai timeout.
 
-## Relai tile Bidang Tanah (baru, 24 Okt 2026)
+## Relai tile Bidang Tanah
 
 WAF ATR/BPN menolak permintaan cross-site dan non-browser ke ruang /mprx &
-/expapi, sehingga layer tile "Bidang Tanah" di AuroraMaps tidak dapat dimuat
-langsung (relay lokal dibalas 403, <img> dari origin app pun ditolak). Ekstensi
-kini meneruskan URL tile WMS persil ke tab BHUMI, mengambil gambarnya di dalam
-halaman itu (same-site, sesi & cookie tab), lalu mengembalikannya sebagai
-object URL ke AuroraMaps. Whitelist ketat: tiga endpoint BIDANG_SOURCES
+/expapi, sehingga layer tile "Bidang Tanah" tidak dapat dimuat langsung
+(relay lokal dibalas 403, `<img>` dari origin app pun ditolak). Yang masih
+dilayani hanya permintaan dari DALAM halaman bhumi.atrbpn.go.id — jadi
+sidecar mengambil tile di dalam halaman pendamping, lalu mengembalikannya
+sebagai object URL ke AuroraMaps. Whitelist ketat: tiga endpoint BIDANG_SOURCES
 (/mprx/service, /expapi/bhumigeos/umum/wms, /expapi/bhumigs/umum/wms) ditambah
 /expapi/umum/wms (gambar bidang transparan hasil klik identify — URL aslinya
-direkam dari halaman BHUMI: layer=Persil&filter=<persilpasifid terenkripsi>&BBOX),
-balasan
-wajib gambar, maksimal 2 MB per tile, timeout 25 detik. Tile tidak butuh login —
-cukup tab BHUMI terbuka di browser yang sama. Tanpa ekstensi, AuroraMaps memakai
-jalur proxy lama tanpa perubahan perilaku.
+direkam dari halaman BHUMI: layer=Persil&filter=<persilpasifid terenkripsi>),
+balasan wajib gambar, maksimal 2 MB per tile, timeout 25 detik. Tanpa sidecar,
+AuroraMaps memakai jalur proxy lama tanpa perubahan perilaku.
 
-## Relai tile RTRW Provinsi, LSD & Kawasan Hutan (baru, 24 Okt 2026)
-Selain persil, kini layer LSD, Kawasan Hutan, dan RTRW Provinsi juga dilewatkan
-lewat tab BHUMI bila situs berjalan di hosting. LSD & Kawasan Hutan memakai
-WMS bhumi yang sama (whitelist lama sudah mencakupnya); RTRW Provinsi memakai
-WMS gistaru-app — server gistaru hanya menerima Referer https://bhumi.atrbpn.go.id/
-(403 "Akses ditolak" tanpa itu; teruji 24 Okt 2026) dan host cloud tidak
-terjangkau (522), jadi URL asli gistaru diambil dari dalam halaman BHUMI
-dengan credentials:'omit' (ACAO '*' tanpa Allow-Credentials). Di PC lokal
-RTRW Provinsi tetap memakai rute /gistaru local-server.mjs (tanpa relai).
-Gerbang origin kini mengizinkan juga https://riacaya.github.io/ (situs
-GitHub Pages AuroraMaps) selain localhost:8321.
+## Relai tile RTRW Provinsi, LSD & Kawasan Hutan
 
-## Sinkron token BHUMI saat app login (baru, 24 Okt 2026)
+Selain persil, layer LSD, Kawasan Hutan, dan RTRW Provinsi juga dilewatkan
+lewat halaman pendamping bila situs berjalan di hosting. LSD & Kawasan Hutan
+memakai WMS bhumi yang sama (whitelist sudah mencakupnya); RTRW Provinsi
+memakai WMS gistaru-app — server gistaru hanya menerima Referer
+https://bhumi.atrbpn.go.id/ (403 "Akses ditolak" tanpa itu) dan host cloud
+tidak terjangkau (522), jadi URL asli gistaru diambil dari dalam halaman
+BHUMI dengan `credentials:'omit'` (ACAO `*` tanpa Allow-Credentials). Di PC
+lokal RTRW Provinsi tetap memakai rute `/gistaru` local-server.mjs (tanpa
+relai).
 
-Berkas 8815 milik situs BHUMI menunjukkan token dikelola lewat POST
-/expapi/loginApi {recaptchaToken} (reCAPTCHA render-only, action "login"),
-hasilnya disimpan sebagai localStorage.tokens. Karena /expapi tertutup untuk
-klien lintas-origin, ekstensi kini menyalin alur itu di dalam tab BHUMI:
-saat AuroraMaps login (App.init) — atau saat pencarian kena HTTP 401 —
-AuroraMaps mengirim pesan token-sync; bhumi-main memicu loginApi dari dalam
-halaman (memuat grecaptcha bila perlu) lalu menulis token baru ke storage
-tab itu. Token yang masih berlaku TIDAK disentuh (hemat kuota reCAPTCHA);
-penyegaran paksa tersedia via AuroraBhumiAuth.ensure(true) di console.
+## Login BHUMI
 
-## Memuat ekstensi
-
-1. Buka `chrome://extensions` (Chrome) atau `edge://extensions` (Edge).
-2. Aktifkan **Developer mode**.
-3. Pilih **Load unpacked** dan pilih folder `D:\AuroraMaps\tools\bhumi-bridge`.
-4. Buka AuroraMaps di `http://127.0.0.1:8321/` atau `https://riacaya.github.io/auroramaps/`, dan buka BHUMI di tab browser yang sama. Login BHUMI dan tunggu peta siap.
-5. Di AuroraMaps, aktifkan panel ATR/BPN → Bidang Tanah, lalu klik lokasi persil.
-
-Bridge memakai tab BHUMI yang sudah terbuka TANPA menavigasinya ulang: identifikasi
-(getPersil) dan pencarian (getBidang) dijalankan sebagai fetch dari dalam halaman
-BHUMI, sehingga peta yang sedang dilihat tidak terganggu. Tile cukup membuka tab
-BHUMI (tanpa login); klik & cari bidang butuh sesi login BHUMI di tab itu, dan
-balasannya (401 bila belum login) diteruskan apa adanya ke AuroraMaps. Tab browser
-internal tidak mendukung ekstensi; gunakan Chrome/Edge PC.
-
-Hasil identifikasi dibaca langsung dari respons getPersil (didekripsi di tab BHUMI,
-termasuk envelope ber-ecdh); tanpa login, pesan galat 401 yang jelas dikirim balik. Uji ini tidak memintas login, CAPTCHA, atau pemeriksaan akses BHUMI.
+Login cukup SEKALI di jendela pendamping (`jalankan-sidecar.bat --show` atau
+`jalankan-auroramaps.bat login`); sesi tersimpan di profil
+`.chrome-bhumi-profile`. Setelah itu seluruh refresh sesi berjalan otomatis di
+latar belakang (lihat bagian "Sesi & token" di atas). Uji bridge tidak
+memintas login, CAPTCHA, atau pemeriksaan akses BHUMI.

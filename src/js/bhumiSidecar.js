@@ -1,19 +1,19 @@
 // =====================================================
 // AURORAMAPS — klien Sidecar BHUMI lokal (25 Okt 2026)
 // =====================================================
-// Pengganti ekstensi AuroraMaps BHUMI Bridge untuk MODE LOKAL PC.
+// Relai AuroraMaps BHUMI untuk MODE LOKAL PC (pengganti ekstensi lama — jalur ekstensi dihapus 26 Okt 2026).
 // Host Node (tools/bhumi-bridge/sidecar-host.mjs) menjalankan jendela Chrome
 // pendamping yang membuka https://bhumi.atrbpn.go.id/peta dan menyisipkan
 // sidecar-inject.js ke dalam konteks halaman lewat CDP, lalu menyajikan API
 // loopback di http://127.0.0.1:8322. Modul ini mendeteksi sidecar itu dan
 // dipakai atrbpnLayers.js (tile), bhumiIdentify.js (identify/search), serta
 // bhumiAuthSync.js (sinkron token) sebagai jalur PRIORITAS — bila sidecar
-// tidak ada, ketiganya jatuh kembali ke relai ekstensi / proxy lama tanpa
+// tidak ada, ketiganya jatuh kembali ke jalur proxy lama tanpa
 // perubahan perilaku.
 //
 // Kenapa loopback: CORS server hanya mengabulkan origin localhost/127.0.0.1,
 // jadi dari https://riacaya.github.io deteksi otomatis gagal → mode hosting
-// tetap memakai ekstensi seperti sebelumnya.
+// tetap memakai jalur proxy cloud (tanpa sidecar lokal).
 const AuroraBhumiSidecarClient = {
   BASE: 'http://127.0.0.1:8322',
   _ok: null,          // null = belum dicek, true = sidecar hidup, false = tidak ada
@@ -35,7 +35,7 @@ const AuroraBhumiSidecarClient = {
 
   // Tunggu hasil probe pertama (maks maxWaitMs) → true/false. Dipakai jalur
   // yang hanya punya satu kesempatan memilih (token saat App.init, klik
-  // identifikasi) supaya tidak jatuh ke relai ekstensi hanya karena probe
+  // identifikasi) supaya tidak jatuh ke jalur proxy hanya karena probe
   // belum selesai berjalan.
   ready(maxWaitMs = 3000) {
     if (this._ok !== null) return Promise.resolve(this._ok === true);
@@ -86,7 +86,7 @@ const AuroraBhumiSidecarClient = {
       // AppConsole adalah const top-level di feedback.js — tidak menempel di
       // window, jadi diperiksa dengan typeof sebelum dipanggil.
       if (typeof AppConsole !== 'undefined') {
-        AppConsole.log('Sidecar BHUMI lokal aktif (127.0.0.1:8322) — tile, klik & cari bidang tanpa ekstensi.', 'info');
+        AppConsole.log('Sidecar BHUMI lokal aktif (127.0.0.1:8322) — tile, klik & cari bidang siap.', 'info');
       }
     }
   },
