@@ -218,6 +218,93 @@ setInterval(() => {
 }, 5000).unref?.();
 ensureSession().catch(err => log('init:', err.message));
 
+// ── Jaga sesi: token loginApi hanya berumur ±15 menit ───────────────────────────────────
+// Halaman pendamping TIDAK menjalankan penjadwal refresh milik situs, jadi
+// begitu token basi semua permintaan identify/search/tile membalas 401/403 →
+// popup bidang tampil TANPA SHM & luas. Pemulihan yang teruji andal adalah
+// MUAT ULANG halaman: alur login milik situs berjalan sendiri saat halaman
+// dibuka dan menulis token baru (±15 menit). Karena itu ada dua lapis:
+//   1. penyegaran preventif — token tinggal < MIN_SISA detik → reload dulu,
+//      sebelum ada permintaan yang gagal;
+//   2. pemulihan on-demand — permintaan gagal 401/403 dan sesi mati → reload,
+//      lalu PERMINTAAN ITU DIULANGI sekali.
+const MIN_SISA = (() => {
+  const v = Number(process.env.SIDECAR_MIN_SISA);
+  return Number.isFinite(v) && v > 0 ? v : 150;
+})();
+let reloadP = null;   // reload yang sedang berjalan (antrean bersama)
+let inFlight = 0;     // jumlah permintaan yang sedang diproses
+
+const statusNow = async () => {
+  try { return await callSidecar('status', {}, 8000); } catch (_) { return null; }
+};
+
+function reloadTab(alasan) {
+  if (reloadP) return reloadP; // yang lain tinggal menunggu reload yang sama
+  reloadP = (async () => {
+    try {
+      const s = await ensureSession();
+      // Patokan kesegaran SEBELUM reload: token baru pasti berumur penuh
+      // (±900 dtk) sedangkan token lama terus mengecil. Tanpa patokan ini,
+      // pemeriksaan pertama (±1 dtk setelah reload) bisa sudah "lolos" dengan
+      // token lama yang belum tentu diganti halaman → dianggap pulih padahal
+      // belum, lalu permintaan berikutnya gagal 401 lagi.
+      const sebelum = await statusNow();
+      const sisaSebelum = sebelum && Number.isFinite(Number(sebelum.sisa)) ? Number(sebelum.sisa) : null;
+      log('memuat ulang tab BHUMI —', alasan);
+      await s.send('Page.reload', { ignoreCache: false });
+      for (let i = 0; i < 45; i++) {
+        await new Promise(r => setTimeout(r, 1000));
+        const st = await statusNow();
+        const sisa = st && Number.isFinite(Number(st.sisa)) ? Number(st.sisa) : null;
+        const segar = st && st.loggedIn && (sisaSebelum === null
+          ? sisa !== null
+          : sisa !== null && sisa > sisaSebelum + 20);
+        if (segar) { log('sesi pulih (sisa ' + sisa + ' dtk)'); return true; }
+      }
+      log('PERINGATAN: sesi belum pulih dalam 45 dtk — jalankan ulang sidecar dengan --show untuk login BHUMI.');
+      return false;
+    } catch (e) {
+      log('reload gagal:', e.message);
+      return false;
+    } finally { reloadP = null; }
+  })();
+  return reloadP;
+}
+
+// Penyegaran preventif tiap 30 dtk — dilewati bila sedang ada permintaan
+// (kecuali token tinggal < 45 dtk: lebih baik potong daripada 401).
+setInterval(async () => {
+  if (reloadP) return;
+  const st = await statusNow();
+  if (!st || !st.sidecar) return;
+  const sisa = Number(st.sisa);
+  if (st.loggedIn === false) { await reloadTab('token basi'); return; }
+  if (Number.isFinite(sisa) && sisa < MIN_SISA && (inFlight === 0 || sisa < 45)) {
+    await reloadTab('token tinggal ' + sisa + ' dtk');
+  }
+}, 30000).unref?.();
+
+// Permintaan data + pemulihan sesi otomatis.
+async function callWithRecovery(method, arg, timeoutMs) {
+  inFlight++;
+  try {
+    if (reloadP) await reloadP; // tunggu reload selesai supaya konteks halaman siap
+    try { return await callSidecar(method, arg, timeoutMs); }
+    catch (e) {
+      const msg = String((e && e.message) || e);
+      if (!/40[13]|loginApi|reCAPTCHA|token|sesi/i.test(msg)) throw e;
+      const st = await statusNow();
+      if (st && st.loggedIn) throw e; // sesi sehat → bukan masalah sesi
+      const ok = await reloadTab('pemulihan setelah galat: ' + msg);
+      if (!ok) {
+        throw new Error(msg + ' — sesi BHUMI belum pulih; jalankan sidecar dengan --show bila perlu login ulang.');
+      }
+      return await callSidecar(method, arg, timeoutMs); // ulangi sekali
+    }
+  } finally { inFlight--; }
+}
+
 // ── Evaluasi di halaman ─────────────────────────────────────────────────────
 function evalMessage(exc) {
   const d = (exc && exc.exception && (exc.exception.description || exc.exception.value)) || exc.text || 'galat';
@@ -283,6 +370,7 @@ const server = http.createServer(async (req, res) => {
   }
   try {
     if (req.method === 'GET' && url.pathname === '/status') {
+      if (reloadP) await reloadP; // jangan sentuh halaman saat sedang dimuat ulang
       const s = await callSidecar('status', {}, 8000);
       json(res, 200, s);
       return;
@@ -290,12 +378,12 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/search') {
       const { path: p, body } = await readBody(req);
       if (!SEARCH_PATHS.includes(p)) { json(res, 403, { error: 'Endpoint pencarian ditolak.' }); return; }
-      json(res, 200, await callSidecar('search', { path: p, body }, 35000));
+      json(res, 200, await callWithRecovery('search', { path: p, body }, 35000));
       return;
     }
     if (req.method === 'POST' && url.pathname === '/identify') {
       const { body } = await readBody(req);
-      json(res, 200, await callSidecar('identify', { body }, 50000));
+      json(res, 200, await callWithRecovery('identify', { body }, 50000));
       return;
     }
     if (req.method === 'POST' && url.pathname === '/tile') {
@@ -305,7 +393,7 @@ const server = http.createServer(async (req, res) => {
       const ok = u && ((u.origin === 'https://bhumi.atrbpn.go.id' && TILE_PATHS.includes(u.pathname)) ||
         (u.origin === GISTARU_ORIGIN && u.pathname.startsWith('/interoppublic/api/wms/')));
       if (!ok) { json(res, 403, { error: 'URL tile ditolak.' }); return; }
-      json(res, 200, await callSidecar('tile', { url: tileUrl }, 25000));
+      json(res, 200, await callWithRecovery('tile', { url: tileUrl }, 25000));
       return;
     }
     if (req.method === 'POST' && url.pathname === '/token-sync') {

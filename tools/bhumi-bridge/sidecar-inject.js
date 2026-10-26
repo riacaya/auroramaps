@@ -14,7 +14,7 @@
 // dekripsi statis OpenSSL, alur auth-ticket ECDH, whitelist tile, dan
 // sinkron token loginApi + reCAPTCHA (chunk 8815 milik situs BHUMI).
 (() => {
-  const SIDECAR_V = 5;
+  const SIDECAR_V = 6;
   // Idempotent untuk navigasi ulang, TETAPI versi lama (tanpa v) harus
   // diganti saat sidecar di-restart — kalau tidak, kode lama yang tetap
   // berjalan di tab yang tak dimuat ulang (guard 'return' lama dulu membuat
@@ -374,10 +374,23 @@
   const identify = (arg) => withAuthRetry(() => identifyImpl(arg), /HTTP 40[13]/);
   const tile = (arg) => withAuthRetry(() => tileImpl(arg), /HTTP 40[13]/);
 
+  // Sisa umur token (detik, null bila tak diketahui) — dilaporkan ke host
+  // supaya sesi bisa disegarkan SEBELUM basi (token hanya berumur ±15 menit).
+  const tokenSisa = () => {
+    let raw = '';
+    try { raw = localStorage.getItem('tokens') || ''; } catch (_) { return null; }
+    const m = /eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]*/.exec(raw);
+    if (!m) return null;
+    try {
+      const p = JSON.parse(atob(m[0].split('.')[1].replace(/-/g, '_').replace(/\+/g, '/')));
+      return p.exp ? Math.round(p.exp - Date.now() / 1000) : null;
+    } catch (_) { return null; }
+  };
   const status = () => ({
     sidecar: true,
     v: SIDECAR_V,
     loggedIn: storedTokenFresh(),
+    sisa: tokenSisa(),
     url: location.href
   });
 

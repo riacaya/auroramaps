@@ -39,7 +39,10 @@ origin `localhost`/`127.0.0.1` saja, dan whitelist tile/endpoint sama persis
 dengan ekstensi lama.
 
 Token loginApi situs BHUMI **hanya berumur ±15 menit** (terukur 26 Okt 2026),
-sehingga `sidecar-inject.js` (v5) menjaga sesi otomatis:
+sehingga sesi dijaga dua lapis — di sisi halaman (`sidecar-inject.js` v6) dan
+di sisi host (`sidecar-host.mjs`):
+
+**Lapis 1 — di dalam halaman (injeksi):**
 
 - **Cek kesegaran setiap panggilan** (identify/search/tile): token basi →
   sinkron dulu (loginApi + reCAPTCHA) sebelum request berjalan.
@@ -49,6 +52,28 @@ sehingga `sidecar-inject.js` (v5) menjaga sesi otomatis:
   dan tombolnya menjalankan alur login asli situs (`loginApi → 200`); pengamat
   DOM mengecek tiap 2 detik dan mengkliknya otomatis — jendela pendamping
   headless tidak perlu disentuh.
+- `GET /status` ikut melaporkan `sisa` (sisa umur token dalam detik) sebagai
+  patokan host.
+
+**Lapis 2 — di host (sidecar-host.mjs):**
+
+- **Penyegaran preventif tiap 30 detik**: `sisa` tinggal < 150 detik → halaman
+  pendamping dimuat ulang sendiri SEBELUM token basi. Muat ulang menjalankan
+  alur login milik situs (termasuk redirect OIDC ke login.atrbpn.go.id) dan
+  menulis token baru ±15 menit — jalur paling andal, tidak bergantung
+  reCAPTCHA. Patokan "pulih" adalah token baru yang lebih panjang daripada
+  yang lama, bukan sekadar `loggedIn`, supaya pemeriksaan 1 detik setelah
+  reload tidak salah menganggap token lama masih berlaku.
+- **Pemulihan on-demand**: ada permintaan identify/search/tile yang gagal
+  401/403/lain dan sesi ternyata mati → halaman dimuat ulang, lalu PERMINTAAN
+  ITU DIULANGI sekali. Reload diantrekan (tidak dobel) dan dilewati bila
+  sedang ada permintaan lain (kecuali token tinggal < 45 detik).
+
+Hasil uji 26 Okt 2026: token dibuat basi buatan → `POST /identify` tetap 200
+(nib, luas, hak terisi) dalam ±7 detik; jalur loginApi dalam halaman dimatikan
+pura-pura → host memuat ulang dan permintaan tetap 200; tanpa intervensi apa
+pun, token diperbarui otomatis sebelum kedaluwarsa (log: `memuat ulang tab
+BHUMI — token tinggal 138 dtk` → `sesi pulih (sisa 903 dtk)`).
 
 Kalau semua jalur otomatis mentok (mis. WAF menutup `/expapi` sama sekali),
 buka jendela pendamping (`jalankan-auroramaps.bat login`) dan klik
