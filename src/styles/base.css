@@ -218,7 +218,10 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
 .map-popup-panel {
   position: fixed; bottom: 52px; left: 12px; z-index: 7500;
   background: var(--bg-surface); border: 1px solid var(--border); border-radius: 10px;
-  box-shadow: 0 6px 20px rgba(0,0,0,.4); padding: 0; min-width: 200px; max-width: min(480px, calc(100vw - 24px));
+  box-shadow: 0 6px 20px rgba(0,0,0,.4); padding: 0;
+  /* Lebar tetap sejak popup muncul — tanpa ini panel melebar mengikuti isi
+     (teks panjang seperti Dasar Perda) sehingga ukurannya berubah-ubah. */
+  width: min(320px, calc(100vw - 24px)); min-width: 0; max-width: min(320px, calc(100vw - 24px));
   box-sizing: border-box; font-size: 12px; overflow-x: hidden; overflow-y: auto;
   overscroll-behavior: contain; scrollbar-gutter: stable;
 }
@@ -256,7 +259,7 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
 .map-popup-panel .mp-share:hover { filter: brightness(1.1); }
 /* Popup ATRBPN portrait dengan empat tab seperti Cari Bidang. */
 .map-popup-panel .mp-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 7px 8px 5px; border-bottom: 1px solid var(--border); }
-.map-popup-panel .mp-tab { min-width: 0; padding: 7px 3px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-hover); color: var(--text-secondary); font: inherit; font-size: 10px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.map-popup-panel .mp-tab { min-width: 0; padding: 7px 3px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-hover); color: var(--text-secondary); font: inherit; font-size: 10px; cursor: pointer; white-space: normal; overflow-wrap: anywhere; line-height: 1.2; }
 .map-popup-panel .mp-tab:hover { border-color: var(--accent); color: var(--accent); }
 .map-popup-panel .mp-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 .map-popup-panel .mp-tabpane[hidden] { display: none; }
