@@ -903,11 +903,13 @@ const AtrbpnLayers = {
         <button class="mp-share" type="button" onclick="BhumiIdentify.prepareDrawing()">📝 Gunakan data ini saat menggambar</button>`);
     };
 
-    // Endpoint kawasan hutan sengaja tidak dipanggil (server mati);
-    // bidang kini ikut sebagai TAB pertama di popup ini (lihat bidangPane).
+    // GetFeatureInfo/WFS kawasan hutan memang tidak tersedia (semua rute 404),
+    // tetapi LAYER-NYA hidup — hanya sampai skala nasional (z≤5, lihat keterangan
+    // maxNativeZoom di atas). Catatan di bawah karena itu menjelaskan keterbatasan
+    // ini, bukan "server mati" yang sudah tidak akurat.
     const dead = active.filter(k => k === 'hutan');
     const notes = dead.length
-      ? '<div class="mp-coord">⚠ Kawasan Hutan: server sedang mati — tidak ikut dibaca (sementara).</div>'
+      ? '<div class="mp-coord">⚠ Kawasan Hutan: gambar tersedia sampai skala nasional — saat diperbesar otomatis diperbesar (buram); atributnya tidak bisa dibaca saat klik.</div>'
       : '';
 
     const header = `
