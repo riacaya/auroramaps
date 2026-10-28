@@ -133,6 +133,11 @@ const AuroraBhumiSidecarClient = {
   identify(body) {
     return this._post('/identify', { body }, 55000);
   },
+  // → {data:{...}} — Profil Informasi Bidang Tanah ("Analisa Bidang"):
+  // rencana tata ruang (KP2B), zona nilai tanah, ketetapan khusus.
+  analisa(body) {
+    return this._post('/analisa', { body }, 45000);
+  },
   // → {status:'ok'|pesan, cached}
   tokenSync(force) {
     return this._post('/token-sync', { force: !!force }, 35000);

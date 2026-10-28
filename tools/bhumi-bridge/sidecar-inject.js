@@ -15,7 +15,7 @@
 // dekripsi statis OpenSSL, alur auth-ticket ECDH, whitelist tile, dan
 // sinkron token loginApi + reCAPTCHA (chunk 8815 milik situs BHUMI).
 (() => {
-  const SIDECAR_V = 9;
+  const SIDECAR_V = 10;
   // Idempotent untuk navigasi ulang, TETAPI versi lama (tanpa v) harus
   // diganti saat sidecar di-restart — kalau tidak, kode lama yang tetap
   // berjalan di tab yang tak dimuat ulang (guard 'return' lama dulu membuat
@@ -225,6 +225,57 @@
     return { features };
   }
 
+  // ── analisa: "Analisa Bidang" = Profil Informasi Bidang Tanah ──────────────
+  // POST /expapi/analisaPersil (tercatat di HAR klikbidang-bhumi 27 Okt 2026)
+  // memakai pola auth yang SAMA dengan getPersil: auth-ticket → ECDH P-256 →
+  // header x-client-pubkey / x-ticket-id / x-timestamp, balasan terenkripsi
+  // AES-ECDH lalu dibuka di sini. Body persis pola situs:
+  //   {latitude, longitude, luas}
+  // Balasan (setelah decrypt) berisi profil lengkap yang di modal situs:
+  // Rencana Tata Ruang (KP2B + dasar ketetapan), Zona Nilai Tanah, dan
+  // Ketetapan Khusus. JSON dikembalikan APA ADANYA — render ada di sisi app
+  // (atrbpnLayers.js, tab Analisa) supaya ikut berubah bila situs menambah field.
+  async function analisaImpl({ body }) {
+    if (!body || !Number.isFinite(body.latitude) || !Number.isFinite(body.longitude)) {
+      throw new Error('Parameter analisa tidak valid.');
+    }
+    const payload = {
+      latitude: body.latitude,
+      longitude: body.longitude,
+      luas: Number.isFinite(body.luas) ? body.luas : 0
+    };
+    const ticketRes = await originalFetch('/expapi/auth-ticket', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include'
+    });
+    if (!ticketRes.ok) throw new Error('HTTP ' + ticketRes.status);
+    const ticket = await ticketRes.json();
+    if (!ticket || !ticket.ticketId || !ticket.challengeSeed) throw new Error('auth-ticket BHUMI tidak lengkap.');
+    const keyPair = await crypto.subtle.generateKey(
+      { name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits']);
+    const pub = new Uint8Array(await crypto.subtle.exportKey('raw', keyPair.publicKey));
+    const clientPubKey = Array.from(pub, b => b.toString(16).padStart(2, '0')).join('');
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-Client-Pubkey': clientPubKey,
+      'X-Ticket-Id': ticket.ticketId,
+      'X-Timestamp': String(Date.now())
+    };
+    const auth = savedAuth || storedAuth();
+    if (auth) headers.Authorization = auth;
+    const res = await originalFetch('/expapi/analisaPersil', {
+      method: 'POST', headers, credentials: 'include', body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data && data.encrypted && data.data) {
+      const passphrase = data.ecdh && data.serverPubKey
+        ? await ecdhPassphrase(data.serverPubKey, keyPair.privateKey, ticket.challengeSeed)
+        : '';
+      return { data: JSON.parse(await decryptStatic(data.data, passphrase)) };
+    }
+    return { data };
+  }
+
   // ── tile: whitelist + ambil gambar dalam halaman → base64 ─────────────────
   async function tileImpl({ url }) {
     let u;
@@ -403,6 +454,7 @@
   const identify = (arg) => withAuthRetry(() => identifyImpl(arg), /HTTP 40[13]/);
   const tile = (arg) => withAuthRetry(() => tileImpl(arg), /HTTP 40[13]/);
   const gfi = (arg) => withAuthRetry(() => gfiImpl(arg), /HTTP 40[13]/);
+  const analisa = (arg) => withAuthRetry(() => analisaImpl(arg), /HTTP 40[13]/);
 
   // Sisa umur token (detik, null bila tak diketahui) — dilaporkan ke host
   // supaya sesi bisa disegarkan SEBELUM basi (token hanya berumur ±15 menit).
@@ -424,5 +476,5 @@
     url: location.href
   });
 
-  window.AuroraBhumiSidecar = { search, identify, tile, gfi, tokenSync, status };
+  window.AuroraBhumiSidecar = { search, identify, tile, gfi, tokenSync, status, analisa };
 })();

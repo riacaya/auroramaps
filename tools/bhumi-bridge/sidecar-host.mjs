@@ -386,6 +386,24 @@ const server = http.createServer(async (req, res) => {
       json(res, 200, await callWithRecovery('identify', { body }, 50000));
       return;
     }
+    if (req.method === 'POST' && url.pathname === '/analisa') {
+      // Profil Informasi Bidang Tanah (tombol "Analisa Bidang" di situs):
+      // /expapi/analisaPersil dengan auth-ticket ECDH — lihat analisaImpl
+      // di sidecar-inject.js. Body dibatasi {latitude,longitude,luas} saja.
+      const { body } = await readBody(req);
+      const b = (body && typeof body === 'object') ? body : {};
+      const safe = {
+        latitude: Number(b.latitude),
+        longitude: Number(b.longitude),
+        luas: Number.isFinite(Number(b.luas)) ? Number(b.luas) : 0
+      };
+      if (!Number.isFinite(safe.latitude) || !Number.isFinite(safe.longitude)) {
+        json(res, 400, { error: 'Parameter koordinat tidak valid.' });
+        return;
+      }
+      json(res, 200, await callWithRecovery('analisa', { body: safe }, 45000));
+      return;
+    }
     if (req.method === 'POST' && url.pathname === '/tile') {
       const { url: tileUrl } = await readBody(req);
       let u = null;

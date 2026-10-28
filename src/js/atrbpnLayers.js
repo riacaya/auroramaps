@@ -559,8 +559,15 @@ const AtrbpnLayers = {
     // Kartu awal menampilkan panel untuk semua layer aktif — termasuk tab
     // Bidang yang sedang membaca (state0) dan status identify LSD/KP2B yang
     // belum disediakan endpoint TMS.
+    // Tab Analisa (29 Okt 2026): profil "Analisa Bidang" situs (Rencana Tata
+    // Ruang, Zona Nilai Tanah, Ketetapan Khusus) dibaca lewat
+    // /expapi/analisaPersil — hanya bila sidecar ada; di hosting tanpa
+    // sidecar tabnya menampilkan catatan, bukan memanggil (hindari 502/klik).
+    const adaAnalisa = this._analisaAvailable();
+    const awal = Object.assign({ pending: true }, state0);
+    if (adaAnalisa) awal.analisa = { pending: true };
     MapPopup.show(this._zonePopupHtml(
-      active, (want.prov || want.kab || state0.bidang) ? Object.assign({ pending: true }, state0) : null, lat, lng));
+      active, (want.prov || want.kab || state0.bidang || adaAnalisa) ? awal : null, lat, lng));
     // Render bertahap (14 Okt 2026): tiap GFI berjalan paralel TETAPI kartu
     // popup diperbarui setiap hasil masuk — bagian RTRW (WMS bhumi via worker,
     // ±2–4 dtk) langsung tampil tanpa menunggu rantai GISTARU (bisa 15+15 dtk
@@ -570,6 +577,13 @@ const AtrbpnLayers = {
     if (want.prov) state.prov = { pending: true };
     if (want.kab) state.kab = { pending: true };
     const settle = this._refreshZones(active, state, lat, lng, seq);
+    if (adaAnalisa) {
+      state.analisa = { pending: true };
+      // Langsung dengan luas 0 supaya tab cepat terisi (±1,8 dtk); saat bidang
+      // masuk dan luas diketahui, hasilnya diperbarui dengan luas asli (echo
+      // znt.luas di balasan server).
+      this._fetchAnalisa(lat, lng, 0).then(r => settle('analisa', r));
+    }
 
     // Tab Bidang: getPersil ECDH di titik klik → hasil + overlay transparan
     // diserahkan ke BhumiIdentify.adopt (AutoSave & tombol bagikan/gambar
@@ -585,6 +599,11 @@ const AtrbpnLayers = {
           if (!features || !features.length) { settle('bidang', { empty: true }); return; }
           const main = BhumiIdentify.adopt(features, lat, lng);
           settle('bidang', { features, main, count: features.length });
+          // Analisa: perbarui dengan luas bidang yang sebenarnya bila ada.
+          const luas = Number(main && main.properties && main.properties.luas);
+          if (adaAnalisa && isFinite(luas) && luas > 0) {
+            this._fetchAnalisa(lat, lng, luas).then(r => settle('analisa', r));
+          }
         },
         err => settle('bidang', { error: (err && err.message) || 'gagal' })
       );
@@ -649,10 +668,17 @@ const AtrbpnLayers = {
     const state = { bidang };
     if (active.includes('rtrp')) state.prov = { pending: true };
     if (active.includes('rtrw')) state.kab = { pending: true };
+    const adaAnalisa = this._analisaAvailable();
+    if (adaAnalisa) state.analisa = { pending: true };
     const seq = (this._clickSeq = (this._clickSeq || 0) + 1);
     MapPopup._activeTab = null; // kartu baru → tab default (lihat _onMapClick)
     MapPopup.show(this._zonePopupHtml(active, state, lat, lng));
-    this._refreshZones(active, state, lat, lng, seq);
+    const settle = this._refreshZones(active, state, lat, lng, seq);
+    if (adaAnalisa) {
+      const luas = Number(bidang.main && bidang.main.properties && bidang.main.properties.luas);
+      this._fetchAnalisa(lat, lng, isFinite(luas) && luas > 0 ? luas : 0)
+        .then(r => settle('analisa', r));
+    }
     return true;
   },
 
@@ -674,6 +700,37 @@ const AtrbpnLayers = {
     const b = this._resolveBhumiBase();
     if (!b) return '';
     return b.replace(/\/$/, '') + '/gistaru';
+  },
+
+  // ── Analisa Bidang (/expapi/analisaPersil lewat sidecar) ─────────────────
+  // Hanya bila sidecar ada: sc.state()===false berarti hosting tanpa sidecar
+  // → tab menampilkan catatan, request tidak dikirim (hindari 502 tiap klik).
+  _analisaAvailable() {
+    const sc = window.AuroraBhumiSidecarClient;
+    if (!sc || typeof sc.analisa !== 'function') return false;
+    return sc.state() !== false;
+  },
+
+  // → {data:{rtrw, znt, lsd, …}} | {error}
+  // Balasan host berlapis {data:{success, data}} — dibuka sampai objek profil.
+  _fetchAnalisa(lat, lng, luas) {
+    const sc = window.AuroraBhumiSidecarClient;
+    const gagal = (msg) => ({ error: msg });
+    if (!sc || typeof sc.analisa !== 'function') return Promise.resolve(gagal('sidecar tidak tersedia'));
+    // Probe pertama belum tentu selesai → tunggu sebentar sebelum memutuskan.
+    const tunggu = (sc.state() === null && sc.ready) ? sc.ready(2500) : Promise.resolve(true);
+    return tunggu.then(ok => {
+      if (!ok) return gagal('sidecar BHUMI tidak aktif');
+      return sc.analisa({ latitude: lat, longitude: lng, luas: luas || 0 })
+        .then(r => {
+          const a = r && r.data;
+          const profil = a && a.success && a.data ? a.data : a;
+          return (profil && typeof profil === 'object')
+            ? { data: profil, luas: luas || 0 }
+            : gagal('balasan analisa kosong');
+        })
+        .catch(e => gagal((e && e.message) || 'gagal'));
+    });
   },
 
   // ── Baca atribut zona lewat getPersil (jalur resmi situs) ─────────────────
@@ -991,6 +1048,84 @@ const AtrbpnLayers = {
         <button class="mp-share" type="button" onclick="BhumiIdentify.prepareDrawing()">📝 Gunakan data ini saat menggambar</button>`);
     };
 
+    // ── Tab Analisa (29 Okt 2026) ────────────────────────────────
+    // "Analisa Bidang" di situs (modal Profil Informasi Bidang Tanah) =
+    // POST /expapi/analisaPersil — lihat analisaImpl di sidecar-inject.js.
+    // Balasannya nested {rtrw, znt, lsd, kawasanHutan, tanahUlayat, …};
+    // tiap objek dengan found:true dirender GENERIK sebagai satu kartu
+    // berisi seluruh field skalarnya, jadi penambahan field oleh situs ikut
+    // tampil tanpa mengubah kode ini.
+    const analisaPane = () => {
+      const wrap = (inner) => `<div class="mp-zone-col">${inner}</div>`;
+      const note = (t) => wrap(`<div class="mp-cand">Analisa Bidang</div><div class="mp-zone-note">${t}</div>`);
+      const res = zoneRes && zoneRes.analisa;
+      if (!res) return note('Analisa belum dimuat.');
+      if (res.pending) return wrap('<div class="mp-cand">Analisa Bidang — membaca…</div>');
+      if (res.error) return note(`⚠ Gagal membaca: ${esc(res.error)}`);
+      const d = res.data;
+      if (!d || typeof d !== 'object') return note('Data tidak tersedia di titik ini');
+
+      const namaSeksi = { rtrw: 'RENCANA TATA RUANG', znt: 'ZONA NILAI TANAH' };
+      const grupKhusus = ['lsd', 'kawasanHutan', 'tanahUlayat'];
+      const label = {
+        polaRuang: 'Pola Ruang', jenisPolaRuang: 'Jenis Pola Ruang',
+        perda: 'Dasar Ketetapan Hukum', provinsi: 'Provinsi', kabupaten: 'Kab/Kota',
+        kecamatan: 'Kecamatan', meta: 'Wilayah', source: 'Sumber',
+        estimasiText: 'Rentang Nilai Tanah', nomorZone: 'Nomor Zona',
+        tahunDibuat: 'Tahun Zona', namaKantor: 'Kantor Pertanahan',
+        luas: 'Luas', status: 'Status', fungsikws: 'Fungsi Kawasan',
+        luasHa: 'Luas', keterangan: 'Keterangan', fungsi: 'Fungsi Kawasan'
+      };
+      const kartu = (key, obj) => {
+        if (!obj || typeof obj !== 'object' || obj.found === false) return '';
+        // znt: estimasiText sudah memuat rentang — rangeNilai/min/max ganda.
+        const lewati = key === 'znt' ? ['found', 'rangeNilai', 'minPerM2', 'maxPerM2'] : ['found'];
+        const rows = Object.entries(obj)
+          .filter(([k, v]) => !lewati.includes(k) && v != null && typeof v !== 'object' &&
+            String(v).trim() !== '' && !(k === 'luas' && Number(v) <= 0))
+          .map(([k, v]) => {
+            let nilai = String(v);
+            if (k === 'luas') nilai = Number(v).toLocaleString('id-ID') + ' m²';
+            else if (k === 'luasHa') nilai = Number(v).toLocaleString('id-ID') + ' ha';
+            else if (k === 'tahunDibuat') nilai = 'Thn ' + v;
+            return `<div class="mp-detail"><div class="mp-detail-label">${esc(label[k] || k)}</div><div class="mp-detail-value">${esc(nilai)}</div></div>`;
+          }).join('');
+        if (!rows) return '';
+        let judul = namaSeksi[key] ||
+          (grupKhusus.includes(key) ? 'KETETAPAN KHUSUS — ' + (obj.source || label[key] || key)
+            : String(key).replace(/([a-z])([A-Z])/g, '$1 $2').toUpperCase());
+        if (key === 'znt' && obj.nomorZone) {
+          judul += ` • Zona ${obj.nomorZone}${obj.tahunDibuat ? ' • Thn ' + obj.tahunDibuat : ''}`;
+        }
+        return `<div class="mp-cand">${esc(judul)}</div><div class="mp-fields">${rows}</div>`;
+      };
+      const isi = (() => {
+        // Urut sesuai modal situs: Rencana Tata Ruang → Zona Nilai Tanah →
+        // Ketetapan Khusus (…lalu kunci lain yang mungkin ditambah situs).
+        const utama = ['rtrw', 'znt', 'lsd', 'kawasanHutan', 'tanahUlayat'];
+        const urut = utama.concat(Object.keys(d).filter(k => !utama.includes(k)));
+        // rtrw.found kadang false walau sub-kueri RTRW mereka sedang flaky
+        // (teruji live 29 Okt: panggilan identik balik true lalu false) →
+        // isi kartu Rencana Tata Ruang dari baris zona Kab yang SUDAH ada di
+        // tangan (data dasarnya sama: jenis pola, perda, wilayah), supaya
+        // profil tetap selengkap yang di situs.
+        const rtrwDariZona = () => {
+          const f = zoneRes && zoneRes.kab && (zoneRes.kab.rows || [])[0];
+          if (!f) return '';
+          const rows = [['Pola Ruang', f.namobj], ['Provinsi', f.wadmpr], ['Kab/Kota', f.wadmkk],
+            ['Dasar Ketetapan Hukum', f.nothpr], ['Wilayah', f.meta]]
+            .filter(([, v]) => v != null && String(v).trim() !== '')
+            .map(([k, v]) => `<div class="mp-detail"><div class="mp-detail-label">${esc(k)}</div><div class="mp-detail-value">${esc(String(v))}</div></div>`).join('');
+          return rows ? `<div class="mp-cand">RENCANA TATA RUANG</div><div class="mp-fields">${rows}</div>` : '';
+        };
+        const kartuRtrw = kartu('rtrw', d.rtrw) || rtrwDariZona();
+        return [kartuRtrw]
+          .concat(urut.filter(k => k !== 'rtrw').map(k => kartu(k, d[k])))
+          .filter(Boolean).join('');
+      })();
+      return isi ? wrap(isi) : note('Tidak ada data analisa di titik ini.');
+    };
+
     // GetFeatureInfo/WFS kawasan hutan memang tidak tersedia (semua rute 404),
     // tetapi LAYER-NYA hidup — hanya sampai skala nasional (z≤5, lihat keterangan
     // maxNativeZoom di atas). Catatan di bawah karena itu menjelaskan keterbatasan
@@ -1013,6 +1148,7 @@ const AtrbpnLayers = {
       { id: 'bidang', label: 'Bidang', title: 'Bidang Tanah (SHM: NIB & luas)', content: bidangPane() },
       { id: 'rtrp', label: 'RTRW Pro', title: 'RTRW Provinsi', content: provSection || `<div class="mp-zone-col"><div class="mp-cand">RTRW Provinsi</div><div class="mp-zone-note">Layer RTRW Provinsi belum aktif.</div></div>` },
       { id: 'rtrw', label: 'RTRW Kab', title: 'RTRW Kab/Kota', content: kabSection || `<div class="mp-zone-col"><div class="mp-cand">RTRW Kab/Kota</div><div class="mp-zone-note">Layer RTRW Kab/Kota belum aktif.</div></div>` },
+      { id: 'analisa', label: 'Analisa', title: 'Analisa Bidang (RTRW, Zona Nilai Tanah, Ketetapan Khusus)', content: analisaPane() },
     ];
     const activeTab = tabDefs.find(tab => active.includes(tab.id))?.id || 'rtrw';
     const tabButtons = tabDefs.map(tab => `<button type="button" class="mp-tab${tab.id === activeTab ? ' active' : ''}" data-mp-tab="${tab.id}" role="tab" aria-selected="${tab.id === activeTab}" title="${tab.title}">${tab.label}</button>`).join('');
