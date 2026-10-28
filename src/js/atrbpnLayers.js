@@ -676,11 +676,44 @@ const AtrbpnLayers = {
     return b.replace(/\/$/, '') + '/gistaru';
   },
 
+  // ── Baca atribut zona lewat getPersil (jalur resmi situs) ─────────────────
+  // Sejak pembaruan data situs (Okt 2026) GetFeatureInfo mentah tidak bisa
+  // dipakai lagi:
+  //   • RTRW Pro  → poligon provinsi kini raksasa; balasan ≥60 dtk / 3,7 MB,
+  //     lewat sidecar selalu `CDP timeout: Runtime.evaluate` (25 dtk).
+  //     /api/proksi milik situs pun menolaknya: "content size … over limit
+  //     26214400" (tercatat di HAR klikbidang-bhumi & pencarian-bhumi).
+  //   • RTRW Kab  → balasan >512 KB, kena batas GFI_MAX_BYTES sidecar
+  //     ("Balasan GFI terlalu besar.").
+  // Jalur getPersil justru mengembalikan properti utuh dalam hitungan detik
+  // (teruji live 28 Okt 2026): Pro 12 dtk · Kab 0,8 dtk, lengkap dengan
+  // namobj/nothpr/wadmkk/meta. GFI lama dipertahankan sebagai cadangan bila
+  // sidecar mati atau layer tak dikenali server.
+  // Berhasil → {rows,count}; tidak bisa dicoba / kosong → null.
+  async _zoneViaPersil(lat, lng, layerName, service) {
+    const sc = window.AuroraBhumiSidecarClient;
+    if (!sc || sc.state() === false) return null;
+    if (sc.state() === null) { try { await sc.ready(3000); } catch (e) { /* abaikan */ } }
+    if (!sc.availableSync()) return null;
+    if (typeof BhumiIdentify === 'undefined' || !BhumiIdentify.readLayer) return null;
+    try {
+      const feats = await BhumiIdentify.readLayer(lat, lng, layerName, service);
+      if (!feats || !feats.length) return null; // kosong → serahkan ke GFI cadangan
+      const rows = feats.map(f => (f && f.properties) || {}).filter(o => Object.keys(o).length);
+      return rows.length ? { rows, count: rows.length } : null;
+    } catch (e) { return null; }
+  },
+
   // GetFeatureInfo GISTARU — pola acuan HAR, info_format=application/json
   // (lihat catatan konstanta di atas). bbox = kotak kecil ±55 m di sekitar
   // titik klik, CRS 4326 seperti di HAR. Urutan percobaan: proxy /gistaru
   // dulu, URL asli sebagai cadangan (worker belum ter-deploy / WAF longgar).
-  async _gfiZone(uuid, layerName, lat, lng) {
+  async _gfiZone(uuid, layerName, lat, lng, skipPersil) {
+    // Jalur utama: getPersil di server GISTARU (lihat _zoneViaPersil).
+    if (!skipPersil) {
+      const p = await this._zoneViaPersil(lat, lng, layerName, GISTARU_WMS + uuid);
+      if (p) return p;
+    }
     const span = 0.0005;
     // FEATURE_COUNT=1 — terukur 27 Okt 2026: FC=5 memaksa server gistaru
     // men-serialize ≥5 poligon provinsi utuh (9 MB, >30 dtk → selalu timeout),
@@ -719,12 +752,15 @@ const AtrbpnLayers = {
     return last;
   },
 
-  // Zona RTRW Kab/Kota — urutan percobaan: WMS bhumi dulu (jujur & terjangkau
-  // dari mana pun selama worker aktif), gagal/kosong → GFI GISTARU lama.
+  // Zona RTRW Kab/Kota — getPersil GISTARU (layer rtrw_kabkot_1: field utuh)
+  // dulu; gagal → WMS bhumi merge (lengkapnya terbatas: objectid+keterangan);
+  // itu pun gagal → GFI GISTARU lama.
   async _gfiKabZone(lat, lng) {
+    const p = await this._zoneViaPersil(lat, lng, RTRW_LAYER, GISTARU_WMS + RTRW_UUID);
+    if (p) return p;
     const b = await this._gfiBhumiRtrw(lat, lng);
     if (b && !b.error && b.count > 0) return b;
-    return this._gfiZone(RTRW_UUID, RTRW_LAYER, lat, lng);
+    return this._gfiZone(RTRW_UUID, RTRW_LAYER, lat, lng, true);
   },
 
   // GetFeatureInfo zona RTRW lewat WMS BHUMI (petabpn:rtrw_kabkot_merge).

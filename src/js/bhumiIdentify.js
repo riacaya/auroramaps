@@ -540,7 +540,12 @@ const BhumiIdentify = {
   // (teruji live 28 Okt 2026: Sukoharjo → {lsd, wadmpr, wadmkk, fungsikws,
   // luasha}; TN Gunung Gede → {fungsi_kaw, kodefungsi, wadmkk, wadmpr}).
   // Body persis pola HAR — hanya nama layer yang ditukar.
-  async readLayer(lat, lng, layerName) {
+  //
+  // Parameter `service` (28 Okt 2026): layer RTRW Pro & Kab berada di server
+  // GISTARU, bukan di /bhumigs/umum — situs mengirimnya sebagai service URL
+  // penuh (pola chunk 1283: `service: e.map_service_url`). Tanpa parameter
+  // ini getPersil membalas features:[] karena server tak mengenali layer.
+  async readLayer(lat, lng, layerName, service = '/bhumigs/umum') {
     if (!isFinite(lat) || !isFinite(lng)) throw new Error('Koordinat tidak valid.');
     if (!this._proxyBase) throw new Error('Proxy bhumi tidak tersedia.');
     // BHUMI mengirim bbox geographic viewport yang tampak dan posisi klik
@@ -563,7 +568,7 @@ const BhumiIdentify = {
       x: pixel.x, y: pixel.y,
       query_layers: layerName,
       url: '/expapi/getPersil',
-      service: '/bhumigs/umum'
+      service: service
     };
     const bridged = await this._requestBrowserBridge(requestBody, lat, lng);
     return bridged || await this._gfiFeatures(requestBody);
