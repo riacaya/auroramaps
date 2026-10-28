@@ -94,7 +94,7 @@ const BhumiIdentify = {
         AuroraBhumiAuth.ensure(true).catch(() => {});
       }
     }
-    const headers = { 'Content-Type': 'application/json' };
+    const headers = { 'Content-Type': 'application/json', 'X-Timestamp': String(Date.now()) };
     if (this._token) headers.Authorization = this._token;
     const res = await fetch(this._proxyBase + path, { method: 'POST', headers, body: JSON.stringify(body) });
     if (!res.ok) {
@@ -529,6 +529,18 @@ const BhumiIdentify = {
   // Dipakai AtrbpnLayers untuk mengisi tab "Bidang" di popup ATR/BPN gabungan.
   // Melempar Error bila gagal (pesan diteruskan apa adanya ke tab).
   async readBidang(lat, lng) {
+    return this.readLayer(lat, lng, 'umum:Persil');
+  },
+
+  // ── getPersil untuk layer apa pun (28 Okt 2026) ────────────────────────────
+  // Rekaman HAR terbaru bhumi.atrbpn.go.id membuktikan popup SITUS mengisi
+  // properti LSD & Kawasan Hutan lewat endpoint yang sama (getPersil),
+  // hanya berbeda service_layer_name/query_layers:
+  //   umum:lsd_merge_8_provinsi · umum:lsd_merge · umum:penunjukan_kawasan_hutan
+  // (teruji live 28 Okt 2026: Sukoharjo → {lsd, wadmpr, wadmkk, fungsikws,
+  // luasha}; TN Gunung Gede → {fungsi_kaw, kodefungsi, wadmkk, wadmpr}).
+  // Body persis pola HAR — hanya nama layer yang ditukar.
+  async readLayer(lat, lng, layerName) {
     if (!isFinite(lat) || !isFinite(lng)) throw new Error('Koordinat tidak valid.');
     if (!this._proxyBase) throw new Error('Proxy bhumi tidak tersedia.');
     // BHUMI mengirim bbox geographic viewport yang tampak dan posisi klik
@@ -545,11 +557,11 @@ const BhumiIdentify = {
       y: Math.max(0, Math.min(size.y - 1, Math.round(clickPoint.y)))
     };
     const requestBody = {
-      service_layer_name: 'umum:Persil',
+      service_layer_name: layerName,
       width: size.x, height: size.y,
       bbox: [northWest.lng, southEast.lat, southEast.lng, northWest.lat].join(','),
       x: pixel.x, y: pixel.y,
-      query_layers: 'umum:Persil',
+      query_layers: layerName,
       url: '/expapi/getPersil',
       service: '/bhumigs/umum'
     };

@@ -1977,6 +1977,8 @@ input[type="range"]:focus-visible { outline: none; }
   #btn-about-pc                       { display: none !important; }
   .mh-btn                             { display: flex !important; width: 34px; height: 34px; }
   .mh-btn svg                         { width: 18px; height: 18px; }
+  #btn-bhumi-globe                    { width: 34px; height: 34px; }
+  #btn-bhumi-globe svg                { width: 18px; height: 18px; }
   .mh-btn                             { color: var(--accent) !important; }
   .mh-btn-danger                      { color: var(--danger) !important; }
   .mb-btn                             { color: var(--accent) !important; }

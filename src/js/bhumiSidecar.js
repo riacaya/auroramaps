@@ -120,6 +120,11 @@ const AuroraBhumiSidecarClient = {
   tile(url) {
     return this._post('/tile', { url }, 30000);
   },
+  // → {text} — GetFeatureInfo zona RTRW, dijalankan di halaman BHUMI pendamping
+  // (Referer asli) sehingga lolos WAF yang menolak fetch dari halaman app.
+  gfi(url) {
+    return this._post('/gfi', { url }, 30000);
+  },
   // → {features:[...]}
   search(path, body) {
     return this._post('/search', { path, body }, 40000);

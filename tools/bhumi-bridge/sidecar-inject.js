@@ -8,13 +8,14 @@
 //   window.AuroraBhumiSidecar.search({path, body})   → {features:[...]}
 //   window.AuroraBhumiSidecar.identify({body})       → {features:[...]}
 //   window.AuroraBhumiSidecar.tile({url})            → {base64, mime}
+//   window.AuroraBhumiSidecar.gfi({url})             → {text} (GetFeatureInfo RTRW)
 //   window.AuroraBhumiSidecar.tokenSync({force})     → {status:'ok'|..., cached}
 //   window.AuroraBhumiSidecar.status()               → {sidecar, loggedIn}
 // Logika disalin dari ekstensi AuroraMaps lama (bhumi-main.js, kini dihapus):
 // dekripsi statis OpenSSL, alur auth-ticket ECDH, whitelist tile, dan
 // sinkron token loginApi + reCAPTCHA (chunk 8815 milik situs BHUMI).
 (() => {
-  const SIDECAR_V = 6;
+  const SIDECAR_V = 9;
   // Idempotent untuk navigasi ulang, TETAPI versi lama (tanpa v) harus
   // diganti saat sidecar di-restart — kalau tidak, kode lama yang tetap
   // berjalan di tab yang tak dimuat ulang (guard 'return' lama dulu membuat
@@ -107,23 +108,30 @@
   }
 
   // ── Token Authorization (salinan pasif dari halaman) ──────────────────────
+  // AUTH TANPA PREFIX: sejak pembaruan 26 Okt 2026 situs BHUMI mengirim
+  //   Authorization: <JWT mentah>   (BUKAN "Bearer <JWT>")
+  // pada getBidang — teruji: raw → 200, "Bearer " + raw → 401 Unauthorized.
+  // Karena itu nilai yang disimpan SELALU berupa JWT mentah tanpa prefix.
   let savedAuth = '';
+  const JWT_RE = /ey[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]*/;
+  const stripBearer = (v) => String(v || '').replace(/^bearer\s+/i, '').trim();
   const rememberAuth = (raw) => {
     const v = typeof raw === 'string' ? raw
       : (raw && typeof raw.get === 'function' ? (raw.get('Authorization') || raw.get('authorization')) : '');
-    if (v && /^bearer\s+\S+/i.test(v)) savedAuth = v;
+    const token = stripBearer(v);
+    if (v && /^bearer\s+\S+/i.test(v) && JWT_RE.test(token)) savedAuth = token;
+    else if (v && JWT_RE.test(v) && !/^https?:/i.test(v)) savedAuth = token; // situs mengirim JWT mentah
   };
   const storedAuth = () => {
     if (savedAuth) return savedAuth;
-    const JWT = /ey[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]*/;
     try {
       const stores = [window.localStorage, window.sessionStorage];
       for (const store of stores) {
         for (let i = 0; i < store.length; i++) {
           const val = store.getItem(store.key(i));
           if (!val || val.length > 8000) continue;
-          const m = val.match(JWT);
-          if (m) { savedAuth = 'Bearer ' + m[0]; return savedAuth; }
+          const m = val.match(JWT_RE);
+          if (m) { savedAuth = m[0]; return savedAuth; } // mentah, tanpa "Bearer "
         }
       }
     } catch (_) { /* store diblokir */ }
@@ -151,7 +159,7 @@
     if (!body || typeof body !== 'object' || JSON.stringify(body).length > 8000) {
       throw new Error('Body pencarian tidak valid.');
     }
-    const headers = { 'Content-Type': 'application/json' };
+    const headers = { 'Content-Type': 'application/json', 'x-timestamp': Date.now().toString() };
     let auth = savedAuth || storedAuth();
     if (auth) headers.Authorization = auth;
     let res = await originalFetch(path, { method: 'POST', headers, body: JSON.stringify(body), credentials: 'include' });
@@ -238,6 +246,25 @@
     return { base64: btoa(bin), mime: mime || 'image/png' };
   }
 
+  // ── gfi: GetFeatureInfo zona RTRW (gistaru & bhumi) di dalam halaman ──────
+  // Tab popup RTRW Pro/Kab membaca zona lewat GetFeatureInfo. Dari halaman app
+  // (file:// Android maupun cross-site) request itu ditolak WAF (403) atau
+  // gagal CORS — jadi URL-nya dijalankan DI SINI, dari konteks halaman BHUMI
+  // (Referer/Origin asli). Whitelist sempit: WMS gistaru + WMS rtrw bhumi.
+  const GFI_MAX_BYTES = 512000;
+  async function gfiImpl({ url }) {
+    let u;
+    try { u = new URL(String(url), location.origin); } catch (_) { throw new Error('URL GFI tidak valid.'); }
+    const isBhumi = u.origin === location.origin && u.pathname === '/expapi/rtrw/wms';
+    const isGistaru = u.origin === GISTARU_ORIGIN && u.pathname.startsWith('/interoppublic/api/wms/');
+    if (!isBhumi && !isGistaru) throw new Error('URL GFI ditolak.');
+    const res = await originalFetch(u.href, { credentials: isGistaru ? 'omit' : 'include' });
+    const text = await res.text();
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (text.length > GFI_MAX_BYTES) throw new Error('Balasan GFI terlalu besar.');
+    return { text };
+  }
+
   // ── tokenSync: replika alur "Saya Setuju" (chunk 8815) ────────────────────
   const RECAPTCHA_SITE_KEY = '6LeHjccpAAAAAIuu12A2UZPZ-11sp6STRRlsx6BX';
   let recaptchaLoading = null;
@@ -279,7 +306,9 @@
     if (!captcha) return { status: 'reCAPTCHA tidak tersedia — selesaikan captcha di peta BHUMI bila muncul, lalu ulangi.' };
     const res = await originalFetch('/expapi/loginApi', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      // x-timestamp: pola chunk 693 situs (helper Wz) — ikut disertakan supaya
+      // permintaan identik dengan rekaman HAR 26 Okt 2026.
+      headers: { 'Content-Type': 'application/json', 'x-timestamp': Date.now().toString() },
       body: JSON.stringify({ recaptchaToken: captcha }),
       credentials: 'include'
     });
@@ -373,6 +402,7 @@
   const search = (arg) => withAuthRetry(() => searchImpl(arg), /HTTP 40[13]/);
   const identify = (arg) => withAuthRetry(() => identifyImpl(arg), /HTTP 40[13]/);
   const tile = (arg) => withAuthRetry(() => tileImpl(arg), /HTTP 40[13]/);
+  const gfi = (arg) => withAuthRetry(() => gfiImpl(arg), /HTTP 40[13]/);
 
   // Sisa umur token (detik, null bila tak diketahui) — dilaporkan ke host
   // supaya sesi bisa disegarkan SEBELUM basi (token hanya berumur ±15 menit).
@@ -394,5 +424,5 @@
     url: location.href
   });
 
-  window.AuroraBhumiSidecar = { search, identify, tile, tokenSync, status };
+  window.AuroraBhumiSidecar = { search, identify, tile, gfi, tokenSync, status };
 })();

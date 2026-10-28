@@ -19,7 +19,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
 <!-- Font -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"/>
-<link rel="stylesheet" href="https://riacaya.github.io/auroramaps/src/styles/base.css?v=84" />
+<link rel="stylesheet" href="https://riacaya.github.io/auroramaps/src/styles/base.css?v=85" />
 <style>
 .login-branding-logo svg, .logo-icon svg, .about-logo svg { display:none !important; }
 .login-gate{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:var(--bg-base,#0d0f13)}
@@ -110,6 +110,9 @@
       <div class="project-name-display hidden-inline" id="project-name-display" title="Klik untuk ganti nama">AuroraMaps001</div>
       <button class="btn-icon mh-btn" id="mh-search" title="Cari">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+      <button class="btn-icon" id="btn-bhumi-globe" title="Jendela BHUMI" aria-label="Jendela BHUMI" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
       </button>
       <button class="btn-icon mh-btn" id="mh-menu" title="Menu">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
@@ -797,8 +800,8 @@
 <script src="https://riacaya.github.io/auroramaps/src/js/settings.js?v=7"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/mobile.js?v=62"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/imageOverlay.js?v=50"></script>
-<script src="https://riacaya.github.io/auroramaps/src/js/bhumiSidecar.js?v=1"></script>
-<script src="https://riacaya.github.io/auroramaps/src/js/atrbpnLayers.js?v=81"></script>
+<script src="https://riacaya.github.io/auroramaps/src/js/bhumiSidecar.js?v=2"></script>
+<script src="https://riacaya.github.io/auroramaps/src/js/atrbpnLayers.js?v=82"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/mapPopup.js?v=54"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/bhumiAuthSync.js?v=1"></script>
 <script src="https://riacaya.github.io/auroramaps/src/js/bhumiIdentify.js?v=72"></script>
@@ -832,6 +835,13 @@
   }
   floating?.addEventListener('click', () => window.AuroraInstall.trigger());
   loginLink?.addEventListener('click', () => window.AuroraInstall.trigger());
+  // Ikon globe BHUMI di header — hanya di aplikasi Android (jendela pendamping
+  // dijalankan MainActivity); di PC sidecar berjalan headless tanpa tombol.
+  const bhumiGlobe = document.getElementById('btn-bhumi-globe');
+  if (bhumiGlobe && window.AndroidBhumi) {
+    bhumiGlobe.hidden = false;
+    bhumiGlobe.addEventListener('click', () => { try { window.AndroidBhumi.toggle(); } catch (e) { /* abaikan */ } });
+  }
   // Manifest blob: halaman Blogger tidak punya manifest.webmanifest di origin-nya.
   const manifest = {
     name: 'AuroraMaps - GIS Viewer',

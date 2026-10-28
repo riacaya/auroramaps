@@ -396,6 +396,18 @@ const server = http.createServer(async (req, res) => {
       json(res, 200, await callWithRecovery('tile', { url: tileUrl }, 25000));
       return;
     }
+    if (req.method === 'POST' && url.pathname === '/gfi') {
+      const { url: gfiUrl } = await readBody(req);
+      let u = null;
+      try { u = new URL(String(gfiUrl)); } catch (_) { /* tolak di bawah */ }
+      // Whitelist sama dengan sidecar-inject.js: WMS gistaru (RTRW Pro) +
+      // WMS rtrw bhumi (RTRW Kab) — GetFeatureInfo zona di popup ATRBPN.
+      const ok = u && ((u.origin === 'https://bhumi.atrbpn.go.id' && u.pathname === '/expapi/rtrw/wms') ||
+        (u.origin === GISTARU_ORIGIN && u.pathname.startsWith('/interoppublic/api/wms/')));
+      if (!ok) { json(res, 403, { error: 'URL GFI ditolak.' }); return; }
+      json(res, 200, await callWithRecovery('gfi', { url: gfiUrl }, 25000));
+      return;
+    }
     if (req.method === 'POST' && url.pathname === '/token-sync') {
       const { force } = await readBody(req);
       json(res, 200, await callSidecar('tokenSync', { force: !!force }, 30000));

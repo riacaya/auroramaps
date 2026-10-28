@@ -542,6 +542,13 @@ const AtrbpnLayers = {
       const canId = typeof BhumiIdentify !== 'undefined' && BhumiIdentify._clickIdentifyEnabled;
       state0.bidang = canId ? { pending: true } : { error: 'modul identifikasi belum termuat' };
     }
+    // Tab LSD & Kawasan Hutan (28 Okt 2026): rekaman HAR terbaru membuktikan
+    // situs BHUMI mengisi properti keduanya lewat getPersil dengan
+    // query_layers khusus (umum:lsd_merge[_8_provinsi],
+    // umum:penunjukan_kawasan_hutan) — bukan GetFeatureInfo yang dulu 403.
+    // Jalurnya sama dengan tab Bidang, jadi keduanya ikut dibaca saat dicentang.
+    if (active.includes('lsd')) state0.lsd = { pending: true };
+    if (active.includes('hutan')) state0.hutan = { pending: true };
     // Info zona MENGIKUTI layer ATRBPN yang dicentang (14 Okt 2026):
     //   ☑ RTR Provinsi (slot provinsi) → kolom provinsi saja (GFI GISTARU);
     //   ☑ RTRW Kab/Kota        → kolom kab/kota saja (GFI bhumi dulu);
@@ -560,7 +567,8 @@ const AtrbpnLayers = {
     // Bidang yang sedang membaca (state0) dan status identify LSD/KP2B yang
     // belum disediakan endpoint TMS.
     MapPopup.show(this._zonePopupHtml(
-      active, (want.prov || want.kab || state0.bidang) ? Object.assign({ pending: true }, state0) : null, lat, lng));
+      active, (want.prov || want.kab || state0.bidang || state0.lsd || state0.hutan)
+        ? Object.assign({ pending: true }, state0) : null, lat, lng));
     // Render bertahap (14 Okt 2026): tiap GFI berjalan paralel TETAPI kartu
     // popup diperbarui setiap hasil masuk — bagian RTRW (WMS bhumi via worker,
     // ±2–4 dtk) langsung tampil tanpa menunggu rantai GISTARU (bisa 15+15 dtk
@@ -629,9 +637,42 @@ const AtrbpnLayers = {
         `);
       }
     };
+    // LSD & Kawasan Hutan — getPersil ber-layer (lihat _queryLayerProps).
+    if (active.includes('lsd') && !state.lsd) state.lsd = { pending: true };
+    if (active.includes('hutan') && !state.hutan) state.hutan = { pending: true };
     if (want.prov) this._gfiZone(RTRP_UUID, RTRP_LAYER, lat, lng).then(r => settle('prov', r));
     if (want.kab) this._gfiKabZone(lat, lng).then(r => settle('kab', r));
+    if (state.lsd && state.lsd.pending) {
+      this._queryLayerProps(lat, lng, BHUMI_LSD_LAYERS).then(r => settle('lsd', r));
+    }
+    if (state.hutan && state.hutan.pending) {
+      this._queryLayerProps(lat, lng, ['umum:penunjukan_kawasan_hutan']).then(r => settle('hutan', r));
+    }
     return settle;
+  },
+
+  // ── Properti layer ATR/BPN lewat getPersil (28 Okt 2026) ──────────────────
+  // Berbeda dengan zona RTRW (GetFeatureInfo), LSD & Kawasan Hutan dibaca
+  // situs lewat endpoint identify yang sama dengan Bidang Tanah — hanya nama
+  // layer yang berbeda (BhumiIdentify.readLayer). Dua layer LSD dicoba
+  // berurutan (cakupan saling melengkapi, lihat BHUMI_LSD_LAYERS) dan hasilnya
+  // digabung; semua layer kosong + ada galat → teruskan galatnya ke popup.
+  async _queryLayerProps(lat, lng, layers) {
+    const rows = [];
+    let err = null;
+    if (typeof BhumiIdentify === 'undefined' || !BhumiIdentify.readLayer) {
+      return { rows: [], count: 0, error: 'modul identifikasi belum termuat' };
+    }
+    for (const layer of layers) {
+      try {
+        const feats = await BhumiIdentify.readLayer(lat, lng, layer);
+        for (const f of feats || []) if (f && f.properties) rows.push(f.properties);
+      } catch (e) {
+        err = err || e; // layer pertama gagal → coba layer berikutnya dulu
+      }
+    }
+    if (!rows.length && err) return { rows: [], count: 0, error: (err && err.message) || 'gagal' };
+    return { rows, count: rows.length };
   },
 
   // ── Popup gabungan dipanggil dari BhumiIdentify ──────────────────────
@@ -682,16 +723,27 @@ const AtrbpnLayers = {
   // dulu, URL asli sebagai cadangan (worker belum ter-deploy / WAF longgar).
   async _gfiZone(uuid, layerName, lat, lng) {
     const span = 0.0005;
+    // FEATURE_COUNT=1 — terukur 27 Okt 2026: FC=5 memaksa server gistaru
+    // men-serialize ≥5 poligon provinsi utuh (9 MB, >30 dtk → selalu timeout),
+    // sedangkan FC=1 cukup (80 KB, ±4 dtk). Satu titik klik tetap berada di
+    // satu zona, jadi satu fitur sudah mewakili hasilnya.
     const qs = '?version=1.1.1&request=GetFeatureInfo&info_format=application/json' +
       '&layers=' + encodeURIComponent(layerName) +
       '&query_layers=' + encodeURIComponent(layerName) +
       '&CRS=EPSG:4326&srs=EPSG:4326&width=256&height=256&x=128&y=128' +
       '&bbox=' + [lng - span, lat - span, lng + span, lat + span].map(v => v.toFixed(6)).join(',') +
-      '&FEATURE_COUNT=5';
+      '&FEATURE_COUNT=1';
     const gBase = this._gistaruBase();
     const urls = [];
-    if (gBase) urls.push(gBase + '/interoppublic/api/wms/' + uuid + qs);
-    urls.push(GISTARU_WMS + uuid + qs);
+    const push = (u) => { if (u && !urls.includes(u)) urls.push(u); };
+    // Sidecar belum pasti mati → URL gistaru asli didahulukan: lewat rute /gfi
+    // (dijalankan di dalam halaman BHUMI pendamping) ia terjangkau dari mana
+    // pun, sedangkan rute proxy worker bisa 403 (worker lama) / 522 (gistaru
+    // tak terjangkau dari cloud) — dua kegagalan itulah yang muncul di Android.
+    const scNow = window.AuroraBhumiSidecarClient;
+    if (scNow && scNow.state() !== false) push(GISTARU_WMS + uuid + qs);
+    if (gBase) push(gBase + '/interoppublic/api/wms/' + uuid + qs);
+    push(GISTARU_WMS + uuid + qs);
     let last = null;
     for (const url of urls) {
       const r = await this._gfiFetch(url);
@@ -721,8 +773,6 @@ const AtrbpnLayers = {
   // Referer bhumi yang dibutuhkan WAF); basis kosong → lewati (skip) supaya
   // pemanggil langsung jatuh ke GFI gistaru.
   async _gfiBhumiRtrw(lat, lng) {
-    const b = this._resolveBhumiBase();
-    if (!b || !/^https?:\/\//i.test(b)) return { rows: [], count: 0, skip: true };
     // bbox kotak ±40 m di sekitar titik klik, koordinat meter EPSG:3857
     // (persis pola live-test yang berhasil; span kecil = respons ringan).
     const span = 40;
@@ -735,17 +785,57 @@ const AtrbpnLayers = {
       '&CRS=EPSG:3857&srs=EPSG:3857&width=256&height=256&x=128&y=128' +
       '&bbox=' + [x - span, y - span, x + span, y + span].map(v => v.toFixed(2)).join(',') +
       '&FEATURE_COUNT=5';
-    const url = b.replace(/\/$/, '') + BHUMI_RTRW_PATH + qs;
-    const r = await this._gfiFetch(url);
-    if (r.error || !r.rows || !r.rows.length) return r || { rows: [], count: 0 };
-    // Normalisasi field: layer merge hanya punya objectid + keterangan →
-    // samakan dengan nama field GISTARU (namobj) supaya popup tanpa perubahan.
-    r.rows = r.rows.map(o => (o.namobj ? o : Object.assign({ namobj: o.keterangan || '' }, o)));
-    return r;
+    // Basis percobaan: URL bhumi asli dulu BILA sidecar belum pasti mati —
+    // lewat rute /gfi sidecar (halaman BHUMI) ia terjangkau dari mana pun;
+    // basis worker cloud (gagal 403/522 di Android) jadi cadangan kedua.
+    const bases = [];
+    const sc = window.AuroraBhumiSidecarClient;
+    if (sc && sc.state() !== false) bases.push(BHUMI_TILE_ORIGIN);
+    const b = this._resolveBhumiBase();
+    if (b && /^https?:\/\//i.test(b)) bases.push(b.replace(/\/$/, ''));
+    if (!bases.length) return { rows: [], count: 0, skip: true };
+    let last = { rows: [], count: 0 };
+    for (const base of bases) {
+      const r = await this._gfiFetch(base + BHUMI_RTRW_PATH + qs);
+      if (!r.error) {
+        // Normalisasi field: layer merge hanya punya objectid + keterangan →
+        // samakan dengan nama field GISTARU (namobj) supaya popup tanpa perubahan.
+        if (r.rows && r.rows.length) {
+          r.rows = r.rows.map(o => (o.namobj ? o : Object.assign({ namobj: o.keterangan || '' }, o)));
+        }
+        return r;
+      }
+      last = r;
+    }
+    return last;
+  },
+
+  // URL GFI yang harus dijalankan DI DALAM halaman BHUMI lewat rute /gfi
+  // sidecar (Referer/Origin asli) — fetch langsung dari halaman app ditolak
+  // WAF (403) dan CORS, terutama di Android yang memuat app dari file://.
+  // URL proxy (/bhumi-proxy, /gistaru) TIDAK cocok → tetap jalur fetch biasa.
+  _gfiViaSidecar(url) {
+    try {
+      const u = new URL(url, location.href);
+      return (u.origin === GISTARU_ORIGIN && u.pathname.startsWith('/interoppublic/api/wms/')) ||
+             (u.origin === BHUMI_TILE_ORIGIN && u.pathname === BHUMI_RTRW_PATH);
+    } catch (e) { return false; }
   },
 
   // Satu percobaan mengambil respons GFI: timeout 15 dtk, gagal → { error }.
+  // Bila URL-nya milik bhumi/gistaru langsung dan sidecar aktif, jalankan lewat
+  // sidecar dulu (berjalan di halaman BHUMI) — baru jatuh ke fetch biasa.
   async _gfiFetch(url) {
+    const sc = window.AuroraBhumiSidecarClient;
+    if (sc && this._gfiViaSidecar(url)) {
+      if (sc.state() === null) { try { await sc.ready(2500); } catch (e) { /* abaikan */ } }
+      if (sc.availableSync()) {
+        try {
+          const r = await sc.gfi(url);
+          if (r && typeof r.text === 'string') return this._parseGfiBody(r.text);
+        } catch (e) { /* jatuh ke fetch biasa di bawah */ }
+      }
+    }
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 15000);
     try {
@@ -865,11 +955,45 @@ const AtrbpnLayers = {
       zoneRes && (zoneRes.pending ? zoneRes : zoneRes.kab),
       [['namobj', 'Jenis Kawasan'], ['jnsrpr', 'Kategori'], ['wadmpr', 'Provinsi'],
        ['wadmkk', 'Kab/Kota'], ['wadmkc', 'Kecamatan'], ['nothpr', 'Dasar Perda'], ['meta', 'Wilayah']]) : '';
-    // Tab LSD & KP2B DIHAPUS dari popup (25 Okt 2026): keduanya visual-only —
-    // sumber LSD adalah wrapper /expapi yang membalas PNG untuk GetFeatureInfo
-    // (uji ulang 25 Okt: 403 semua rute bhumi lewat relay), KP2B berasal dari
-    // TMS gisliner '235_kp2b' yang tidak punya antarmuka query sama sekali.
-    // Layer-nya tetap bisa dicentang di panel ATRBPN; hanya tab popup-nya hilang.
+    // ── Tab LSD & Kawasan Hutan (28 Okt 2026) ────────────────────────────
+    // Dulu dihapus karena GetFeatureInfo memang tidak tersedia; rekaman HAR
+    // terbaru menunjukkan situs mengisinya lewat getPersil (query_layers
+    // khusus) → jalur yang sama kini dipakai app (BhumiIdentify.readLayer,
+    // teruji live 28 Okt: lsd_merge_8_provinsi & penunjukan_kawasan_hutan
+    // membalas feature bersertifikat). Tab KP2B tetap tidak ada: sumbernya
+    // TMS gisliner tanpa antarmuka query, dan situsnya sendiri pun tidak
+    // membaca atribut KP2B (rekaman HAR tanpa request apa pun).
+    const propsPane = (title, activeKey, fields) => {
+      const note = (t) => `<div class="mp-zone-col"><div class="mp-cand">${title}</div><div class="mp-zone-note">${t}</div></div>`;
+      if (!active.includes(activeKey)) return note(`Layer ${title} belum aktif.`);
+      const res = zoneRes && zoneRes[activeKey];
+      if (!res || res.pending) return `<div class="mp-zone-col"><div class="mp-cand">${title} — membaca…</div></div>`;
+      if (res.error) return note(`⚠ Gagal membaca: ${esc(res.error)}`);
+      const props = (res.rows || [])[0];
+      if (!props) return note('Data tidak tersedia di titik ini');
+      // Kolom internal (id geometri & audit) bukan informasi pengguna → sembunyikan.
+      const HIDE = new Set(['gid', 'objectid', 'ctkswh', 'kode_fungs', 'geom', 'geometry', 'fid']);
+      const known = new Set(fields.map(([key]) => key.toLowerCase()));
+      const fmt = (v) => (typeof v === 'number' && !Number.isInteger(v))
+        ? String(Number(v.toFixed(4))) : String(v);
+      const rows = fields
+        .filter(([key]) => props[key] != null && String(props[key]).trim() !== '')
+        .map(([key, label]) => `<div class="mp-detail"><div class="mp-detail-label">${esc(label)}</div><div class="mp-detail-value">${esc(fmt(props[key]))}</div></div>`)
+        .concat(Object.entries(props).filter(([key, value]) =>
+          value != null && String(value).trim() !== '' &&
+          !known.has(key.toLowerCase()) && !HIDE.has(key.toLowerCase()))
+          .map(([key, value]) => `<div class="mp-detail"><div class="mp-detail-label">${esc(labelField(key))}</div><div class="mp-detail-value">${esc(fmt(value))}</div></div>`))
+        .join('');
+      if (!rows) return note('Data tidak tersedia di titik ini');
+      const more = res.count > 1 ? `<div class="mp-cand">+${res.count - 1} poligon lain di titik ini</div>` : '';
+      return `<div class="mp-zone-col"><div class="mp-cand">${title}</div>${more}<div class="mp-fields">${rows}</div></div>`;
+    };
+    const lsdSection = propsPane('Lahan Sawah Dilindungi (LSD)', 'lsd',
+      [['lsd', 'Status'], ['fungsikws', 'Fungsi'], ['luasha', 'Luas (ha)'],
+       ['wadmpr', 'Provinsi'], ['wadmkk', 'Kab/Kota']]);
+    const hutanSection = propsPane('Kawasan Hutan', 'hutan',
+      [['fungsi_kaw', 'Fungsi Kawasan'], ['kodefungsi', 'Kode Fungsi'],
+       ['wadmpr', 'Provinsi'], ['wadmkk', 'Kab/Kota']]);
 
     // ── Tab Bidang Tanah (25 Okt 2026) ──────────────────────────────
     // Hasil getPersil dari BhumiIdentify; format barisnya mengikuti kartu
@@ -905,11 +1029,11 @@ const AtrbpnLayers = {
 
     // GetFeatureInfo/WFS kawasan hutan memang tidak tersedia (semua rute 404),
     // tetapi LAYER-NYA hidup — hanya sampai skala nasional (z≤5, lihat keterangan
-    // maxNativeZoom di atas). Catatan di bawah karena itu menjelaskan keterbatasan
-    // ini, bukan "server mati" yang sudah tidak akurat.
+    // maxNativeZoom di atas) — dan atributnya KINI terbaca lewat tab "Hutan"
+    // (getPersil, lihat propsPane di atas). Catatan di bawah hanya soal zoom.
     const dead = active.filter(k => k === 'hutan');
     const notes = dead.length
-      ? '<div class="mp-coord">⚠ Kawasan Hutan: gambar tersedia sampai skala nasional — saat diperbesar otomatis diperbesar (buram); atributnya tidak bisa dibaca saat klik.</div>'
+      ? '<div class="mp-coord">⚠ Kawasan Hutan: gambar tersedia sampai skala nasional — saat diperbesar otomatis diperbesar (buram); atributnya ada di tab "Hutan".</div>'
       : '';
 
     const header = `
@@ -925,6 +1049,8 @@ const AtrbpnLayers = {
       { id: 'bidang', label: 'Bidang', title: 'Bidang Tanah (SHM: NIB & luas)', content: bidangPane() },
       { id: 'rtrp', label: 'RTRW Pro', title: 'RTRW Provinsi', content: provSection || `<div class="mp-zone-col"><div class="mp-cand">RTRW Provinsi</div><div class="mp-zone-note">Layer RTRW Provinsi belum aktif.</div></div>` },
       { id: 'rtrw', label: 'RTRW Kab', title: 'RTRW Kab/Kota', content: kabSection || `<div class="mp-zone-col"><div class="mp-cand">RTRW Kab/Kota</div><div class="mp-zone-note">Layer RTRW Kab/Kota belum aktif.</div></div>` },
+      { id: 'lsd', label: 'LSD', title: 'Lahan Sawah Dilindungi', content: lsdSection },
+      { id: 'hutan', label: 'Hutan', title: 'Kawasan Hutan', content: hutanSection },
     ];
     const activeTab = tabDefs.find(tab => active.includes(tab.id))?.id || 'rtrw';
     const tabButtons = tabDefs.map(tab => `<button type="button" class="mp-tab${tab.id === activeTab ? ' active' : ''}" data-mp-tab="${tab.id}" role="tab" aria-selected="${tab.id === activeTab}" title="${tab.title}">${tab.label}</button>`).join('');
