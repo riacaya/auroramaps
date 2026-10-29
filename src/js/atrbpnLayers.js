@@ -542,14 +542,12 @@ const AtrbpnLayers = {
       const canId = typeof BhumiIdentify !== 'undefined' && BhumiIdentify._clickIdentifyEnabled;
       state0.bidang = canId ? { pending: true } : { error: 'modul identifikasi belum termuat' };
     }
-    // Info zona MENGIKUTI layer ATRBPN yang dicentang (14 Okt 2026):
-    //   ☑ RTR Provinsi (slot provinsi) → kolom provinsi saja (GFI GISTARU);
-    //   ☑ RTRW Kab/Kota        → kolom kab/kota saja (GFI bhumi dulu);
-    //   ☑ keduanya             → dua kolom berdampingan;
-    //   tanpa keduanya (mis. hanya LSD/SHGU) → popup tanpa kolom zona,
-    //   dan GFI zona TIDAK dipanggil sama sekali (hemat: rantai gistaru
-    //   yang 15+15 dtk saat server tak terjangkau jadi tidak dijalankan).
-    const want = { prov: active.includes('rtrp'), kab: active.includes('rtrw') };
+    // Info zona RTRW SELALU dibaca — seperti tab Analisa (keputusan 29 Okt
+    // 2026): tanpa perlu mencentang layer di panel ATRBPN. Centang RTRW
+    // Pro/Kab kini hanya mengatur tampilan layer TILE, bukan akses data
+    // popup: provinsi lewat GFI GISTARU langsung (tanpa sidecar), kab/kota
+    // lewat rantai persil GISTARU → WMS bhumi → GFI GISTARU.
+    const want = { prov: true, kab: true };
     const seq = (this._clickSeq = (this._clickSeq || 0) + 1);
     // Klik baru = kartu baru → lupakan pilihan tab klik sebelumnya, supaya
     // kembali ke tab default (layer ATR/BPN aktif teratas, mis. Bidang).
@@ -626,7 +624,9 @@ const AtrbpnLayers = {
   // Mengembalikan settle(key, res): update state lalu susun ulang popup —
   // guard seq mencegah hasil lama menimpa klik yang lebih baru.
   _refreshZones(active, state, lat, lng, seq) {
-    const want = { prov: active.includes('rtrp'), kab: active.includes('rtrw') };
+    // Zona RTRW selalu dibaca (tanpa syarat centang) — lihat catatan di
+    // pemanggil; centang hanya mengatur tile.
+    const want = { prov: true, kab: true };
     const settle = (key, res) => {
       state[key] = res || { rows: [], count: 0, error: 'gagal' };
       // Buang hasil lama HANYA bila kartu pending sudah tidak tampil / sudah
@@ -666,8 +666,8 @@ const AtrbpnLayers = {
       count: (features || []).length
     };
     const state = { bidang };
-    if (active.includes('rtrp')) state.prov = { pending: true };
-    if (active.includes('rtrw')) state.kab = { pending: true };
+    state.prov = { pending: true };
+    state.kab = { pending: true };
     const adaAnalisa = this._analisaAvailable();
     if (adaAnalisa) state.analisa = { pending: true };
     const seq = (this._clickSeq = (this._clickSeq || 0) + 1);
@@ -990,23 +990,21 @@ const AtrbpnLayers = {
       return `<div class="mp-zone-col"><div class="mp-cand">${title}</div><div class="mp-fields">${rows}${more}</div></div>`;
     };
 
-    // Kolom zona hanya untuk layer ATRBPN yang DICENTANG (14 Okt 2026):
-    // centang RTRW → kolom kab/kota; centang RTR Provinsi → kolom provinsi;
-    // keduanya → dua kolom; tanpa keduanya → popup tanpa kolom zona.
-    // (Field provinsi diverifikasi via GFI JSON zonaprokab.har 22 Okt 2026:
-    // namobj/wadmpr/nothpr/meta terisi, sedangkan wadmkk/wadmkc kosong di
-    // level provinsi → tidak ikut dirender. WMS bhumi kabkot_merge hanya isi namobj
-    // (dari keterangan) — kolom lain kosong → tak dirender.)
-    const wantProv = active.includes('rtrp');
-    const wantKab = active.includes('rtrw');
-    const provSection = wantProv ? section('RTRW Provinsi',
+    // Kolom zona RTRW SELALU tampil seperti tab Analisa (keputusan 29 Okt
+    // 2026) — tidak lagi bergantung pada centang layer di panel ATRBPN;
+    // centang hanya mengatur tampilan tile. Data provinsi diverifikasi via
+    // GFI JSON zonaprokab.har 22 Okt 2026: namobj/wadmpr/nothpr/meta terisi,
+    // sedangkan wadmkk/wadmkc kosong di level provinsi → tidak ikut
+    // dirender. WMS bhumi kabkot_merge hanya isi namobj → kolom lain
+    // kosong → tak dirender.
+    const provSection = section('RTRW Provinsi',
       zoneRes && (zoneRes.pending ? zoneRes : zoneRes.prov),
       [['namobj', 'Jenis Kawasan'], ['wadmpr', 'Provinsi'], ['wadmkk', 'Kab/Kota'],
-       ['wadmkc', 'Kecamatan'], ['nothpr', 'Dasar Perda'], ['meta', 'Wilayah']]) : '';
-    const kabSection = wantKab ? section('RTRW Kab/Kota',
+       ['wadmkc', 'Kecamatan'], ['nothpr', 'Dasar Perda'], ['meta', 'Wilayah']]);
+    const kabSection = section('RTRW Kab/Kota',
       zoneRes && (zoneRes.pending ? zoneRes : zoneRes.kab),
       [['namobj', 'Jenis Kawasan'], ['jnsrpr', 'Kategori'], ['wadmpr', 'Provinsi'],
-       ['wadmkk', 'Kab/Kota'], ['wadmkc', 'Kecamatan'], ['nothpr', 'Dasar Perda'], ['meta', 'Wilayah']]) : '';
+       ['wadmkk', 'Kab/Kota'], ['wadmkc', 'Kecamatan'], ['nothpr', 'Dasar Perda'], ['meta', 'Wilayah']]);
     // Tab LSD & KP2B DIHAPUS dari popup (kesepakatan 25 Okt 2026, ditegaskan
     // lagi 28 Okt): keduanya visual-only — KP2B berasal dari TMS gisliner
     // '235_kp2b' yang tidak punya antarmuka query sama sekali. Rekaman HAR
