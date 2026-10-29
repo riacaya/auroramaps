@@ -328,17 +328,32 @@ const callSidecar = (method, arg, timeoutMs) =>
 
 // ── HTTP server (loopback only + CORS untuk origin localhost) ───────────────
 const isLoopback = (addr) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(addr);
+// ── Origin yang boleh memakai sidecar selain localhost ─────────────────────
+// 29 Okt 2026: halaman GitHub Pages (https://riacaya.github.io) kini DIIZINKAN
+// supaya versi hosting bisa cek bidang/zona/analisa dari PC yang sidecar-nya
+// sedang berjalan — sebelumnya CORS hanya menerima localhost sehingga probe
+// dari github.io selalu gagal dan fitur CTA mati.
+// Risiko: semua halaman di origin itu (repo milik akun yang sama) bisa
+// menggerakkan sidecar — hanya repo sendiri, jadi diterima; JANGAN menambah
+// origin pihak ketiga. Header Access-Control-Allow-Private-Network dibutuhkan
+// Chrome (Private Network Access): fetch https → 127.0.0.1 wajib preflight
+// ini sebelum request diizinkan.
+const ALLOWED_ORIGINS = ['https://riacaya.github.io'];
 function corsHeaders(req) {
   const o = req.headers.origin || '';
-  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o)) {
-    return {
-      'Access-Control-Allow-Origin': o,
-      'Vary': 'Origin',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'content-type'
-    };
+  const oke = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o) || ALLOWED_ORIGINS.includes(o);
+  if (!oke) return {};
+  const h = {
+    'Access-Control-Allow-Origin': o,
+    'Vary': 'Origin',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'content-type'
+  };
+  // Preflight PNA Chrome (permintaan dari origin publik ke loopback).
+  if (req.headers['access-control-request-private-network']) {
+    h['Access-Control-Allow-Private-Network'] = 'true';
   }
-  return {};
+  return h;
 }
 const json = (res, code, obj) => {
   res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders(res.req) });

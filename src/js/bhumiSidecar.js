@@ -11,9 +11,13 @@
 // tidak ada, ketiganya jatuh kembali ke jalur proxy lama tanpa
 // perubahan perilaku.
 //
-// Kenapa loopback: CORS server hanya mengabulkan origin localhost/127.0.0.1,
-// jadi dari https://riacaya.github.io deteksi otomatis gagal → mode hosting
-// tetap memakai jalur proxy cloud (tanpa sidecar lokal).
+// Kenapa loopback: CORS sisi server. Sejak 29 Okt 2026 sidecar PC MENGIZINKAN
+// origin https://riacaya.github.io (lihat ALLOWED_ORIGINS di sidecar-host.mjs)
+// beserta header Access-Control-Allow-Private-Network untuk preflight PNA
+// Chrome — jadi versi GitHub Pages kini ikut memakai sidecar lokal di PC yang
+// menjalankannya (teruji live: klik bidang → NIB/luas tampil dari github.io).
+// Di PC TANPA sidecar (atau sidecar versi lama), probe tetap gagal → mode
+// hosting jatuh kembali ke jalur proxy cloud tanpa perubahan perilaku.
 const AuroraBhumiSidecarClient = {
   BASE: 'http://127.0.0.1:8322',
   _ok: null,          // null = belum dicek, true = sidecar hidup, false = tidak ada
