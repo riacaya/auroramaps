@@ -1995,7 +1995,8 @@ input[type="range"]:focus-visible { outline: none; }
   .mh-btn svg                         { width: 18px; height: 18px; }
   #btn-bhumi-globe                    { width: 34px; height: 34px; }
   #btn-bhumi-globe svg                { width: 18px; height: 18px; }
-  .mh-btn                             { color: var(--accent) !important; }
+  /* Ikon header mobile diseragamkan dengan tampilan PC (putih 92%) —
+     sebelumnya memakai var(--accent) yang gelap di atas header oranye. */
   .mh-btn-danger                      { color: var(--danger) !important; }
   .mb-btn                             { color: var(--accent) !important; }
   .mb-btn.danger                      { color: var(--danger) !important; }
