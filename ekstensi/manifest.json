@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AuroraMaps BHUMI Bridge",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Menghubungkan AuroraMaps (GitHub Pages & Blogger) ke halaman pendamping BHUMI supaya cek bidang, zona RTRW, dan Analisa jalan normal di komputer mana pun — tanpa memasang aplikasi PC.",
   "permissions": ["tabs", "alarms", "storage"],
   "host_permissions": [

@@ -421,6 +421,26 @@
   };
   // Pemeriksaan ringan tiap 2 dtk (querySelector saja — tanpa jaringan).
   setInterval(() => { try { clickAgree(); } catch (_) { /* abaikan */ } }, 2000);
+  // Pengamat DOM: event-driven, jadi TIDAK kena throttling timer pada jendela
+  // tersembunyi/minimize (Chromium memperlambat interval sampai 60 dtk di
+  // latar belakang) — tombol disclaimer muncul → langsung diklik tanpa
+  // menunggu interval berikutnya. Debounce 150 ms supaya lambang peta yang
+  // banyak berubah tidak memicu querySelectorAll berlebihan.
+  try {
+    let antri = false;
+    const obFire = () => {
+      if (antri) return;
+      antri = true;
+      setTimeout(() => { antri = false; try { clickAgree(); } catch (_) { /* abaikan */ } }, 150);
+    };
+    const mulai = () => {
+      if (!document.body) { setTimeout(mulai, 500); return; }
+      new MutationObserver(obFire).observe(document.body, {
+        childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class']
+      });
+    };
+    mulai();
+  } catch (_) { /* abaikan */ }
   clickAgree();
 
   // Pemulihan sesi berlapis:

@@ -43,20 +43,58 @@ async function openWindow(minimized) {
   return w;
 }
 
-// Pastikan ada tab BHUMI yang siap menerima pesan → kembalikan tabId.
+// Ping tab; null bila tak menjawab dalam batas waktu.
+function pingTab(tabId, timeoutMs = 8000) {
+  return new Promise((resolve) => {
+    let done = false;
+    const fin = (v) => { if (!done) { done = true; resolve(v); } };
+    const timer = setTimeout(() => fin(null), timeoutMs);
+    try {
+      chrome.tabs.sendMessage(tabId, { kind: 'ping' }, (res) => {
+        clearTimeout(timer);
+        fin(chrome.runtime.lastError || !res ? null : res);
+      });
+    } catch (e) { clearTimeout(timer); fin(null); }
+  });
+}
+
+// Tunggu sampai inject + adapter di tab benar-benar menjawab ping.
+async function waitReady(tabId, tries = 40) {
+  for (let i = 0; i < tries; i++) {
+    if (await pingTab(tabId, 2000)) return true;
+    await sleep(500);
+  }
+  return false;
+}
+
+// Pastikan ada tab BHUMI yang SIAP menerima pesan → kembalikan tabId.
+// "Siap" berarti ping dijawab (sidecar-inject hidup) — tanpa ini panggilan
+// pertama setelah tab baru dibuka kena race dan gagal, yang dulu memaksa
+// user memuat ulang halaman (keluhan "kadang bisa kadang tidak").
 async function ensureTab(force) {
   let t = await findBhumiTab();
-  if (t && !force) return t.id;
   if (force && t) {
     try { await chrome.tabs.remove(t.id); } catch (e) { /* sudah hilang */ }
+    t = null;
+  }
+  if (t) {
+    if (await pingTab(t.id)) return t.id;
+    // Setengah mati (discarded/dibekukan) → muat ulang dulu, buang jendelanya
+    // hanya bila tetap tidak siap.
+    try { await chrome.tabs.reload(t.id); } catch (e) { /* abaikan */ }
+    if (await waitReady(t.id)) return t.id;
+    try { await chrome.tabs.remove(t.id); } catch (e) { /* abaikan */ }
   }
   const w = await openWindow(await everLoggedIn());
   for (let i = 0; i < 24; i++) {
     await sleep(250);
     const nt = await findBhumiTab();
-    if (nt) return nt.id;
+    if (nt) {
+      if (await waitReady(nt.id)) return nt.id;
+      break;
+    }
   }
-  throw new Error('Jendela pendamping BHUMI tidak bisa dibuka.');
+  throw new Error('Jendela pendamping BHUMI tidak bisa dibuka/disiapkan.');
 }
 
 // Kirim ke tab BHUMI; balasan {ok,data|error} — null bila tab tak menjawab.
@@ -125,21 +163,16 @@ async function keepalive() {
     if (await everLoggedIn()) { try { await openWindow(true); } catch (e) { /* abaikan */ } }
     return;
   }
-  const pong = await new Promise((resolve) => {
-    let done = false;
-    const fin = (v) => { if (!done) { done = true; resolve(v); } };
-    const timer = setTimeout(() => fin(null), 10000);
-    try {
-      chrome.tabs.sendMessage(t.id, { kind: 'ping' }, (res) => {
-        clearTimeout(timer);
-        fin(chrome.runtime.lastError || !res ? null : res);
-      });
-    } catch (e) { clearTimeout(timer); fin(null); }
-  });
+  const pong = await pingTab(t.id);
   if (!pong) {
     // Tab ada tapi tidak menjawab (discarded/half-dead) → muat ulang;
-    // kalau hilang sama sekali, pengulangan alarm berikutnya membukanya lagi.
-    try { await chrome.tabs.reload(t.id); } catch (e) { /* abaikan */ }
+    // kalau reload gagal (tab sudah hilang), buka lagi sekarang juga jangan
+    // menunggu alarm berikutnya.
+    try {
+      await chrome.tabs.reload(t.id);
+    } catch (e) {
+      if (await everLoggedIn()) { try { await openWindow(true); } catch (e2) { /* abaikan */ } }
+    }
     return;
   }
   if (pong.data && pong.data.loggedIn) await afterStatus(pong.data);
@@ -148,7 +181,9 @@ async function keepalive() {
 chrome.alarms.onAlarm.addListener((a) => { if (a.name === ALARM) keepalive(); });
 
 function setupAlarm() {
-  chrome.alarms.create(ALARM, { periodInMinutes: 1, delayInMinutes: 1 });
+  // 30 dtk di Chrome/Edge baru (minimum MV3 sejak Chrome 120); browser lama
+  // otomatis membulatkan ke 1 menit — tetap aman.
+  chrome.alarms.create(ALARM, { periodInMinutes: 0.5, delayInMinutes: 1 });
 }
 chrome.runtime.onInstalled.addListener(setupAlarm);
 chrome.runtime.onStartup.addListener(setupAlarm);

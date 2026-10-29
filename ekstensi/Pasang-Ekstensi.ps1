@@ -79,7 +79,11 @@ $profil  = Join-Path $tujuan 'profil'
 $ws  = New-Object -ComObject WScript.Shell
 $lnk = $ws.CreateShortcut($lnkPath)
 $lnk.TargetPath   = $browser
-$lnk.Arguments    = '--user-data-dir="{0}" --load-extension="{1}" --disable-features=DisableLoadExtensionCommandLineSwitch --no-first-run --no-default-browser-check --start-maximized "{2}"' -f $profil, $ext, $Alamat
+# Argumen anti-throttle: jendela pendamping BHUMI berjalan minimize — tanpa
+# flag ini Chromium memperlambat timer jendela tersembunyi (interval 2 dtk →
+# 60 dtk) sehingga tombol "Saya Setuju" telat diklik dan user terpaksa
+# membuka tab BHUMI secara manual.
+$lnk.Arguments    = '--user-data-dir="{0}" --load-extension="{1}" --disable-features=DisableLoadExtensionCommandLineSwitch --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --no-first-run --no-default-browser-check --start-maximized "{2}"' -f $profil, $ext, $Alamat
 $lnk.WorkingDirectory = $tujuan
 $lnk.Description  = 'AuroraMaps - Peta Interaktif BHUMI ATR/BPN'
 $ico = $icoInstal
@@ -151,7 +155,7 @@ function Set-DeveloperModeOtomatis {
     # Port debug hanya bisa dipasang saat browser start → pastikan profil tertutup
     Stop-ProfilProses
     Start-Sleep -Seconds 2
-    $argList = '--user-data-dir="{0}" --load-extension="{1}" --disable-features=DisableLoadExtensionCommandLineSwitch --no-first-run --no-default-browser-check --remote-debugging-port={2} "{3}"' -f $profil, $ext, $Port, $Alamat
+    $argList = '--user-data-dir="{0}" --load-extension="{1}" --disable-features=DisableLoadExtensionCommandLineSwitch --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --no-first-run --no-default-browser-check --remote-debugging-port={2} "{3}"' -f $profil, $ext, $Port, $Alamat
     Start-Process $browser -ArgumentList $argList
     # Tunggu port CDP siap (profil baru butuh waktu membuat profil)
     $siap = $false

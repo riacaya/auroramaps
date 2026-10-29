@@ -13,7 +13,7 @@
   // Penanda "ekstensi aktif" untuk halaman — dibaca app.js (initTombolEkstensi)
   // untuk menyembunyikan tombol "Pasang ekstensi" di header bila semuanya sehat,
   // dan menampilkannya kembali bila ekstensi tidak ada/rusak.
-  window.__AuroraMapsEkstensi = { pasang: true, versi: '1.1.0' };
+  window.__AuroraMapsEkstensi = { pasang: true, versi: '1.2.0' };
 
   const IN = '__amAppCall';
   const OUT = '__amAppReply';
@@ -30,6 +30,29 @@
     clearTimeout(p.timer);
     p.resolve(d);
   });
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // ── Pemulihan otomatis ─────────────────────────────────────────────────
+  // Masalah lama: begitu SATU panggilan bridge gagal, sidecar ditandai mati
+  // dan TIDAK PERNAH pulih sampai user memuat ulang halaman GitHub (keluhan
+  // "harus refresh github"). Kini kegagalan menjadwalkan probe ulang tiap
+  // 5 dtk (maks 5 menit) sehingga halaman sembuh sendiri tanpa refresh.
+  let recTimer = null;
+  function scheduleRecovery() {
+    if (recTimer) return;
+    let n = 0;
+    recTimer = setInterval(() => {
+      n++;
+      const self = window.AuroraBhumiSidecarClient;
+      if (!self || !self.__amExtPatched || n > 60) {
+        clearInterval(recTimer); recTimer = null; return;
+      }
+      Promise.resolve(self._probe())
+        .then((ok) => { if (ok) { clearInterval(recTimer); recTimer = null; } })
+        .catch(() => { /* coba lagi pada interval berikutnya */ });
+    }, 5000);
+  }
 
   // Panggil lewat bridge; timeout → err.__bridge (artinya: ekstensi tak ada).
   function call(path, payload, timeoutMs) {
@@ -70,10 +93,20 @@
       const self = this;
       return call(path, payload, timeoutMs).catch((e) => {
         if (e && e.__bridge) {
-          // Ekstensi tidak ada/pasif → tiru perilaku fetch gagal pada klien
-          // asli: matikan mode sidecar + pesan yang bisa ditindaklanjuti.
+          // Bridge gagal → matikan mode sidecar sementara, jadwalkan
+          // pemulihan otomatis, lalu COBA ULANG sekali setelah jeda pendek.
+          // Penyebab tersering: tab BHUMI sedang dimuat ulang oleh keepalive
+          // sehingga balasan terlambat — dengan retry ini user tidak perlu
+          // memuat ulang halaman GitHub hanya karena satu panggilan gagal.
           self._set(false);
-          throw new Error(PESAN_TANPA_EKSTENSI);
+          scheduleRecovery();
+          return sleep(4000)
+            .then(() => call(path, payload, timeoutMs))
+            .then((v) => { self._set(true); return v; })
+            .catch((e2) => {
+              scheduleRecovery();
+              throw (e2 && e2.__bridge) ? new Error(PESAN_TANPA_EKSTENSI) : e2;
+            });
         }
         // Galat dari sisi sidecar (setara HTTP 502 pada jalur PC): teruskan
         // apa adanya TANPA mematikan mode sidecar — sama seperti klien asli.
@@ -91,8 +124,10 @@
         try {
           const data = await call('/status', {}, 6000);
           self._set(!!(data && data.sidecar));
+          if (!(data && data.sidecar)) scheduleRecovery();
         } catch (e) {
           self._set(false);
+          scheduleRecovery();
         } finally {
           self._probeP = null;
         }
