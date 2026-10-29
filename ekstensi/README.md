@@ -56,6 +56,10 @@ Analisa, pencarian, tile) berfungsi penuh.
 1. Buka `chrome://extensions` (Edge: `edge://extensions`).
 2. Aktifkan **Developer mode** (sakelar kanan atas).
 3. Klik **Load unpacked** → pilih folder ini.
+
+> Tanpa paket zip? Cukup jalankan `Pasang-Ekstensi.bat` yang didownload dari
+> aplikasi: komponen ikut tersimpan di `%USERPROFILE%\Downloads\AuroraMaps-BHUMI-Bridge`
+> — folder itulah yang dipilih pada **Load unpacked**.
 4. Buka `https://riacaya.github.io/auroramaps/`, login BHUMI sekali di
    jendela pendamping, jendela itu akan minimize sendiri.
 

@@ -53,7 +53,7 @@ function initTombolEkstensi() {
   const cek = () => {
     if (!window.__AuroraMapsEkstensi) {
       btn.hidden = false;
-      btn.title = 'Pasang ekstensi AuroraMaps — klik untuk unduh Pasang-Ekstensi.bat, lalu dobel-klik file itu di folder Download';
+      btn.title = 'Pasang ekstensi AuroraMaps — klik untuk unduh Pasang-Ekstensi.bat, lalu dobel-klik file itu di folder Download. Folder AuroraMaps-BHUMI-Bridge di Download = untuk pemasangan manual (chrome://extensions → Load unpacked).';
       return;
     }
     let st = null;
@@ -63,7 +63,7 @@ function initTombolEkstensi() {
     // null = probe belum selesai → tunggu; false = bridge mati → tampilkan;
     // true = sehat → sembunyikan.
     btn.hidden = st !== false;
-    if (st === false) btn.title = 'Ekstensi terpasang tapi tidak berfungsi — klik untuk unduh ulang Pasang-Ekstensi.bat & pasang lagi';
+    if (st === false) btn.title = 'Ekstensi terpasang tapi tidak berfungsi — klik untuk unduh ulang Pasang-Ekstensi.bat & pasang lagi (atau Load unpacked folder AuroraMaps-BHUMI-Bridge di Download)';
   };
   cek();
   // Tinjau ulang tiap 20 dtk: probe sidecar/bridge pertama bisa selesai belakangan.

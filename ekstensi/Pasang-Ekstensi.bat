@@ -14,10 +14,14 @@ rem -- Paket lokal lengkap (hasil ekstrak zip)? Pakai apa adanya, offline. --
 if exist "%~dp0manifest.json" if exist "%PS1PATH%" goto :jalankan
 
 rem -- Selain itu (file .bat didownload sendiri) = ambil komponen dari GitHub --
-set "KERJA=%LOCALAPPDATA%\AuroraMapsBHUMI\unduhan"
+rem Tujuan: folder TERLIHAT di folder Download pengguna (bukan AppData
+rem yang tersembunyi) supaya folder ini mudah ditemukan untuk pemasangan
+rem MANUAL di chrome://extensions (Load unpacked) kapan pun diperlukan.
+set "KERJA=%USERPROFILE%\Downloads\AuroraMaps-BHUMI-Bridge"
 if not exist "%KERJA%" mkdir "%KERJA%"
 set "PS1PATH=%KERJA%\Pasang-Ekstensi.ps1"
-echo Mengunduh komponen pemasang dari GitHub...
+echo Mengunduh komponen pemasang dari GitHub ke:
+echo   %KERJA%
 for %%F in (Pasang-Ekstensi.ps1 manifest.json background.js sidecar-inject.js bhumi-main-adapter.js bhumi-page.js page-shim.js app-bridge.js auroramaps.ico) do (
   call :unduh "%%F"
   if errorlevel 1 goto :gagal
@@ -33,11 +37,13 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
-rem -- Mode unduh: buang folder staging --
-rem Tinggal %LOCALAPPDATA%\AuroraMapsBHUMI\ekstensi (7 file yang dibuka
-rem browser), persis seperti folder ekstensi/ di GitHub. Folder unduhan
-rem hanya jembatan sementara, tidak perlu disimpan.
-if defined KERJA rmdir /s /q "%KERJA%" >nul 2>&1
+rem -- Mode unduh: folder Download TETAP disimpan --
+rem %USERPROFILE%\Downloads\AuroraMaps-BHUMI-Bridge berisi 9 berkas =
+rem kebalikan folder ekstensi/ di GitHub. Selain sebagai bahan instalasi,
+rem folder ini dipakai bila pengguna memasang manual: chrome://extensions
+rem -> Load unpacked -> pilih folder itu. Folder instalasi browser tetap
+rem %LOCALAPPDATA%\AuroraMapsBHUMI\ekstensi (salinan yang dibuka pintasan).
+if defined KERJA echo Berkas tersimpan juga di: %KERJA%
 echo.
 pause
 exit /b 0

@@ -27,6 +27,14 @@ Bridge** sekali di tiap komputer:
 3. Login BHUMI **sekali** di jendela yang terbuka; jendela itu minimize
    sendiri, sesi dijaga otomatis.
 
+**Folder & pemasangan manual.** Berkas hasil unduh tetap tersimpan di
+`Downloads\AuroraMaps-BHUMI-Bridge` (9 berkas, sama seperti folder `ekstensi/`
+di repo ini). Bila suatu saat perlu memasang sendiri di Chrome/Edge:
+buka `chrome://extensions` → aktifkan **Developer mode** → **Load unpacked**
+→ pilih folder `AuroraMaps-BHUMI-Bridge` itu. Ekstensi yang dibuka pintasan
+AuroraMaps sendiri berada di `%LOCALAPPDATA%\AuroraMapsBHUMI\ekstensi`
+(salinan otomatis dari folder Download tersebut).
+
 Setelah itu cukup klik pintasan AuroraMaps. Ekstensi menjalankan mesin API
 yang sama dengan versi PC (auth-ticket ECDH, whitelist tile, klik
 "Saya Setuju", refresh token, analisa) di dalam jendela BHUMI yang dikelola
