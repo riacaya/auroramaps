@@ -339,6 +339,26 @@ const isLoopback = (addr) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(a
 // Chrome (Private Network Access): fetch https → 127.0.0.1 wajib preflight
 // ini sebelum request diizinkan.
 const ALLOWED_ORIGINS = ['https://riacaya.github.io'];
+// Dapat ditambah TANPA mengubah kode: buat berkas sidecar-origins.json di
+// folder ini (berisi array string, mis. ["https://namablog.blogspot.com"])
+// lalu restart sidecar. Dipakai untuk halaman Blogger/domain sendiri yang
+// host-nya bukan github.io — sisipkan origin persis (skema + host, tanpa
+// path). Berkas rusak/tidak ada → abaikan, tetap pakai daftar default.
+try {
+  const file = path.join(__dirname, 'sidecar-origins.json');
+  if (fs.existsSync(file)) {
+    const extra = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (Array.isArray(extra)) {
+      for (const o of extra) {
+        const v = String(o || '').trim().replace(/\/+$/, '');
+        if (/^https?:\/\//.test(v) && !ALLOWED_ORIGINS.includes(v)) ALLOWED_ORIGINS.push(v);
+      }
+    }
+    log('Origin tambahan dari sidecar-origins.json:', ALLOWED_ORIGINS.slice(1).join(', ') || '(tidak ada)');
+  }
+} catch (e) {
+  log('sidecar-origins.json tidak terbaca (' + e.message + ') — memakai daftar default.');
+}
 function corsHeaders(req) {
   const o = req.headers.origin || '';
   const oke = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o) || ALLOWED_ORIGINS.includes(o);

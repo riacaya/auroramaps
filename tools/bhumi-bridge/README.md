@@ -125,4 +125,27 @@ Login cukup SEKALI di jendela pendamping (`jalankan-sidecar.bat --show` atau
 `jalankan-auroramaps.bat login`); sesi tersimpan di profil
 `.chrome-bhumi-profile`. Setelah itu seluruh refresh sesi berjalan otomatis di
 latar belakang (lihat bagian "Sesi & token" di atas). Uji bridge tidak
-memintas login, CAPTCHA, atau pemeriksaan akses BHUMI.
+memintas login, CAPTCHA, atau pemeriksaan akses BHUMI.
+
+## Origin yang boleh memakai sidecar (CORS + PNA)
+
+Sidecar hanya menjawab permintaan lintas-origin dari dua tempat:
+
+1. `localhost` / `127.0.0.1` — app PC (AuroraMaps.exe) dan APK;
+2. `https://riacaya.github.io` — versi GitHub Pages (sejak 29 Okt 2026,
+   termasuk header `Access-Control-Allow-Private-Network` untuk preflight
+   Private Network Access Chrome yang wajib untuk `https → 127.0.0.1`).
+
+Untuk halaman di **domain lain** (mis. Blogger: `namablog.blogspot.com`
+atau domain sendiri), tambahkan origin-nya ke berkas
+`sidecar-origins.json` di folder yang sama:
+
+```json
+["https://riacaya.github.io", "https://namablog.blogspot.com"]
+```
+
+Lalu restart sidecar. Tulis origin persis — skema + host saja, tanpa path
+(`https://namablog.blogspot.com`, bukan `.../p/auroramaps.html`). Origin yang
+sama sekali asing tetap ditolak CORS, dan tanpa sidecar yang berjalan
+halaman blog tetap memakai jalur proxy cloud lama (cek bidang butuh sidecar
+— syarat dari sisi ATR/BPN, bukan dari aplikasi).
