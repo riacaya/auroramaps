@@ -1,3 +1,10 @@
+/* ===== ATRIBUT hidden HARUS SELALU MENANG =====
+   Aturan display buatan penulis (mis. .btn-icon { display:flex }) menimpa
+   aturan bawaan peramban [hidden] { display:none }, sehingga elemen beratribut
+   hidden tetap tampil (kasus: ikon globe BHUMI yang muncul di semua browser
+   walau hanya untuk APK). Dengan !important, atribut hidden kembali andal. */
+[hidden] { display: none !important; }
+
 /* ===== CSS VARIABLES / THEMES ===== */
 :root {
   /* Tema Night — identik dengan tema "Night" app Cek-KTP (D:\KTP) */
