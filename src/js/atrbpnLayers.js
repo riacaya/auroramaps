@@ -1126,14 +1126,9 @@ const AtrbpnLayers = {
       return isi ? wrap(isi) : note('Tidak ada data analisa di titik ini.');
     };
 
-    // GetFeatureInfo/WFS kawasan hutan memang tidak tersedia (semua rute 404),
-    // tetapi LAYER-NYA hidup — hanya sampai skala nasional (z≤5, lihat keterangan
-    // maxNativeZoom di atas). Catatan di bawah karena itu menjelaskan keterbatasan
-    // ini, bukan "server mati" yang sudah tidak akurat.
-    const dead = active.filter(k => k === 'hutan');
-    const notes = dead.length
-      ? '<div class="mp-coord">⚠ Kawasan Hutan: gambar tersedia sampai skala nasional — saat diperbesar otomatis diperbesar (buram); atributnya tidak bisa dibaca saat klik.</div>'
-      : '';
+    // (29 Okt 2026) Catatan "Kawasan Hutan buram / atribut tak terbaca" DIHAPUS
+    // dari popup beserta pemicunya — layer hutan tetap bisa dicentang dan
+    // digambar, hanya tanpa pesan peringatan di kartu.
 
     const header = `
       <div class="mp-header">
@@ -1158,7 +1153,6 @@ const AtrbpnLayers = {
     return `
       ${header}
       ${zones}
-      ${notes}
       <div class="mp-coord">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
     `;
   },
