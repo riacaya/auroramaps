@@ -1132,9 +1132,23 @@ const AtrbpnLayers = {
 
     const header = `
       <div class="mp-header">
-        <span class="mp-title">🧭 ATRBPN</span>
+        <span class="mp-headleft">
+          <span class="mp-title">🧭 ATRBPN</span>
+          <span class="mp-savewrap">
+            <button class="mp-save" type="button" title="Simpan data popup" onclick="AtrbpnLayers.toggleSaveMenu()">💾</button>
+            <div class="mp-savemenu" id="mp-savemenu" hidden>
+              <button type="button" onclick="AtrbpnLayers.exportPopup('txt')">📄 Simpan .txt</button>
+              <button type="button" onclick="AtrbpnLayers.exportPopup('csv')">📊 Simpan .csv (Excel)</button>
+            </div>
+          </span>
+        </span>
         <button class="mp-close" onclick="MapPopup.hide()" title="Tutup">✕</button>
       </div>`;
+
+    // ── Simpan data popup (.txt / .csv Excel) ────────────────────────
+    // Tombol 💾 di header (sebelah judul 🧭 ATRBPN) → menu di bawahnya.
+    // Konten diambil dari DOM popup yang sedang tampil (semua tab, termasuk
+    // yang tersembunyi), jadi ikut berubah otomatis bila tab/isi berubah.
 
     // Preview sebelum data benar-benar tampil: satu baris loading penuh
     // "Load ATRBPN……" (berkedip, lihat CSS .mp-loading) — dua kolom hanya
@@ -1155,6 +1169,117 @@ const AtrbpnLayers = {
       ${zones}
       <div class="mp-coord">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
     `;
+  },
+
+  // Buka/tutup menu simpan di bawah ikon 💾 (tutup otomatis saat popup
+  // disusun ulang karena elemennya dibuat ulang oleh MapPopup.show).
+  toggleSaveMenu() {
+    const m = document.getElementById('mp-savemenu');
+    if (m) m.hidden = !m.hidden;
+  },
+
+  // Kumpulkan isi popup → {coord, tabs:[{judul, bagian:[{seksi, baris:[[label,nilai]]}]}]}
+  // Dibaca dari DOM supaya mengikuti persis apa yang tampil di layar.
+  _popupData() {
+    const el = MapPopup._el;
+    if (!el) return null;
+    const coordNode = el.querySelector('.mp-coord');
+    const coord = coordNode ? coordNode.textContent.trim() : '';
+    const tabs = [];
+    el.querySelectorAll('[data-mp-pane]').forEach(pane => {
+      const id = pane.getAttribute('data-mp-pane');
+      const btn = el.querySelector(`[data-mp-tab="${id}"]`);
+      const judul = ((btn && btn.textContent) || id).trim();
+      const bagian = [];
+      let kini = null;
+      // Urutan DOM: judul seksi (.mp-cand) lalu baris (.mp-detail) / catatan.
+      pane.querySelectorAll('.mp-cand, .mp-detail, .mp-zone-note').forEach(n => {
+        if (n.classList.contains('mp-cand')) {
+          kini = { seksi: n.textContent.trim(), baris: [] };
+          bagian.push(kini);
+        } else if (n.classList.contains('mp-detail')) {
+          const l = n.querySelector('.mp-detail-label');
+          const v = n.querySelector('.mp-detail-value');
+          if (!kini) { kini = { seksi: '', baris: [] }; bagian.push(kini); }
+          kini.baris.push([(l ? l.textContent.trim() : ''), (v ? v.textContent.trim() : '')]);
+        } else {
+          const t = n.textContent.trim();
+          if (t) {
+            if (!kini) { kini = { seksi: '', baris: [] }; bagian.push(kini); }
+            kini.baris.push(['Catatan', t]);
+          }
+        }
+      });
+      tabs.push({ judul, bagian });
+    });
+    return { coord, tabs };
+  },
+
+  // Unduh berkas: Android memakai jembatan AndroidFileSaver (langsung ke
+  // folder Download + Toast), peramban memakai Blob + <a download>.
+  _unduh(nama, mime, teks) {
+    if (window.AndroidFileSaver && typeof AndroidFileSaver.saveFile === 'function') {
+      try {
+        const b64 = btoa(unescape(encodeURIComponent(teks)));
+        if (AndroidFileSaver.saveFile(nama, mime, b64)) return true;
+      } catch (e) { /* jatuh ke jalur blob di bawah */ }
+    }
+    try {
+      const url = URL.createObjectURL(new Blob([teks], { type: mime }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nama;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 4000);
+      return true;
+    } catch (e) { return false; }
+  },
+
+  // Simpan isi popup: fmt 'txt' (teks rapi) atau 'csv' (pemisah titik-koma
+  // + BOM UTF-8 → Excel Indonesia langsung membaca kolom dengan benar).
+  exportPopup(fmt) {
+    const menu = document.getElementById('mp-savemenu');
+    if (menu) menu.hidden = true;
+    const d = this._popupData();
+    if (!d || !d.tabs.length) {
+      if (typeof Toast !== 'undefined') Toast.show('Tidak ada data popup untuk disimpan', 'warn');
+      return;
+    }
+    const now = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    const stamp = `${now.getFullYear()}${p(now.getMonth() + 1)}${p(now.getDate())}-${p(now.getHours())}${p(now.getMinutes())}`;
+    const titik = (d.coord || 'tanpa-koordinat').replace(/[^0-9.-]+/g, '_').replace(/^_|_$/g, '');
+    let teks, nama, mime;
+    if (fmt === 'csv') {
+      const q = (s) => '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"';
+      const baris = ['Tab;Seksi;Label;Nilai'];
+      d.tabs.forEach(t => t.bagian.forEach(b => {
+        const isi = b.baris.length ? b.baris : [['', '']];
+        isi.forEach(([l, v]) => baris.push([q(t.judul), q(b.seksi), q(l), q(v)].join(';')));
+      }));
+      teks = '\uFEFF' + baris.join('\r\n');
+      nama = `auroramaps-${titik}-${stamp}.csv`;
+      mime = 'text/csv;charset=utf-8';
+    } else {
+      const L = ['AURORAMAPS — DATA ATRBPN',
+        'Titik : ' + d.coord,
+        'Waktu : ' + now.toLocaleString('id-ID')];
+      d.tabs.forEach(t => {
+        L.push('', '=== ' + t.judul + ' ===');
+        t.bagian.forEach(b => {
+          if (b.seksi) L.push('[' + b.seksi + ']');
+          b.baris.forEach(([l, v]) => L.push('  ' + (l ? l + ' : ' : '') + v));
+        });
+      });
+      teks = L.join('\r\n');
+      nama = `auroramaps-${titik}-${stamp}.txt`;
+      mime = 'text/plain;charset=utf-8';
+    }
+    const ok = this._unduh(nama, mime, teks);
+    if (typeof Toast !== 'undefined') {
+      Toast.show(ok ? 'Data disimpan: ' + nama : 'Gagal menyimpan berkas', ok ? 'success' : 'error');
+    }
   },
 
   // Pilih basis URL tile Bidang Tanah (lihat komentar di init).

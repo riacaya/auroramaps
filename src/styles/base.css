@@ -236,6 +236,27 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
   padding: 3px 7px; border-radius: 4px;
 }
 .map-popup-panel .mp-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+/* Tombol 💾 simpan data popup (29 Okt 2026): di header sebelah judul,
+   menu pilihan format muncul tepat di bawahnya. */
+.map-popup-panel .mp-headleft { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.map-popup-panel .mp-savewrap { position: relative; }
+.map-popup-panel .mp-save {
+  background: none; border: 1px solid var(--border); color: var(--text-muted);
+  cursor: pointer; font-size: 13px; line-height: 1; padding: 3px 7px; border-radius: 4px;
+}
+.map-popup-panel .mp-save:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--accent); }
+.map-popup-panel .mp-savemenu {
+  position: absolute; top: calc(100% + 5px); right: 0; z-index: 40;
+  min-width: 186px; display: grid; gap: 3px; padding: 4px;
+  background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 6px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .4);
+}
+.map-popup-panel .mp-savemenu[hidden] { display: none; }
+.map-popup-panel .mp-savemenu button {
+  text-align: left; background: var(--bg-hover); border: 1px solid transparent; border-radius: 4px;
+  color: var(--text-primary); font: inherit; font-size: 11px; padding: 6px 8px; cursor: pointer;
+}
+.map-popup-panel .mp-savemenu button:hover { border-color: var(--accent); color: var(--accent); }
 /* "Aktif: …" di baris header — teks kecil, potong elipsis kalau panjang */
 .map-popup-panel .mp-aktif {
   flex: 1 1 auto; min-width: 0; margin: 0 8px;
