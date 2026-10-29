@@ -23,7 +23,7 @@ function updateFPS() {
 // =====================================================
 // Ekstensi menanam window.__AuroraMapsEkstensi pada document_start
 // (extension/page-shim.js). Aturan:
-//   • belum pasang        → tombol TAMPIL (klik = unduh zip ke folder Download)
+//   • belum pasang        → tombol TAMPIL (klik = unduh Pasang-Ekstensi.bat)
 //   • terpasang + sehat   → tombol TERSEMBUNYI
 //   • terpasang + rusak   → tombol TAMPIL lagi (unduh ulang = pasang ulang)
 // Versi PC lokal (127.0.0.1) dan Android tidak memakai ekstensi → selalu
@@ -39,8 +39,10 @@ function initTombolEkstensi() {
     // URL absolut: di GitHub Pages = origin sendiri; di Blogger = AURORA_ASSET_BASE_URL
     const base = window.AURORA_ASSET_BASE_URL || (location.origin + location.pathname.replace(/[^/]*$/, ''));
     const a = document.createElement('a');
-    a.href = base.replace(/\/+$/, '') + '/ekstensi/AuroraMaps-BHUMI-Bridge.zip';
-    a.download = 'AuroraMaps-BHUMI-Bridge.zip';
+    // Pemasang .bat mandiri: didownload lalu dijalankan, file ia unduh sendiri
+    // dari https://riacaya.github.io/auroramaps/ekstensi/ (lihat Pasang-Ekstensi.bat).
+    a.href = base.replace(/\/+$/, '') + '/ekstensi/Pasang-Ekstensi.bat';
+    a.download = 'Pasang-Ekstensi.bat';
     a.target = '_blank';
     a.rel = 'noopener';
     document.body.appendChild(a);
@@ -51,7 +53,7 @@ function initTombolEkstensi() {
   const cek = () => {
     if (!window.__AuroraMapsEkstensi) {
       btn.hidden = false;
-      btn.title = 'Pasang ekstensi AuroraMaps — supaya cek bidang, zona RTRW & Analisa jalan di peramban (klik untuk unduh)';
+      btn.title = 'Pasang ekstensi AuroraMaps — klik untuk unduh Pasang-Ekstensi.bat, lalu dobel-klik file itu di folder Download';
       return;
     }
     let st = null;
@@ -61,7 +63,7 @@ function initTombolEkstensi() {
     // null = probe belum selesai → tunggu; false = bridge mati → tampilkan;
     // true = sehat → sembunyikan.
     btn.hidden = st !== false;
-    if (st === false) btn.title = 'Ekstensi terpasang tapi tidak berfungsi — klik untuk unduh & pasang ulang';
+    if (st === false) btn.title = 'Ekstensi terpasang tapi tidak berfungsi — klik untuk unduh ulang Pasang-Ekstensi.bat & pasang lagi';
   };
   cek();
   // Tinjau ulang tiap 20 dtk: probe sidecar/bridge pertama bisa selesai belakangan.

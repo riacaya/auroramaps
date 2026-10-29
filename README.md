@@ -17,9 +17,13 @@ RTRW Pro/Kab, dan Analisa dari halaman ini — tanpa memasang aplikasi PC,
 tanpa Node.js, tanpa sidecar lokal — pasang ekstensi **AuroraMaps BHUMI
 Bridge** sekali di tiap komputer:
 
-1. Ekstrak `AuroraMaps-BHUMI-Bridge.zip` ke folder mana pun.
-2. Dobel-klik **`Pasang-Ekstensi.bat`** — pintasan **AuroraMaps** muncul di
-   Desktop dan langsung membuka aplikasi dengan ekstensi termuat.
+1. Klik ikon ekstensi di header aplikasi — file **`Pasang-Ekstensi.bat`**
+   terunduh ke folder Download.
+2. **DOBEL-KLIK `Pasang-Ekstensi.bat`** — file itu mengunduh komponen
+   ekstensi dari halaman ini lalu pintasan **AuroraMaps** muncul di Desktop
+   dan langsung membuka aplikasi dengan ekstensi termuat. (Alternatif offline:
+   ekstrak `AuroraMaps-BHUMI-Bridge.zip` lalu dobel-klik `Pasang-Ekstensi.bat`
+   di dalamnya — pemasang memakai berkas lokal bila ada.)
 3. Login BHUMI **sekali** di jendela yang terbuka; jendela itu minimize
    sendiri, sesi dijaga otomatis.
 
