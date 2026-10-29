@@ -207,8 +207,24 @@ function Set-DeveloperModeOtomatis {
     } catch { $hasil = $null }
     # Tutup tab pengembang agar jendela aplikasi bersih
     try { Invoke-WebRequest "http://127.0.0.1:$Port/json/close/$($tab.id)" -UseBasicParsing | Out-Null } catch { }
-    if (-not $hasil) { return $false }
-    return [bool]$hasil.sesudah
+    if (-not $hasil -or -not $hasil.sesudah) { return $false }
+    # Edge/Chrome menulis preferensi TERTUNDA (±10 dtk setelah perubahan).
+    # Tunggu sampai "developer_mode":true benar-benar ada di berkas — kalau
+    # proses dibunuh sebelum itu, toggle hilang dan ekstensi mati lagi pada
+    # sesi berikutnya (inilah yang membuat putaran tutup-buka gagal).
+    $prefA = Join-Path $profil 'Default\Secure Preferences'
+    $prefB = Join-Path $profil 'Default\Preferences'
+    for ($i = 0; $i -lt 30; $i++) {
+        Start-Sleep -Seconds 1
+        foreach ($f in @($prefA, $prefB)) {
+            if (Test-Path $f) {
+                try {
+                    if ((Get-Content $f -Raw) -match '"developer_mode"\s*:\s*true') { return $true }
+                } catch { }
+            }
+        }
+    }
+    return $false
 }
 
 # 6) Selesai — mode normal: nyalakan Developer mode, lalu buka aplikasi
