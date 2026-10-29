@@ -77,9 +77,9 @@ if !errorlevel! GEQ 8 goto :salah
 robocopy "assets" "%TUJUAN%\assets" /E /NFL /NDL /NJH /NJS /R:1 /W:1 >nul
 if !errorlevel! GEQ 8 goto :salah
 REM /XD = KECUALIKAN folder profil browser (sesi login BHUMI, 300 MB)
-robocopy "tools\bhumi-bridge" "%TUJUAN%\tools\bhumi-bridge" /E /XD .chrome-bhumi-profile /XF *.log /NFL /NDL /NJH /NJS /R:1 /W:1 >nul
+robocopy "windows-app\tools\bhumi-bridge" "%TUJUAN%\tools\bhumi-bridge" /E /XD .chrome-bhumi-profile /XF *.log /NFL /NDL /NJH /NJS /R:1 /W:1 >nul
 if !errorlevel! GEQ 8 goto :salah
-robocopy "tools\installer" "%TUJUAN%\tools\installer" /E /XF *.exe *.log /NFL /NDL /NJH /NJS /R:1 /W:1 >nul
+robocopy "windows-app\tools\installer" "%TUJUAN%\tools\installer" /E /XF *.exe *.log /NFL /NDL /NJH /NJS /R:1 /W:1 >nul
 if !errorlevel! GEQ 8 goto :salah
 echo         Selesai.
 

@@ -81,7 +81,7 @@ echo         Dilewati: Chrome / Edge tidak ditemukan.
 goto :sidecar-selesai
 :sidecar-browser-ok
 echo         Menyalakan ^(jendela "BHUMI Sidecar"^)...
-start "BHUMI Sidecar" cmd /k node "%APP%\tools\bhumi-bridge\sidecar-host.mjs" %SIDECAR_ARGS%
+start "BHUMI Sidecar" cmd /k node "%APP%\windows-app\tools\bhumi-bridge\sidecar-host.mjs" %SIDECAR_ARGS%
 set /a nunggu=0
 :tunggu-sidecar
 ping -n 2 127.0.0.1 >nul
