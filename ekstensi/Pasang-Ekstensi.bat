@@ -33,6 +33,11 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
+rem -- Mode unduh: buang folder staging --
+rem Tinggal %LOCALAPPDATA%\AuroraMapsBHUMI\ekstensi (7 file yang dibuka
+rem browser), persis seperti folder ekstensi/ di GitHub. Folder unduhan
+rem hanya jembatan sementara, tidak perlu disimpan.
+if defined KERJA rmdir /s /q "%KERJA%" >nul 2>&1
 echo.
 pause
 exit /b 0
