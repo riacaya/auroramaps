@@ -4,8 +4,8 @@
 #   powershell -ExecutionPolicy Bypass -File Pasang-Sidecar.ps1
 #
 # Yang dilakukan:
-#   1) Salin skrip sidecar + node.exe portabel ke %LOCALAPPDATA%\AuroraMapsSidecar
-#   2) Hentikan sidecar lama (kalau ada) supaya port 8322 bebas
+#   1) Hentikan sidecar lama (kalau ada) supaya node.exe tidak terkunci
+#   2) Salin skrip sidecar + node.exe portabel ke %LOCALAPPDATA%\AuroraMapsSidecar
 #   3) Jalankan sidecar BARU tersembunyi (tanpa jendela)
 #   4) Verifikasi http://127.0.0.1:8322/status
 #   5) Pintasan Desktop + menu Mulai untuk app AuroraMaps
@@ -28,25 +28,35 @@ $urlApp = 'https://riacaya.github.io/auroramaps/'
 $tujuan = if ($Uji) { Join-Path $env:TEMP 'auroramaps-sidecar-uji' }
           else     { Join-Path $env:LOCALAPPDATA 'AuroraMapsSidecar' }
 
-# ---- 1) Salin berkas paket (skrip + node.exe + ikon) -----------------------
+# ---- 1) Hentikan sidecar lama (semua instance) ----------------------------
+# Harus SEBELUM menyalin: node.exe yang masih berjalan mengunci berkasnya
+# sendiri sehingga Copy-Item gagal "being used by another process".
+$lama = Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -like '*sidecar-host*' }
+foreach ($p in $lama) {
+    try { Stop-Process -Id $p.ProcessId -Force -ErrorAction Stop } catch { }
+    Write-Host ("  sidecar lama dihentikan (PID " + $p.ProcessId + ")")
+}
+if ($lama) {
+    # Tunggu benar-benar mati (maks 10 detik) supaya node.exe bisa ditimpa
+    for ($i = 0; $i -lt 10; $i++) {
+        $sisa = Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue |
+            Where-Object { $_.CommandLine -like '*sidecar-host*' }
+        if (-not $sisa) { break }
+        Start-Sleep -Seconds 1
+    }
+}
+
+# ---- 2) Salin berkas paket (skrip + node.exe + ikon) -----------------------
 $berkas = @('sidecar-host.mjs', 'sidecar-inject.js', 'sidecar-origins.json',
             'node.exe', 'auroramaps.ico', 'Mulai-Sidecar.ps1')
 New-Item -ItemType Directory -Force -Path $tujuan | Out-Null
 foreach ($f in $berkas) {
     $asal = Join-Path $paket $f
     if (-not (Test-Path $asal)) { throw "Berkas hilang di paket: $f (paket tidak lengkap)" }
-    Copy-Item -Force $asal (Join-Path $tujuan $f)
+    Copy-Item -Force $asal (Join-Path $tujuan $f) -ErrorAction Stop
 }
 Write-Host "Berkas terpasang di: $tujuan" -ForegroundColor Cyan
-
-# ---- 2) Hentikan sidecar lama (semua instance) supaya port 8322 bebas ------
-$lama = Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue |
-    Where-Object { $_.CommandLine -like '*sidecar-host*' }
-foreach ($p in $lama) {
-    try { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue } catch { }
-    Write-Host ("  sidecar lama dihentikan (PID " + $p.ProcessId + ")")
-}
-if ($lama) { Start-Sleep -Seconds 2 }
 
 # ---- 3) Jalankan sidecar baru (tersembunyi) --------------------------------
 $nodeHost = Join-Path $tujuan 'sidecar-host.mjs'
