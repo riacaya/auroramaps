@@ -7,7 +7,8 @@
 
 Isi repo ini murni **situs web** (`index.html`, `src/`, `assets/`,
 `sidecar/`, `.nojekyll`) — berkas proyek Windows/Node lama sudah tidak ada;
-`sidecar/` hanya berisi paket unduhan siap pakai (bat, ps1, zip). Jika Pages
+`sidecar/` hanya berisi dua berkas unduhan: `Pasang-Sidecar.bat` dan paket
+`AuroraMaps-Sidecar.zip`. Jika Pages
 belum aktif, buka **Settings → Pages**, pilih **Deploy from a branch**,
 branch `main`, folder `/(root)`, lalu simpan.
 
@@ -51,8 +52,9 @@ selama sidecar terpasang di komputer itu.
 - `assets/`: data wilayah dalam JavaScript.
 - `blogger-page.html`: versi dokumen aplikasi yang merujuk ke file di GitHub Pages.
 - `service-worker.js`, `manifest.webmanifest`: dukungan PWA (mode standalone).
-- `sidecar/`: paket unduhan sidecar (bat, ps1, skrip, zip ±33 MB — zip sudah
-  termasuk node.exe portabel).
+- `sidecar/`: dua berkas unduhan saja — `Pasang-Sidecar.bat` (diklik dari
+  app) dan `AuroraMaps-Sidecar.zip` (±33 MB, diunduh oleh .bat, sudah
+  termasuk semua skrip pemasang + node.exe portabel).
 - `.nojekyll`: mencegah GitHub Pages memproses folder aset melalui Jekyll.
 
 Yang **tidak ada lagi** di repo ini (dihapus, bekas alur lama): berkas
