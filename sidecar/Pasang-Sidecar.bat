@@ -17,14 +17,18 @@ set "KERJA=%USERPROFILE%\Downloads\AuroraMaps-Sidecar"
 set "ZIP=%TEMP%\AuroraMaps-Sidecar.zip"
 if not exist "%KERJA%" mkdir "%KERJA%"
 echo Mengunduh paket sidecar (±33 MB, sekali saja) dari GitHub...
+echo Persentase tampil di bawah -- jangan tutup jendela ini dulu.
+echo.
 where curl.exe >nul 2>&1
 if errorlevel 1 (
   powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '%BASE%/AuroraMaps-Sidecar.zip' -OutFile '%ZIP%'"
 ) else (
-  curl.exe -L --fail --silent --show-error --output "%ZIP%" "%BASE%/AuroraMaps-Sidecar.zip"
+  curl.exe -L --fail --show-error --output "%ZIP%" "%BASE%/AuroraMaps-Sidecar.zip"
 )
 if errorlevel 1 goto :gagal
-echo Mengekstrak ke:
+echo.
+echo Unduhan selesai (100 persen).
+echo Mengekstrak isi paket (sebentar) ke:
 echo   %KERJA%
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -Force -Path '%ZIP%' -DestinationPath '%KERJA%'"
 if errorlevel 1 goto :gagal
