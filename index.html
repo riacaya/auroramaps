@@ -20,7 +20,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
 <!-- Font -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"/>
-<link rel="stylesheet" href="./src/styles/base.css?v=87" />
+<link rel="stylesheet" href="./src/styles/base.css?v=88" />
 <style>
 .login-branding-logo svg, .logo-icon svg, .about-logo svg { display:none !important; }
 .login-gate{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:var(--bg-base,#0d0f13)}
@@ -113,11 +113,9 @@
       <!-- project-name kept in DOM for save/load compatibility but hidden on PC -->
       <div class="project-name-display hidden-inline" id="project-name-display" title="Klik untuk ganti nama">AuroraMaps001</div>
       <button class="btn-icon mh-btn" id="mh-search" title="Cari">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      </button>
-      <button class="btn-icon" id="btn-bhumi-globe" title="Jendela BHUMI" aria-label="Jendela BHUMI" hidden>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-      </button>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>      </button>
+
+
       <button class="btn-icon mh-btn" id="mh-menu" title="Menu">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
@@ -839,13 +837,8 @@
   }
   floating?.addEventListener('click', () => window.AuroraInstall.trigger());
   loginLink?.addEventListener('click', () => window.AuroraInstall.trigger());
-  // Ikon globe BHUMI di header — hanya di aplikasi Android (jendela pendamping
-  // dijalankan MainActivity); di PC sidecar berjalan headless tanpa tombol.
-  const bhumiGlobe = document.getElementById('btn-bhumi-globe');
-  if (bhumiGlobe && window.AndroidBhumi) {
-    bhumiGlobe.hidden = false;
-    bhumiGlobe.addEventListener('click', () => { try { window.AndroidBhumi.toggle(); } catch (e) { /* abaikan */ } });
-  }
+  // Tombol ganti tab ke BHUMI (#btn-bhumi-globe) DIHAPUS — pendamping kini
+  // berjalan tersembunyi sepenuhnya di semua platform, identik dengan sidecar PC.
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js').catch(err => console.warn('Service worker tidak terdaftar:', err));
 })();
 
