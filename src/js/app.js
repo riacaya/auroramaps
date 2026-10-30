@@ -32,6 +32,15 @@ function updateFPS() {
 function initTombolEkstensi() {
   const btn = document.getElementById('btn-install-ext');
   if (!btn) return;
+  // APK Android sudah menyertakan sidecar bawaan (BhumiBridge + SidecarServer
+  // di 127.0.0.1:8322) → unduhan Pasang-Sidecar.exe tidak relevan di sana.
+  // Paksa tersembunyi berdasarkan interface Android (bukan hostname — di APK
+  // hostname kosong, dan kalau kelak app memuat situs langsung pun ikon ini
+  // tetap tidak boleh muncul).
+  if (window.AndroidBhumi || window.AndroidFileSaver) {
+    btn.hidden = true;
+    return;
+  }
   const h = location.hostname;
   const diWeb = h === 'riacaya.github.io' || h.endsWith('blogspot.com') || h.endsWith('blogspot.co.id');
   if (!diWeb) return; // tetap hidden (default atribut)
