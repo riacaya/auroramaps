@@ -9,38 +9,30 @@ echo.
 
 set "BASE=https://riacaya.github.io/auroramaps/sidecar"
 
-rem -- Paket lokal lengkap (hasil ekstrak zip)? Jalankan apa adanya, offline. --
-if exist "%~dp0Pasang-Sidecar.ps1" if exist "%~dp0node.exe" goto :jalankan
+rem -- Paket lokal lengkap (folder hasil ekstrak)? Jalankan pemasangnya. --
+if exist "%~dp0Pasang-Sidecar.ps1" if exist "%~dp0node.exe" goto :paket
 
-rem -- Selain itu (.bat didownload sendiri) = unduh paket zip dari GitHub --
-set "KERJA=%USERPROFILE%\Downloads\AuroraMaps-Sidecar"
-set "ZIP=%TEMP%\AuroraMaps-Sidecar.zip"
-if not exist "%KERJA%" mkdir "%KERJA%"
-echo Mengunduh paket sidecar (±33 MB, sekali saja) dari GitHub...
+rem -- Mode unduh: ambil Pasang-Sidecar.exe (jendela GUI: judul, ikon,
+rem    teks panduan, progress bar %, dialog penutup) dari situs. --
+set "EXE=%TEMP%\Pasang-Sidecar.exe"
+echo Mengunduh pemasang Pasang-Sidecar.exe (±26 MB, sekali saja)...
 echo Persentase tampil di bawah -- jangan tutup jendela ini dulu.
 echo.
 where curl.exe >nul 2>&1
 if errorlevel 1 (
-  powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '%BASE%/AuroraMaps-Sidecar.zip' -OutFile '%ZIP%'"
+  powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '%BASE%/Pasang-Sidecar.exe' -OutFile '%EXE%'"
 ) else (
-  curl.exe -L --fail --show-error --output "%ZIP%" "%BASE%/AuroraMaps-Sidecar.zip"
+  curl.exe -L --fail --show-error --output "%EXE%" "%BASE%/Pasang-Sidecar.exe"
 )
 if errorlevel 1 goto :gagal
 echo.
-echo Unduhan selesai (100 persen).
-echo Mengekstrak isi paket (sebentar) ke:
-echo   %KERJA%
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -Force -Path '%ZIP%' -DestinationPath '%KERJA%'"
-if errorlevel 1 goto :gagal
-echo.
-set "PS1PATH=%KERJA%\Pasang-Sidecar.ps1"
-goto :jalankanPS
+echo Unduhan selesai (100 persen). Menjalankan pemasang...
+start "" "%EXE%"
+exit /b 0
 
-:jalankan
-set "PS1PATH=%~dp0Pasang-Sidecar.ps1"
-
-:jalankanPS
-powershell -NoProfile -ExecutionPolicy Bypass -File "%PS1PATH%" %*
+:paket
+echo Menjalankan pemasang dari paket lokal...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Pasang-Sidecar.ps1"
 if errorlevel 1 (
     echo.
     echo [GAGAL] Pemasangan tidak selesai. Baca pesan di atas.
@@ -49,15 +41,14 @@ if errorlevel 1 (
     exit /b 1
 )
 echo.
-echo Berkas paket tersimpan di: %PS1PATH%
-echo (folder itu juga dipakai ulang bila pemasang dijalankan lagi)
+echo PEMASANGAN SELESAI. Buka aplikasi lewat pintasan "AuroraMaps".
 echo.
 pause
 exit /b 0
 
 :gagal
 echo.
-echo [GAGAL] Paket tidak bisa diunduh. Periksa koneksi internet lalu coba lagi.
+echo [GAGAL] Pemasang tidak bisa diunduh. Periksa koneksi internet lalu coba lagi.
 echo.
 pause
 exit /b 1
