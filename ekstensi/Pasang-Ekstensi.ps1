@@ -231,6 +231,22 @@ function Set-DeveloperModeOtomatis {
     return $false
 }
 
+# Verifikasi apakah ekstensi benar-benar DIMUAT: hadirnya proses anak
+# --extension-process milik profil AuroraMaps. Tanpa verifikasi ini pemasang
+# bisa melaporkan sukses padahal record ekstensi di profil KORUP dan
+# Edge/Chrome menolak memuatnya walau Developer mode nyala — inilah sumber
+# "kadang bisa kadang tidak" yang sesungguhnya. Record terikat PATH folder,
+# jadi pemulihannya: pasang ke nama folder BARU (record baru, bersih).
+function Cek-EkstensiTermuat {
+    for ($i = 0; $i -lt 24; $i++) {
+        $p = Get-CimInstance Win32_Process -Filter "Name='msedge.exe' or Name='chrome.exe'" |
+            Where-Object { $_.CommandLine -like "*$tujuan*" -and $_.CommandLine -like '*--extension-process*' }
+        if ($p) { return $true }
+        Start-Sleep -Milliseconds 500
+    }
+    return $false
+}
+
 # 6) Selesai — mode normal: nyalakan Developer mode, lalu buka aplikasi
 if (-not $Uji) {
     Write-Host ''
@@ -238,6 +254,44 @@ if (-not $Uji) {
     $devOk = $false
     try { $devOk = Set-DeveloperModeOtomatis }
     catch { Write-Host ("  catatan: " + $_.Exception.Message) }
+
+    # ── Verifikasi pemasangan + pemulihan record korup ─────────────────────
+    if (Cek-EkstensiTermuat) {
+        Write-Host 'Ekstensi termuat: YA' -ForegroundColor Green
+    } else {
+        Write-Host 'Ekstensi BELUM termuat (record kemungkinan korup) - pasang ulang ke folder baru...' -ForegroundColor Yellow
+        $coba = 2
+        $termuat = $false
+        while (-not $termuat -and $coba -le 4) {
+            Stop-ProfilProses
+            Start-Sleep -Seconds 2
+            Remove-Item (Join-Path $tujuan 'ekstensi') -Recurse -Force -ErrorAction SilentlyContinue
+            $ext = Join-Path $tujuan ("ekstensi-" + $coba)
+            Remove-Item $ext -Recurse -Force -ErrorAction SilentlyContinue
+            New-Item -ItemType Directory -Force -Path $ext | Out-Null
+            foreach ($f in $berkas) { Copy-Item -Force (Join-Path $paket $f) (Join-Path $ext $f) }
+            Write-Host ("  mencoba folder baru: " + $ext)
+            # Pintasan mengikuti folder baru
+            $lnkR = $ws.CreateShortcut($lnkPath)
+            $lnkR.TargetPath = $browser
+            $lnkR.Arguments = '--user-data-dir="{0}" --load-extension="{1}" --disable-features=DisableLoadExtensionCommandLineSwitch --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --no-first-run --no-default-browser-check --start-maximized "{2}"' -f $profil, $ext, $Alamat
+            $lnkR.WorkingDirectory = $tujuan
+            $lnkR.Description = 'AuroraMaps - Peta Interaktif BHUMI ATR/BPN'
+            if (Test-Path $icoInstal) { $lnkR.IconLocation = "$icoInstal,0" }
+            $lnkR.Save()
+            # Muat ulang sesi diagnostik (Developer mode sudah nyala dari langkah sebelumnya)
+            try { Set-DeveloperModeOtomatis | Out-Null } catch { }
+            $termuat = Cek-EkstensiTermuat
+            $coba++
+        }
+        if ($termuat) {
+            Write-Host 'Ekstensi termuat setelah pemasangan ulang ke folder baru.' -ForegroundColor Green
+        } else {
+            Write-Host 'Ekstensi masih belum termuat. Nyalakan Developer mode MANUAL di' -ForegroundColor Yellow
+            Write-Host "  $halamanDev lalu jalankan ulang Pasang-Ekstensi.bat" -ForegroundColor Yellow
+        }
+    }
+
     # Tutup sesi diagnostik (dengan port) → jalankan pintasan bersih (tanpa port).
     # Langkah ini sekaligus memvalidasi jalur "tutup lalu buka lagi".
     Stop-ProfilProses

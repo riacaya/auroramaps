@@ -160,7 +160,7 @@ async function keepalive() {
   if (!t) {
     // Tab ditutup/dibuang dan extension sudah pernah login → buka lagi
     // (tersembunyi). Belum pernah login → biarkan, jangan ganggu user.
-    if (await everLoggedIn()) { try { await openWindow(true); } catch (e) { /* abaikan */ } }
+    await bukaKompaniJikaPerlu();
     return;
   }
   const pong = await pingTab(t.id);
@@ -171,7 +171,7 @@ async function keepalive() {
     try {
       await chrome.tabs.reload(t.id);
     } catch (e) {
-      if (await everLoggedIn()) { try { await openWindow(true); } catch (e2) { /* abaikan */ } }
+      await bukaKompaniJikaPerlu();
     }
     return;
   }
@@ -180,11 +180,22 @@ async function keepalive() {
 
 chrome.alarms.onAlarm.addListener((a) => { if (a.name === ALARM) keepalive(); });
 
+// Buka kompani BHUMI SEGERA saat browser menyala / ekstensi diperbarui
+// (permintaan pengguna: "setiap browser nyala bhumi terbuka") — tanpa
+// menunggu alarm pertama. Dilindungi dari pembukaan dobel.
+async function bukaKompaniJikaPerlu() {
+  try {
+    if (!(await everLoggedIn())) return;   // belum pernah login → jangan ganggu
+    if (await findBhumiTab()) return;      // sudah ada → jangan dobel
+    await openWindow(true);
+  } catch (e) { /* abaikan */ }
+}
+
 function setupAlarm() {
   // 30 dtk di Chrome/Edge baru (minimum MV3 sejak Chrome 120); browser lama
   // otomatis membulatkan ke 1 menit — tetap aman.
   chrome.alarms.create(ALARM, { periodInMinutes: 0.5, delayInMinutes: 1 });
 }
-chrome.runtime.onInstalled.addListener(setupAlarm);
-chrome.runtime.onStartup.addListener(setupAlarm);
+chrome.runtime.onInstalled.addListener(() => { setupAlarm(); bukaKompaniJikaPerlu(); });
+chrome.runtime.onStartup.addListener(() => { setupAlarm(); bukaKompaniJikaPerlu(); });
 setupAlarm();
