@@ -66,7 +66,9 @@ const ProjectManager = {
     }
     const data = this._snapshot();
     const name = this._safeName(data.projectName);
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    // octet-stream (bukan application/json): di Android, MediaStore menambah/
+    // mengganti ekstensi berkas agar cocok dengan MIME → .auroramaps jadi .json.
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/octet-stream' });
     Exporter._download(blob, `${name}.auroramaps`);
     Toast.show(`Proyek "${data.projectName}" disimpan`, 'success');
     AppConsole.log(`Project saved: ${name}.auroramaps`, 'success');

@@ -25,6 +25,8 @@ const AuroraBhumiSidecarClient = {
   _checkedAt: 0,
   _logging: false,
   _started: false,
+  _hintLogged: false,
+  _hint: '',
 
   // Dipakai secara sinkron dari jalur relai/bridge: hanya membaca cache
   // hasil probe (probe berjalan di latar belakang tiap 5 dtk selama belum ada).
@@ -35,6 +37,13 @@ const AuroraBhumiSidecarClient = {
   // null = belum ada hasil probe, true/false = hasil probe terakhir.
   state() {
     return this._ok;
+  },
+
+  // Saran tindakan saat sidecar tidak ada — teksnya khusus untuk platform
+  // yang TIDAK BISA menjalankan sidecar sama sekali (browser HP/iPhone),
+  // supaya pengguna tidak mengira aplikasinya rusak.
+  hint() {
+    return this._hint;
   },
 
   // Tunggu hasil probe pertama (maks maxWaitMs) → true/false. Dipakai jalur
@@ -92,6 +101,18 @@ const AuroraBhumiSidecarClient = {
       if (typeof AppConsole !== 'undefined') {
         AppConsole.log('Sidecar BHUMI lokal aktif (127.0.0.1:8322) — tile, klik & cari bidang siap.', 'info');
       }
+    }
+    if (!value && !this._hintLogged) {
+      this._hintLogged = true;
+      // APK = WebView Android dengan interface native; tanpa itu, UA Android/
+      // iPhone berarti browser HP biasa — di sana sidecar MUSTAHIL ada
+      // (butuh PC atau APK), jadi pesannya menjelaskan batas platform.
+      const apk = !!(window.AndroidFileSaver || window.AndroidBhumi);
+      const diHP = !apk && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+      this._hint = diHP
+        ? 'Fitur cek bidang/zona/Analisa butuh sidecar: di HP/iPhone hanya tersedia lewat APK AuroraMaps, bukan browser biasa — di sini fitur memang nonaktif (bukan rusak). Layer ATR/BPN tetap bisa dibuka.'
+        : 'Sidecar BHUMI tidak terjangkau — pasang via tombol Pasang sidecar di situs (Pasang-Sidecar.exe), atau jalankan jalankan-auroramaps.bat di PC.';
+      if (typeof AppConsole !== 'undefined') AppConsole.log(this._hint, 'warn');
     }
   },
 

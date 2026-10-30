@@ -38,7 +38,7 @@ const AuroraBhumiAuth = {
     // reCAPTCHA dijalankan dari dalam tab BHUMI pendamping lewat CDP.
     const sc = window.AuroraBhumiSidecarClient;
     if (!(sc && sc.availableSync())) {
-      AppConsole.log('Sinkron token: sidecar BHUMI tidak terjangkau — jalankan jalankan-auroramaps.bat (atau jalankan-sidecar.bat).', 'warn');
+      AppConsole.log((sc && sc.hint && sc.hint()) || 'Sinkron token: sidecar BHUMI tidak terjangkau — jalankan jalankan-auroramaps.bat (atau jalankan-sidecar.bat).', 'warn');
       return Promise.resolve('timeout');
     }
     return sc.tokenSync(force).then((r) => {
@@ -51,7 +51,7 @@ const AuroraBhumiAuth = {
       AppConsole.log('Sinkron token via sidecar gagal: ' + ((r && r.status) || 'tanpa balasan'), 'warn');
       return 'fail';
     }).catch(() => {
-      AppConsole.log('Sinkron token via sidecar tidak terjangkau — jalankan jalankan-auroramaps.bat.', 'warn');
+      AppConsole.log((sc && sc.hint && sc.hint()) || 'Sinkron token via sidecar tidak terjangkau — jalankan jalankan-auroramaps.bat.', 'warn');
       return 'timeout';
     });
   }
