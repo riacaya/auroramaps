@@ -43,10 +43,8 @@ function initTombolEkstensi() {
     // Pemasang .exe (WinRAR SFX) berjendela GUI: ikon AuroraMaps, judul,
     // teks panduan, progress bar ekstraksi lengkap dengan %, dan dialog
     // penutup "Pemasangan selesai" (tombol OK). Isinya paket sidecar
-    // lengkap termasuk node.exe portabel (±26 MB).
-    // Jalur cadangan bila Windows menahan .exe (SmartScreen): unduh
-    // Pasang-Sidecar.bat dari halaman yang sama — jalur itu menyalin via
-    // curl sehingga tidak kena peringatan SmartScreen.
+    // lengkap termasuk node.exe portabel (±26 MB) — SATU-satunya berkas
+    // unduhan di situs (file .bat sudah dihapus 30 Okt 2026).
     a.href = base.replace(/\/+$/, '') + '/sidecar/Pasang-Sidecar.exe';
     a.download = 'Pasang-Sidecar.exe';
     a.target = '_blank';
@@ -60,7 +58,7 @@ function initTombolEkstensi() {
   // halaman web; tidak ada lagi status "terpasang & sehat" yang
   // menyembunyikannya.
   btn.hidden = false;
-  btn.title = 'Pasang sidecar AuroraMaps — klik untuk unduh Pasang-Sidecar.exe, lalu dobel-klik file itu di folder Download. Jendela pemasang terbuka dengan panduan dan progress; klik Install, tunggu 100%, lalu OK. Sidecar terpasang tersembunyi + startup Windows + pintasan AuroraMaps. Bila Windows menampilkan "Windows protected your PC", klik Info lainnya lalu Jalankan saja (unduhan memakai .bat juga bisa: Pasang-Sidecar.bat).';
+  btn.title = 'Pasang sidecar AuroraMaps — klik untuk unduh Pasang-Sidecar.exe, lalu dobel-klik file itu di folder Download. Jendela pemasang terbuka dengan panduan dan progress; klik Install, tunggu 100%, lalu OK. Sidecar terpasang tersembunyi + startup Windows + pintasan AuroraMaps. Bila Windows menampilkan "Windows protected your PC", klik Info lainnya lalu Jalankan saja.';
 }
 
 // =====================================================
