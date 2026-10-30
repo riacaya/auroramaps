@@ -19,15 +19,15 @@ function updateFPS() {
 }
 
 // =====================================================
-// TOMBOL PASANG EKSTENSI (khusus halaman web GitHub/Blogger)
+// TOMBOL PASANG SIDECAR (khusus halaman web GitHub/Blogger)
 // =====================================================
-// Ekstensi menanam window.__AuroraMapsEkstensi pada document_start
-// (extension/page-shim.js). Aturan:
-//   • belum pasang        → tombol TAMPIL (klik = unduh Pasang-Ekstensi.bat)
-//   • terpasang + sehat   → tombol TERSEMBUNYI
-//   • terpasang + rusak   → tombol TAMPIL lagi (unduh ulang = pasang ulang)
-// Versi PC lokal (127.0.0.1) dan Android tidak memakai ekstensi → selalu
-// tersembunyi.
+// Jalur ekstensi DIHAPUS dari situs (30 Okt 2026) — kini yang dipakai
+// adalah sidecar. Klik tombol = unduh Pasang-Sidecar.bat dari folder
+// sidecar/ di GitHub Pages; file itu mengunduh paket zip sendiri
+// (termasuk node.exe portabel), mengekstrak, lalu pemasang berjalan:
+// sidecar hidden + startup Windows + pintasan aplikasi AuroraMaps.
+// Versi PC lokal (127.0.0.1) dan Android tidak memakai tombol ini →
+// tetap tersembunyi.
 function initTombolEkstensi() {
   const btn = document.getElementById('btn-install-ext');
   if (!btn) return;
@@ -39,10 +39,10 @@ function initTombolEkstensi() {
     // URL absolut: di GitHub Pages = origin sendiri; di Blogger = AURORA_ASSET_BASE_URL
     const base = window.AURORA_ASSET_BASE_URL || (location.origin + location.pathname.replace(/[^/]*$/, ''));
     const a = document.createElement('a');
-    // Pemasang .bat mandiri: didownload lalu dijalankan, file ia unduh sendiri
-    // dari https://riacaya.github.io/auroramaps/ekstensi/ (lihat Pasang-Ekstensi.bat).
-    a.href = base.replace(/\/+$/, '') + '/ekstensi/Pasang-Ekstensi.bat';
-    a.download = 'Pasang-Ekstensi.bat';
+    // Pemasang .bat mandiri: didownload lalu dijalankan, file itu mengunduh
+    // paket dari https://riacaya.github.io/auroramaps/sidecar/ (lihat Pasang-Sidecar.bat).
+    a.href = base.replace(/\/+$/, '') + '/sidecar/Pasang-Sidecar.bat';
+    a.download = 'Pasang-Sidecar.bat';
     a.target = '_blank';
     a.rel = 'noopener';
     document.body.appendChild(a);
@@ -50,24 +50,11 @@ function initTombolEkstensi() {
     a.remove();
   });
 
-  const cek = () => {
-    if (!window.__AuroraMapsEkstensi) {
-      btn.hidden = false;
-      btn.title = 'Pasang ekstensi AuroraMaps — klik untuk unduh Pasang-Ekstensi.bat, lalu dobel-klik file itu di folder Download. Folder AuroraMaps-BHUMI-Bridge di Download = untuk pemasangan manual (chrome://extensions → Load unpacked).';
-      return;
-    }
-    let st = null;
-    try {
-      st = window.AuroraBhumiSidecarClient ? AuroraBhumiSidecarClient.state() : null;
-    } catch (e) { st = false; }
-    // null = probe belum selesai → tunggu; false = bridge mati → tampilkan;
-    // true = sehat → sembunyikan.
-    btn.hidden = st !== false;
-    if (st === false) btn.title = 'Ekstensi terpasang tapi tidak berfungsi — klik untuk unduh ulang Pasang-Ekstensi.bat & pasang lagi (atau Load unpacked folder AuroraMaps-BHUMI-Bridge di Download)';
-  };
-  cek();
-  // Tinjau ulang tiap 20 dtk: probe sidecar/bridge pertama bisa selesai belakangan.
-  setInterval(cek, 20000);
+  // Jalur ekstensi sudah tidak ada di situs → tombol selalu tampil di
+  // halaman web; tidak ada lagi status "terpasang & sehat" yang
+  // menyembunyikannya.
+  btn.hidden = false;
+  btn.title = 'Pasang sidecar AuroraMaps — klik untuk unduh Pasang-Sidecar.bat, lalu dobel-klik file itu di folder Download. File itu mengunduh paket sidecar (±33 MB, sudah termasuk node.exe) sendiri, lalu pemasang berjalan otomatis: sidecar hidden + startup Windows + pintasan AuroraMaps.';
 }
 
 // =====================================================

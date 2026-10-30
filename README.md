@@ -6,49 +6,42 @@
 - Alamat GitHub Pages yang dipakai untuk Blogger: https://riacaya.github.io/auroramaps/
 
 Isi repo ini murni **situs web** (`index.html`, `src/`, `assets/`,
-`.nojekyll`) — tidak ada lagi berkas Windows/Node di dalamnya. Jika Pages
+`sidecar/`, `.nojekyll`) — berkas proyek Windows/Node lama sudah tidak ada;
+`sidecar/` hanya berisi paket unduhan siap pakai (bat, ps1, zip). Jika Pages
 belum aktif, buka **Settings → Pages**, pilih **Deploy from a branch**,
 branch `main`, folder `/(root)`, lalu simpan.
 
-## Fitur cek bidang, zona RTRW & Analisa: pasang ekstensi (sekali klik)
+## Fitur cek bidang, zona RTRW & Analisa: pasang sidecar (sekali klik)
 
 Supaya **komputer mana pun** bisa memakai fitur cek bidang (NIB/luas), zona
 RTRW Pro/Kab, dan Analisa dari halaman ini — tanpa memasang aplikasi PC,
-tanpa Node.js, tanpa sidecar lokal — pasang ekstensi **AuroraMaps BHUMI
-Bridge** sekali di tiap komputer:
+tanpa Node.js, tanpa ekstensi peramban — pasang **sidecar AuroraMaps**
+sekali di tiap komputer:
 
-1. Klik ikon ekstensi di header aplikasi — file **`Pasang-Ekstensi.bat`**
-   terunduh ke folder Download.
-2. **DOBEL-KLIK `Pasang-Ekstensi.bat`** — file itu mengunduh komponen
-   ekstensi dari halaman ini lalu pintasan **AuroraMaps** muncul di Desktop
-   dan langsung membuka aplikasi dengan ekstensi termuat. (Alternatif offline:
-   ekstrak `AuroraMaps-BHUMI-Bridge.zip` lalu dobel-klik `Pasang-Ekstensi.bat`
-   di dalamnya — pemasang memakai berkas lokal bila ada.)
-3. Login BHUMI **sekali** di jendela yang terbuka; jendela itu minimize
-   sendiri, sesi dijaga otomatis.
+1. Klik ikon di header aplikasi — file **`Pasang-Sidecar.bat`** terunduh
+   ke folder Download.
+2. **DOBEL-KLIK `Pasang-Sidecar.bat`** — file itu mengunduh paket
+   `AuroraMaps-Sidecar.zip` (±33 MB, sudah termasuk node.exe portabel)
+   dari folder `sidecar/` di halaman ini, mengekstrak ke
+   `Downloads\AuroraMaps-Sidecar`, lalu pemasang berjalan: sidecar
+   terpasang di `%LOCALAPPDATA%\AuroraMapsSidecar`, berjalan
+   **tersembunyi**, dan hidup lagi otomatis tiap login Windows. Pintasan
+   **AuroraMaps** (jendela aplikasi tanpa bar browser) muncul di Desktop
+   dan menu Mulai.
+3. Login BHUMI biasanya terjadi otomatis; bila belum, jalankan
+   `Login-BHUMI.bat` sekali lalu klik "Saya Setuju".
 
-**Folder & pemasangan manual.** Berkas hasil unduh tetap tersimpan di
-`Downloads\AuroraMaps-BHUMI-Bridge` (9 berkas, sama seperti folder `ekstensi/`
-di repo ini). Bila suatu saat perlu memasang sendiri di Chrome/Edge:
-buka `chrome://extensions` → aktifkan **Developer mode** → **Load unpacked**
-→ pilih folder `AuroraMaps-BHUMI-Bridge` itu. Ekstensi yang dibuka pintasan
-AuroraMaps sendiri berada di `%LOCALAPPDATA%\AuroraMapsBHUMI\ekstensi`
-(salinan otomatis dari folder Download tersebut).
-
-Setelah itu cukup klik pintasan AuroraMaps. Ekstensi menjalankan mesin API
-yang sama dengan versi PC (auth-ticket ECDH, whitelist tile, klik
-"Saya Setuju", refresh token, analisa) di dalam jendela BHUMI yang dikelola
-browser itu sendiri.
-
-Fitur dasar peta (tampilan wilayah, pencarian umum, panduan) tetap jalan
-tanpa ekstensi.
+Setelah itu semua peramban di komputer itu (Chrome/Edge/Firefox) bisa cek
+bidang, zona RTRW, dan Analisa dari halaman ini — tanpa ekstensi apa pun
+di peramban. Fitur dasar peta (tampilan wilayah, pencarian umum, panduan)
+tetap jalan tanpa sidecar.
 
 ## Menampilkan di Blogger
 
 `blogger-page.html` adalah dokumen aplikasi penuh untuk template Blogger:
 semua CSS dan modul JavaScript lokal diarahkan ke repo Pages
-`riacaya/auroramaps`. Halaman Blogger yang dibuka lewat ekstensi juga
-mendapat fitur cek bidang selama ekstensi terpasang.
+`riacaya/auroramaps`. Halaman Blogger juga mendapat fitur cek bidang
+selama sidecar terpasang di komputer itu.
 
 ## Isi folder
 
@@ -58,19 +51,22 @@ mendapat fitur cek bidang selama ekstensi terpasang.
 - `assets/`: data wilayah dalam JavaScript.
 - `blogger-page.html`: versi dokumen aplikasi yang merujuk ke file di GitHub Pages.
 - `service-worker.js`, `manifest.webmanifest`: dukungan PWA (mode standalone).
+- `sidecar/`: paket unduhan sidecar (bat, ps1, skrip, zip ±33 MB — zip sudah
+  termasuk node.exe portabel).
 - `.nojekyll`: mencegah GitHub Pages memproses folder aset melalui Jekyll.
 
 Yang **tidak ada lagi** di repo ini (dihapus, bekas alur lama): berkas
-`.bat`, `local-server.mjs`, `cloudflare-worker.js`, dan folder `tools/`.
+`.bat` di root, `local-server.mjs`, `cloudflare-worker.js`, folder `tools/`,
+dan folder `ekstensi/` (jalur ekstensi diganti `sidecar/`).
 
-## Versi PC, Android, dan ekstensi
+## Versi PC, Android, dan sidecar
 
 Ada di repo sumber (bukan repo ini):
 
 - `windows-app/` — paket Windows (setup + sidecar lokal port 8322).
 - `android-app/` — build APK.
-- `extension/` + `AuroraMaps-BHUMI-Bridge.zip` — ekstensi peramban untuk
-  halaman GitHub/Blogger ini.
+- `sidecar-installer/` + `AuroraMaps-Sidecar.zip` — paket sidecar untuk
+  halaman GitHub/Blogger ini (disinkron ke folder `sidecar/` repo ini).
 
 ## Panduan aplikasi
 
