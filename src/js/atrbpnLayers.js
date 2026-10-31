@@ -2,7 +2,7 @@
 // AuroraMaps · atrbpnLayers.js — Layer referensi ATR/BPN
 // LSD (Lahan Sawah Dilindungi) · RTR Provinsi · RTRW Kabupaten/Kota
 // Bidang Tanah / persil (bhumi mprx via proxy lokal /bhumi-proxy)
-// Sumber: GISLINER TMS (RTRW Kab/Kota & KP2B dari HAR pengguna), GISTARU WMS
+// Sumber: GISLINER TMS (RTRW Kab/Kota dari HAR pengguna), GISTARU WMS
 // /expapi/rtrw/wms (merge), bhumi /expapi/bhumigeos/umum/wms (LSD, gisliner
 // mati sejak 22 Okt 2026) & bhumi.atrbpn.go.id/mprx/service
 // Klik peta → popup baca layer ATR/BPN aktif (GetFeatureInfo gistaru-app).
@@ -334,8 +334,7 @@ const AtrbpnLayers = {
     const RTRW_URL = (gBase ? gBase + '/interoppublic/api/wms/' : GISTARU_WMS) + RTRW_UUID;
 
     // Pane terpisah per layer agar urutannya stabil (belakang → depan):
-    //   LSD (300) < RTR Provinsi (305) < RTRW Kab/Kota (310) < KP2B (312)
-    //   < Bidang Tanah (320)
+    //   LSD (300) < RTR Provinsi (305) < RTRW Kab/Kota (310) < Bidang Tanah (320)
     // Semua di atas overlay JPG (250) & basemap (200), di bawah data import
     // (400) dan hasil gambar manual (500).
     this._map.createPane('atrbpnLsdPane');
@@ -344,8 +343,6 @@ const AtrbpnLayers = {
     this._map.getPane('atrbpnRtrpPane').style.zIndex = 305;
     this._map.createPane('atrbpnRtrwPane');
     this._map.getPane('atrbpnRtrwPane').style.zIndex = 310;
-    this._map.createPane('atrbpnKp2bPane');
-    this._map.getPane('atrbpnKp2bPane').style.zIndex = 312;
     this._map.createPane('atrbpnHutanPane');
     this._map.getPane('atrbpnHutanPane').style.zIndex = 318;
     this._map.createPane('atrbpnShguPane');
@@ -456,9 +453,13 @@ const AtrbpnLayers = {
     // ── RTRW Kab/Kota: TMS GISLINER sesuai HAR pengguna ────────────────────
     const rtrwLayer = attachTileRetry(L.tileLayer(xyz('212_rtrwkbpt', 1024),
       LIGHT('atrbpnRtrwPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false })));
-    // KP2B dari HAR menggunakan endpoint TMS yang sama dengan layer ID 235.
-    const kp2bLayer = attachTileRetry(L.tileLayer(xyz('235_kp2b', 1024),
-      LIGHT('atrbpnKp2bPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false })));
+    // ── KP2B DIHAPUS dari panel (31 Okt 2026) ──────────────────────────────
+    // Kolom TMS '235_kp2b' membalas 200 OK tetapi tile transparan 235 B di
+    // semua titik uji (Semarang, Wonogiri, Sukoharjo, Sleman, Klaten,
+    // Boyolali, Jakarta, Pontianak) pada z7–z15 — sedangkan LIGHT() membatasi
+    // layer ini mulai minZoom 7, jadi layernya tidak pernah menampilkan apa
+    // pun. Zona KP2B tetap terbaca lewat layer RTRW Kab/Kota (fitur
+    // namobj="KP2B" + nothpr = dasar Perda, lihat popup RTRW Kab/Kota).
 
     // ── LSD (Lahan Sawah Dilindungi) ────────────────────────────────────────
     // Dua WMS Geoserver bhumi (rantai cakupan, lihat BHUMI_LSD_* di atas)
@@ -496,7 +497,6 @@ const AtrbpnLayers = {
               format: 'image/png', transparent: true, attribution: 'RTR Provinsi (gistaru-app)'
             }), '', 'gistaru')) },
       rtrw: { label: 'RTRW Kab/Kota',     on: false, opacity: 0.7, layer: rtrwLayer },
-      kp2b: { label: 'KP2B',              on: false, opacity: 0.7, layer: kp2bLayer },
       hutan: hutanEntry
       ,shgu: shguEntry
     };
@@ -1012,7 +1012,9 @@ const AtrbpnLayers = {
     // lewat getPersil (query_layers umum:lsd_merge[,_8_provinsi] &
     // umum:penunjukan_kawasan_hutan — teruji live, jalur ada), TETAPI tabnya
     // tetap tidak dipasang sesuai kesepakatan: hanya Bidang, RTRW Pro, RTRW
-    // Kab yang tampil. Layer-nya tetap bisa dicentang di panel ATRBPN.
+    // Kab yang tampil. Layer LSD tetap bisa dicentang di panel ATRBPN, sedang
+    // baris KP2B di panel DIHAPUS 31 Okt 2026 (tile '235_kp2b' kosong terus —
+    // lihat komentar KP2B di init; zona KP2B masih terbaca via RTRW Kab/Kota).
 
     // ── Tab Bidang Tanah (25 Okt 2026) ──────────────────────────────
     // Hasil getPersil dari BhumiIdentify; format barisnya mengikuti kartu
