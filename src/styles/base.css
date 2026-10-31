@@ -672,14 +672,16 @@ body.is-admin #mm-admin { display: flex; }
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 5px 8px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--bg-base);
   cursor: pointer;
   transition: border-color .15s, background .15s;
 }
-.atrbpn-row + .atrbpn-row { margin-top: 5px; }
+/* Jarak antar baris ATRBPN diatur oleh gap .modal-stack (lihat di bawah),
+   bukan margin — supaya tidak terhitung dua kali (10px gap + 5px margin = 15px). */
+.atrbpn-row + .atrbpn-row { margin-top: 0; }
 .atrbpn-row:hover { border-color: var(--accent); background: var(--bg-hover); }
 .atrbpn-row:has(input:checked) {
   border-color: var(--accent);
@@ -724,6 +726,11 @@ body.is-admin #mm-admin { display: flex; }
   border-color: var(--border);
   background: var(--bg-base);
 }
+/* Panel daftar layer ATRBPN: rapatkan jarak antar baris (15px → 6px) tanpa
+   mengubah jarak antar-blok pada modal lain yang memakai .modal-stack. */
+.modal-stack:has(> .atrbpn-row) { gap: 6px; }
+/* Tombol OK tetap punya jarak sedikit lebih longgar dari baris terakhir. */
+.modal-stack:has(> .atrbpn-row) .exp-actions { margin-top: 2px; }
 /* ===== EXPORT MODAL ===== */
 /* Export modal compact — label di atas, options di bawah */
 .exp-field { margin-bottom: 10px; }
@@ -1672,7 +1679,7 @@ button, input, select, textarea { font-weight: 400; }
 .exp-actions .btn { font-size: 11px; font-weight: 400; }
 .atrbpn-search-box { gap: 7px; padding: 2px 0 6px; }
 .atrbpn-search-box strong { font-size: 12px; font-weight: 500; }
-.atrbpn-row { min-height: 38px; padding: 7px 9px; border-radius: 7px; }
+.atrbpn-row { min-height: 30px; padding: 5px 8px; border-radius: 7px; }
 .atrbpn-name { font-size: 11px; font-weight: 400; }
 .atrbpn-val { font-size: 10px; }
 .atrbpn-note { font-size: 9px; }
@@ -1682,7 +1689,7 @@ button, input, select, textarea { font-weight: 400; }
   .modal { padding: 16px; width: calc(100vw - 24px); max-width: calc(100vw - 24px); min-height: 0; height: auto; max-height: min(88vh, calc(var(--modal-w) * 1.5)); }
   .modal-footer { flex-wrap: wrap; }
   .modal-footer .btn { flex: 1 1 120px; }
-  .atrbpn-row { min-height: 42px; }
+  .atrbpn-row { min-height: 34px; }
 }
 
 /* Slider transparansi: track sangat tipis, thumb tetap mudah disentuh. */
@@ -2163,12 +2170,12 @@ input[type="range"]:focus-visible { outline: none; }
   /* Panel ramping (export, ATR/BPN): jangan paksa lebar minimum di layar kecil */
   .modal.modal-narrow { min-width: 0; max-width: 100%; }
 
-  /* ── LAYER ATR/BPN: baris nyaman disentuh di layar kecil ── */
-  .atrbpn-row { padding: 10px 12px; gap: 10px; }
-  .atrbpn-row .modal-check { width: 18px; height: 18px; margin-top: 0; }
+  /* ── LAYER ATR/BPN: baris tetap nyaman disentuh, tinggi dirapatkan ── */
+  .atrbpn-row { padding: 7px 10px; gap: 8px; }
+  .atrbpn-row .modal-check { width: 16px; height: 16px; margin-top: 0; }
   .atrbpn-name { font-size: 13px; }
-  .atrbpn-row input[type=range] { min-width: 70px; height: 28px; }
-  .atrbpn-val { width: 42px; font-size: 12px; }
+  .atrbpn-row input[type=range] { min-width: 70px; height: 24px; }
+  .atrbpn-val { width: 38px; font-size: 12px; }
 
   /* ── HAMBURGER MENU: backdrop ── */
   #mh-menu-backdrop {
