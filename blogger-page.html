@@ -4,8 +4,8 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#0a0a1a"/>
-<meta name="description" content="AuroraMaps — peta interaktif GIS Indonesia dengan layer ATR/BPN (Bidang Tanah, LSD, RTRW). Buka aplikasi web, unduh APK Android, atau unduh pemasang sidecar Windows."/>
-<title>AuroraMaps — Buka Aplikasi &amp; Unduh</title>
+<meta name="description" content="AuroraMaps — peta interaktif GIS Indonesia dengan layer ATR/BPN (Bidang Tanah, LSD, RTRW). Unduh APK Android dan pemasang sidecar Windows."/>
+<title>AuroraMaps — Unduh APK &amp; Sidecar</title>
 </head>
 <body>
 <!-- =====================================================
@@ -17,70 +17,61 @@
     31 Oktober 2026 → tanggal build (Asia/Jakarta)
   ===================================================== -->
 <style>
-  .am-land { --g1:#00f5d4; --g2:#00bbf9; --g3:#9b5de5; --g4:#f15bb5;
-    font-family: Inter, "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
-    background: #0a0a1a; color: #e8ecf7; margin: 0 auto; max-width: 760px;
-    border-radius: 18px; overflow: hidden; line-height: 1.6;
-    box-sizing: border-box; padding: 28px 22px 22px; }
+  html, body { margin: 0; padding: 0; background: #171a20; }
+  .am-land { --gold:#c9a45f; --gold-soft:#edd8a5; --muted:#aeb5bf;
+    font-family: Manrope, "Segoe UI", Roboto, system-ui, sans-serif;
+    background: radial-gradient(ellipse at 90% 0%, rgba(201,164,95,.12), transparent 35%), #171a20;
+    color: #f6f2ea; margin: 0 auto; max-width: 820px;
+    border: 0; border-radius: 0; overflow: hidden; line-height: 1.65;
+    box-sizing: border-box; padding: 34px 32px 24px; box-shadow: 0 24px 70px rgba(0,0,0,.28); }
   .am-land *, .am-land *::before, .am-land *::after { box-sizing: border-box; }
   .am-land a { color: inherit; }
-  .am-land-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-  .am-land-logo { width: 58px; height: 58px; flex: 0 0 58px; }
-  .am-land-title { font-size: 26px; font-weight: 700; letter-spacing: .3px; margin: 0; }
-  .am-land-title span { background: linear-gradient(90deg, var(--g1), var(--g2) 35%, var(--g3) 70%, var(--g4));
-    -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .am-land-sub { margin: 2px 0 0; font-size: 13.5px; color: #9aa7c0; }
-  .am-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 20px; }
-  .am-chip { font-size: 11.5px; padding: 4px 10px; border-radius: 999px;
-    border: 1px solid rgba(255,255,255,.14); color: #b9c4db; background: rgba(255,255,255,.04); }
-  .am-cta { display: grid; gap: 10px; }
+  .am-land-head { display: flex; align-items: center; gap: 17px; padding-bottom: 24px; border-bottom: 1px solid rgba(237,216,165,.2); }
+  .am-land-logo { width: 72px; height: 72px; flex: 0 0 72px; border-radius: 0; border: 1px solid rgba(237,216,165,.55); box-shadow: 0 10px 28px rgba(0,0,0,.3); }
+  .am-land-title { font-family: "Playfair Display", Georgia, serif; font-size: clamp(27px,5vw,38px); font-weight: 700; letter-spacing: 0; margin: 0; }
+  .am-land-title span { color: var(--gold-soft); }
+  .am-kicker { color: var(--gold-soft); text-transform: uppercase; letter-spacing: .16em; font-weight: 800; font-size: 10px; margin: 0 0 4px; }
+  .am-land-sub { margin: 3px 0 0; font-size: 13px; color: var(--muted); }
+  .am-intro { max-width: 680px; margin: 21px 0 13px; font: 600 clamp(17px,2.5vw,21px)/1.4 "Playfair Display", Georgia, serif; color: #f6f2ea; }
+  .am-chips { display: flex; flex-wrap: wrap; gap: 7px; margin: 14px 0 22px; }
+  .am-chip { font-size: 11px; padding: 5px 11px; border-radius: 0;
+    border: 1px solid rgba(237,216,165,.24); color: #e4d9c1; background: rgba(201,164,95,.07); }
+  .am-section-label { color: var(--gold-soft); text-transform: uppercase; letter-spacing: .14em; font-size: 10px; font-weight: 800; margin: 0 0 9px; }
+  .am-cta { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
   .am-btn { display: flex; align-items: center; gap: 12px; text-decoration: none;
-    padding: 14px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,.12);
-    background: rgba(255,255,255,.05); transition: transform .12s, border-color .12s, background .12s; }
-  .am-btn:hover { transform: translateY(-1px); border-color: var(--g2); background: rgba(0,187,249,.10); }
-  .am-btn-utama { background: linear-gradient(135deg, var(--g1), var(--g2) 45%, var(--g3));
-    border: none; color: #06121f; font-weight: 700; }
-  .am-btn-utama:hover { background: linear-gradient(135deg, var(--g1), var(--g2) 45%, var(--g3)); filter: brightness(1.06); }
+    padding: 15px 16px; border-radius: 0; border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.045); transition: transform .15s, border-color .15s, background .15s; }
+  .am-btn:hover { transform: translateY(-2px); border-color: var(--gold); background: rgba(201,164,95,.1); }
+  .am-btn-utama { background: rgba(201,164,95,.10);
+    border: 1px solid rgba(237,216,165,.24); color: #f6f2ea; font-weight: 700; }
+  .am-btn-utama:hover { background: rgba(201,164,95,.16); }
   .am-btn-ico { font-size: 22px; line-height: 1; flex: 0 0 auto; }
   .am-btn-txt { display: flex; flex-direction: column; min-width: 0; }
   .am-btn-txt b { font-size: 15px; }
-  .am-btn-txt small { font-size: 11.5px; opacity: .78; font-weight: 400; }
-  .am-grid { display: grid; gap: 12px; grid-template-columns: 1fr; margin-top: 20px; }
+  .am-btn-txt small { font-size: 11px; opacity: .78; font-weight: 400; }
+  .am-grid { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; margin-top: 18px; }
   @media (min-width: 620px) { .am-grid { grid-template-columns: 1fr 1fr; } }
   .am-card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.10);
-    border-radius: 14px; padding: 15px 16px; }
-  .am-card h3 { margin: 0 0 8px; font-size: 14.5px; display: flex; align-items: center; gap: 8px; }
+    border-radius: 0; padding: 17px; }
+  .am-card h3 { margin: 0 0 10px; font-size: 14px; display: flex; align-items: center; gap: 8px; color: var(--gold-soft); }
   .am-card ol, .am-card ul { margin: 0; padding-left: 18px; font-size: 13px; color: #c3cce0; }
   .am-card li { margin-bottom: 5px; }
   .am-card p { margin: 8px 0 0; font-size: 12.5px; color: #9aa7c0; }
-  .am-note { margin-top: 12px; font-size: 12px; color: #8f9bb5;
-    border-left: 3px solid var(--g3); padding: 6px 0 6px 11px; }
-  .am-foot { margin-top: 20px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.10);
+  .am-note { margin-top: 13px; font-size: 12px; color: #d1c7b4;
+    border-left: 3px solid var(--gold); padding: 8px 0 8px 12px; background: rgba(201,164,95,.05); }
+  .am-foot { margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(237,216,165,.18);
     display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
     font-size: 11.5px; color: #7f8aa3; }
-  .am-foot a { color: var(--g2); text-decoration: none; }
+  .am-foot a { color: var(--gold-soft); text-decoration: none; }
+  @media (max-width: 600px) { .am-land { margin: 10px auto; padding: 24px 18px 18px; border-radius: 0; } .am-cta, .am-grid { grid-template-columns: 1fr; } .am-land-logo { width: 60px; height: 60px; flex-basis: 60px; border-radius: 0; } }
 </style>
 
 <div class="am-land">
   <div class="am-land-head">
-    <svg class="am-land-logo" viewBox="0 0 120 120" role="img" aria-label="Logo AuroraMaps">
-      <defs>
-        <linearGradient id="am-aurora" x1="0" y1="0" x2="1" y2="1">
-          <stop stop-color="#00f5d4"/><stop offset=".33" stop-color="#00bbf9"/>
-          <stop offset=".66" stop-color="#9b5de5"/><stop offset="1" stop-color="#f15bb5"/>
-        </linearGradient>
-      </defs>
-      <circle cx="60" cy="60" r="58" fill="#0a0a1a" stroke="url(#am-aurora)" stroke-width="2"/>
-      <g fill="none" stroke="url(#am-aurora)" stroke-width="3" opacity=".85">
-        <path d="M12 45q18-12 36-5t36-5t24 5"/><path d="M10 56q18-12 36-5t36-5t28 5"/>
-        <path d="M14 68q18-12 36-5t36-5t24 5"/>
-      </g>
-      <path d="M60 22c-16 0-24 11-24 23 0 16 24 39 24 39s24-23 24-39c0-12-8-23-24-23z" fill="url(#am-aurora)"/>
-      <circle cx="60" cy="45" r="8" fill="#0a0a1a"/><circle cx="60" cy="45" r="5" fill="url(#am-aurora)"/>
-    </svg>
+    <img class="am-land-logo" src="https://riacaya.github.io/auroramaps/assets/auroramaps-192.png" alt="Logo aplikasi AuroraMaps" width="72" height="72"/>
     <div>
       <h1 class="am-land-title"><span>AuroraMaps</span></h1>
-      <p class="am-land-sub">Peta interaktif GIS Indonesia · integrasi data ATR/BPN</p>
+      <p class="am-land-sub">RiaCaya GIS Viewer</p>
     </div>
   </div>
 
@@ -93,31 +84,25 @@
   </div>
 
   <div class="am-cta">
-    <a class="am-btn am-btn-utama" href="https://riacaya.github.io/auroramaps/">
-      <span class="am-btn-ico">🌐</span>
-      <span class="am-btn-txt"><b>Buka Aplikasi Web</b><small>riacaya.github.io/auroramaps — langsung jalan di browser</small></span>
-    </a>
-    <a class="am-btn" href="https://riacaya.github.io/auroramaps/downloads/AuroraMaps.apk">
+    <a class="am-btn am-btn-utama" href="https://riacaya.github.io/auroramaps/downloads/AuroraMaps.apk">
       <span class="am-btn-ico">📲</span>
-      <span class="am-btn-txt"><b>Unduh APK Android</b><small>±7 MB · cangkang yang memuat situs dari GitHub Pages</small></span>
+      <span class="am-btn-txt"><b>Download For Android</b><small>±7 MB · cangkang yang memuat situs dari GitHub Pages</small></span>
     </a>
     <a class="am-btn" href="https://riacaya.github.io/auroramaps/sidecar/Pasang-Sidecar.exe">
       <span class="am-btn-ico">🖥️</span>
-      <span class="am-btn-txt"><b>Unduh Pasang-Sidecar.exe</b><small>±25 MB · Windows — syarat fitur cek bidang &amp; analisa</small></span>
+      <span class="am-btn-txt"><b>Download For Windows</b><small>±25 MB · Windows — syarat fitur cek bidang &amp; analisa</small></span>
     </a>
   </div>
 
   <div class="am-grid">
     <div class="am-card">
-      <h3>📲 Di Android</h3>
       <ol>
-        <li><b>Tanpa APK:</b> buka aplikasi web di Chrome → menu (⋮) → <b>Install app</b> / <b>Tambahkan ke layar utama</b>.</li>
-        <li><b>Dengan APK:</b> unduh file di atas, buka file-nya, izinkan pemasangan dari sumber tidak dikenal bila diminta.</li>
+        <li>Unduh <b>AuroraMaps.apk</b> lewat tombol di atas.</li>
+        <li>Buka file-nya, izinkan pemasangan dari sumber tidak dikenal bila diminta.</li>
       </ol>
       <p>APK hanyalah cangkang: seluruh isi aplikasi dimuat dari GitHub Pages, jadi perubahan situs langsung terbawa tanpa build ulang.</p>
     </div>
     <div class="am-card">
-      <h3>🖥️ Di Windows (sidecar)</h3>
       <ol>
         <li>Dobel-klik <b>Pasang-Sidecar.exe</b> → klik <b>Install</b>.</li>
         <li>Tunggu 100%, lalu <b>OK</b> — pemasang tertutup sendiri.</li>
@@ -127,16 +112,10 @@
     </div>
   </div>
 
-  <div class="am-note">
-    Fitur cek bidang, zona, dan analisa membutuhkan sidecar terpasang di komputer
-    itu dan koneksi internet; tanpa sidecar, peta &amp; layer tetap bisa dipakai.
-    Login diperlukan saat pertama kali membuka aplikasi.
-  </div>
-
   <div class="am-foot">
-    <span>AuroraMaps v1.0.0 · diperbarui 31 Oktober 2026</span>
-    <span>Sumber: <a href="https://riacaya.github.io/auroramaps/">GitHub Pages</a> ·
-      <a href="https://github.com/riacaya/auroramaps">github.com/riacaya/auroramaps</a></span>
+    <span><b>AuroraMaps</b> · RiaCaya GIS Viewer</span>
+    <span>Telp: <a href="tel:+6282338013610">+62 823-3801-3610</a> ·
+      Email: <a href="mailto:riacaya99@gmail.com">riacaya99@gmail.com</a></span>
   </div>
 </div>
 </body>
