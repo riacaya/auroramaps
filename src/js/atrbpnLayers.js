@@ -723,8 +723,20 @@ const AtrbpnLayers = {
       if (!ok) return gagal('sidecar BHUMI tidak aktif');
       return sc.analisa({ latitude: lat, longitude: lng, luas: luas || 0 })
         .then(r => {
-          const a = r && r.data;
-          const profil = a && a.success && a.data ? a.data : a;
+          // Gateway pernah mengirim {data:{success:true,data:{...}}},
+          // tetapi versi lain mengirim {success:true,data:{...}} atau
+          // {data:{data:{...}}}. Buka wrapper secara aman sampai profilnya.
+          let profil = r;
+          for (let i = 0; i < 4 && profil && typeof profil === 'object'; i++) {
+            if (profil.success && profil.data && typeof profil.data === 'object') {
+              profil = profil.data;
+            } else if (profil.data && typeof profil.data === 'object' &&
+                       Object.keys(profil).length === 1) {
+              profil = profil.data;
+            } else {
+              break;
+            }
+          }
           return (profil && typeof profil === 'object')
             ? { data: profil, luas: luas || 0 }
             : gagal('balasan analisa kosong');
@@ -1466,7 +1478,7 @@ const AtrbpnLayers = {
     return `
           <strong id="${p}-title">Cari bidang berdasarkan ${isNib ? 'NIB' : 'SHM'}</strong>
           <label class="prop-label">Status Hak</label>
-          <select id="${p}-tipe" class="prop-edit-val"><option value="1">Hak Milik</option><option value="2">Hak Guna Usaha</option><option value="3">Hak Guna Bangunan</option><option value="4">Hak Pakai</option><option value="5">Hak Pengelolaan</option><option value="6">Hak Wakaf</option></select>
+          <select id="${p}-tipe" class="prop-edit-val"><option value="1">Hak Milik</option><option value="2">Hak Guna Usaha</option><option value="3">Hak Guna Bangunan</option><option value="4">Hak Pakai</option><option value="5">Hak Pengelolaan</option><option value="8">Hak Wakaf</option></select>
           <label class="prop-label">Kabupaten/Kota</label>
           <input id="${p}-kab" class="prop-edit-val" list="${p}-kab-list" placeholder="Ketik nama kabupaten..." autocomplete="off"/>
           <datalist id="${p}-kab-list"></datalist>
@@ -1539,21 +1551,35 @@ const AtrbpnLayers = {
     });
 
     document.getElementById(p + '-search')?.addEventListener('click', () => {
-      const k = kabRows.find(x => namaKab(x) === kabSelect.value.trim());
-      if (!k) { Toast.show('Pilih kabupaten/kota dari daftar', 'warn'); return; }
+      const nomorRaw = (document.getElementById(p + '-nomor')?.value || '').trim();
+      const digits = nomorRaw.replace(/\D/g, '');
       const tipeVal = document.getElementById(p + '-tipe')?.value || '1';
       const tanpaDesa = tipeVal === '2' || tipeVal === '5';
+      // NIB penuh (14 digit) dicari TANPA wilayah: situs BHUMI mengirim
+      // desaId "0" — kabupaten/desa tidak dipakai sama sekali (HAR 3 Nov 2026).
+      const nibPenuh = isNib && digits.length >= 14;
+      const k = kabRows.find(x => namaKab(x) === kabSelect.value.trim());
+      if (!k && !nibPenuh) { Toast.show('Pilih kabupaten/kota dari daftar', 'warn'); return; }
       const desaName = desaSelect?.value.trim();
       const desaRow = tanpaDesa ? null : desaRows.find(x => (x.nama || x.name || x.label) === desaName);
-      const wilayahId = tanpaDesa
-        ? (k.id || k.kabkotId || k.value)
+      // Kabupaten tanpa desa (HGU/HPL) → situs memakai prefix "kabupaten:"
+      // (bukan id mentah); desa biasa tetap id desa apa adanya.
+      const wilayahId = nibPenuh ? '0'
+        : tanpaDesa ? ('kabupaten:' + (k.id || k.kabkotId || k.value))
         : (desaRow?.id || desaRow?.desaId || desaRow?.value);
       if (!wilayahId) { Toast.show('Pilih desa dari daftar', 'warn'); return; }
-      const nomor = document.getElementById(p + '-nomor')?.value.trim();
-      if (!/^\d{5}$/.test(nomor || '')) { Toast.show('Isi 5 digit nomornya dulu', 'warn'); return; }
-      const tipe = tanpaDesa ? 'hgu_hpl' : tipeVal;
+      // Nomor < 5 digit dipadding (padStart) seperti situs, bukan ditolak;
+      // NIB 14 digit lolos apa adanya (divalidasi di searchNib).
+      const nomor = digits.length && digits.length < 5 ? digits.padStart(5, '0') : digits;
+      if (!nibPenuh && !/^\d{5}$/.test(nomor)) {
+        Toast.show(isNib ? 'Isi NIB (5 digit terakhir) atau NIB penuh 14 digit' : 'Isi 5 digit nomornya dulu', 'warn');
+        return;
+      }
       Modal.close();
-      const search = (isNib || tanpaDesa) ? BhumiIdentify.searchNib : BhumiIdentify.searchCertificate;
+      // HGU/HPL di tab SHM memakai mode "nomorhak" + tipehak "2"/"5"
+      // (bukan search "nib" + tipehak "hgu_hpl") — mengikuti situs BHUMI.
+      const tipe = isNib ? (tanpaDesa ? 'hgu_hpl' : tipeVal) : tipeVal;
+      const search = isNib ? BhumiIdentify.searchNib : BhumiIdentify.searchCertificate;
       search.call(BhumiIdentify, wilayahId, nomor, tipe).then(features => {
         if (features.length) Toast.show(`${features.length} bidang ditemukan`, 'success');
         else Toast.show(`${tanpaDesa ? (tipeVal === '5' ? 'Hak Pengelolaan' : 'HGU') : (isNib ? 'NIB' : 'Bidang')} tidak ditemukan`, 'warn');

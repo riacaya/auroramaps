@@ -128,7 +128,11 @@ const BhumiIdentify = {
     const bounds = L.geoJSON(first).getBounds();
     if (!bounds.isValid()) return;
     const center = bounds.getCenter();
-    if (tipehak === 'hgu_hpl') MapManager.map.setView(center, Math.max(MapManager.map.getZoom(), 17));
+    // HGU/HPL: setView (bukan fitBounds) — tipehak '2'/'5' (mode nomorhak,
+    // dipakai tab SHM sejak perbaikan 3 Nov 2026) ATAU 'hgu_hpl' (mode nib).
+    if (tipehak === 'hgu_hpl' || tipehak === '2' || tipehak === '5') {
+      MapManager.map.setView(center, Math.max(MapManager.map.getZoom(), 17));
+    }
     else MapManager.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 20 });
     const main = features.find(x => x?.properties?.nib) || first;
     this._showInfo(main, features.length, center.lat, center.lng);
@@ -284,8 +288,12 @@ const BhumiIdentify = {
   async searchCertificate(desaId, nomor, tipehak = '') {
     this._ensureBidangVisible();
     if (!desaId) throw new Error('Pilih kabupaten dulu');
-    const value = String(nomor || '').replace(/\D/g, '');
-    if (!/^\d{5}$/.test(value)) throw new Error('Nomor hak harus 5 digit');    const features = await this._searchFeatures('/expapi/getBidang',
+    const raw = String(nomor || '').replace(/\D/g, '');
+    // Nomor < 5 digit dipadding seperti situs BHUMI (padStart(5,"0")),
+    // bukan langsung ditolak — "1889" = hak 01889.
+    const value = raw.length < 5 ? raw.padStart(5, '0') : raw;
+    if (!/^\d{5}$/.test(value)) throw new Error('Nomor hak harus 5 digit');
+    const features = await this._searchFeatures('/expapi/getBidang',
       { desaId, nomor: value, search: 'nomorhak', tipehak });
     if (!features.length) return [];
     this._focusSearchResult(features, tipehak);
@@ -294,9 +302,19 @@ const BhumiIdentify = {
 
   async searchNib(desaId, nomor, tipehak = '') {
     this._ensureBidangVisible();
+    const raw = String(nomor || '').replace(/\D/g, '');
+    // NIB penuh 14 digit dicari situs TANPA wilayah: desaId "0", nomor
+    // 14 digit apa adanya (HAR 3 Nov 2026) — tanpa validasi 5 digit.
+    if (raw.length >= 14) {
+      const features = await this._searchFeatures('/expapi/getBidang',
+        { desaId: '0', nomor: raw, search: 'nib', tipehak });
+      if (!features.length) return [];
+      this._focusSearchResult(features, tipehak);
+      return features;
+    }
     if (!desaId) throw new Error('Pilih kabupaten dulu');
-    const value = String(nomor || '').replace(/\D/g, '');
-    if (!/^\d{5}$/.test(value)) throw new Error('NIB harus 5 digit');
+    const value = raw.length < 5 ? raw.padStart(5, '0') : raw;
+    if (!/^\d{5}$/.test(value)) throw new Error('NIB harus 5 digit (atau NIB penuh 14 digit)');
     const features = await this._searchFeatures('/expapi/getBidang',
       { desaId, nomor: value, search: 'nib', tipehak });
     if (!features.length) return [];
@@ -571,7 +589,20 @@ const BhumiIdentify = {
       service: service
     };
     const bridged = await this._requestBrowserBridge(requestBody, lat, lng);
-    return bridged || await this._gfiFeatures(requestBody);
+    // [] dari sidecar berarti respons tidak menemukan/terbaca oleh jalur
+    // bridge, bukan alasan untuk mematikan fallback proxy. Ini penting untuk
+    // RTRW Pro/Kab dan juga klik bidang ketika format respons gateway berubah.
+    if (Array.isArray(bridged) && bridged.length) return bridged;
+    try {
+      const fallback = await this._gfiFeatures(requestBody);
+      if (Array.isArray(fallback) && fallback.length) return fallback;
+    } catch (e) {
+      // Jika bridge sudah memberi jawaban kosong yang valid, jangan mengganti
+      // popup menjadi error hanya karena fallback tidak tersedia.
+      if (Array.isArray(bridged)) return bridged;
+      throw e;
+    }
+    return Array.isArray(bridged) ? bridged : [];
   },
 
   // Catat hasil identify (state panel, AutoSave, overlay transparan) TANPA
