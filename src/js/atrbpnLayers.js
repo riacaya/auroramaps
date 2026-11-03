@@ -97,6 +97,12 @@ const PROBE_TIMEOUT_MS = 12000;
 const BIDANG_RETRY_MS = 10 * 60 * 1000;
 const BHUMI_RTRW_LAYER = 'petabpn:rtrw_kabkot_merge';
 const BHUMI_RTRW_STYLE = 'petabpn:highlight_rtrw_kabkot';
+// Sumber RTRW terbaru yang dipakai panel BHUMI (katalog GeoServer petabpn).
+// Diakses melalui /api/proksi BHUMI karena geosrv tidak boleh dipanggil
+// langsung dari halaman AuroraMaps.
+const GEOSRV_WMS = 'https://geosrv-app.atrbpn.go.id/geoserver/petabpn/wms';
+const GEOSRV_RTRP_LAYER = 'rtrwn_2025';
+const GEOSRV_RTRW_LAYER = 'rtrw_kabkot_merge';
 
 // ── Layer LSD via WMS Geoserver BHUMI (22 Okt 2026) ──────────────────────────
 // TMS gisliner 269_lsd_ MATI total (tile PNG transparan 235 B, md5 konstan
@@ -800,6 +806,10 @@ const AtrbpnLayers = {
   // titik klik, CRS 4326 seperti di HAR. Urutan percobaan: proxy /gistaru
   // dulu, URL asli sebagai cadangan (worker belum ter-deploy / WAF longgar).
   async _gfiZone(uuid, layerName, lat, lng, skipPersil) {
+    if (!skipPersil && uuid === RTRP_UUID) {
+      const gs = await this._geoServerGfi(GEOSRV_RTRP_LAYER, lat, lng);
+      if (gs && gs.count > 0) return gs;
+    }
     // Jalur utama: getPersil di server GISTARU (lihat _zoneViaPersil).
     if (!skipPersil) {
       const p = await this._zoneViaPersil(lat, lng, layerName, GISTARU_WMS + uuid);
@@ -847,11 +857,41 @@ const AtrbpnLayers = {
   // dulu; gagal → WMS bhumi merge (lengkapnya terbatas: objectid+keterangan);
   // itu pun gagal → GFI GISTARU lama.
   async _gfiKabZone(lat, lng) {
+    const gs = await this._geoServerGfi(GEOSRV_RTRW_LAYER, lat, lng);
+    if (gs && gs.count > 0) return gs;
     const p = await this._zoneViaPersil(lat, lng, RTRW_LAYER, GISTARU_WMS + RTRW_UUID);
     if (p) return p;
     const b = await this._gfiBhumiRtrw(lat, lng);
     if (b && !b.error && b.count > 0) return b;
     return this._gfiZone(RTRW_UUID, RTRW_LAYER, lat, lng, true);
+  },
+
+  // GFI GeoServer terbaru melalui proxy internal BHUMI. Respons proxy berupa
+  // FeatureCollection JSON, lalu dinormalisasi ke bentuk {rows,count} yang
+  // dipakai renderer popup lama.
+  async _geoServerGfi(layerName, lat, lng) {
+    const sc = window.AuroraBhumiSidecarClient;
+    if (!sc || typeof sc.proxy !== 'function') return null;
+    if (sc.state() === null) { try { await sc.ready(3000); } catch (e) { /* abaikan */ } }
+    if (!sc.availableSync()) return null;
+    const span = 80;
+    const x = lng * 20037508.34 / 180;
+    const y = Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)) * 20037508.34 / Math.PI;
+    const qs = '?service=WMS&version=1.1.1&request=GetFeatureInfo' +
+      '&info_format=application/json&layers=' + encodeURIComponent(layerName) +
+      '&query_layers=' + encodeURIComponent(layerName) + '&styles=&srs=EPSG:3857&crs=EPSG:3857' +
+      '&width=256&height=256&x=128&y=128&bbox=' +
+      [x - span, y - span, x + span, y + span].map(v => v.toFixed(2)).join(',') +
+      '&feature_count=5';
+    try {
+      const r = await sc.proxy(GEOSRV_WMS + qs);
+      const j = r && r.data ? r.data : r;
+      const parsed = this._parseGfiBody(JSON.stringify(j || {}));
+      if (parsed.rows && parsed.rows.length) {
+        parsed.rows = parsed.rows.map(o => o.namobj ? o : Object.assign({ namobj: o.keterangan || '' }, o));
+      }
+      return parsed;
+    } catch (e) { return null; }
   },
 
   // GetFeatureInfo zona RTRW lewat WMS BHUMI (petabpn:rtrw_kabkot_merge).

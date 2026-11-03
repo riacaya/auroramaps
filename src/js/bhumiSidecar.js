@@ -150,6 +150,10 @@ const AuroraBhumiSidecarClient = {
   gfi(url) {
     return this._post('/gfi', { url }, 30000);
   },
+  proxy(url) {
+    return this._post('/proxy', { url }, 30000);
+  },
+  // → {data: GeoJSON} — proxy GeoServer BHUMI untuk RTRW terbaru.
   // → {features:[...]}
   search(path, body) {
     return this._post('/search', { path, body }, 40000);
