@@ -1,6 +1,6 @@
 // =====================================================
 // AuroraMaps · atrbpnLayers.js — Layer referensi ATR/BPN
-// LSD (Lahan Sawah Dilindungi) · RTR Provinsi · RTRW Kabupaten/Kota
+// LSD (Lahan Sawah Dilindungi) · Lahan Baku Sawah · RTR Provinsi · RTRW Kabupaten/Kota
 // Bidang Tanah / persil (bhumi mprx via proxy lokal /bhumi-proxy)
 // Sumber: GISLINER TMS (RTRW Kab/Kota dari HAR pengguna), GISTARU WMS
 // /expapi/rtrw/wms (merge), bhumi /expapi/bhumigeos/umum/wms (LSD, gisliner
@@ -120,6 +120,9 @@ const GEOSRV_RTRW_LAYER = 'rtrw_kabkot_merge';
 // membalas PNG untuk request GFI → LSD tetap visual-only.
 const BHUMI_LSD_PATH = '/expapi/bhumigeos/umum/wms';
 const BHUMI_LSD_LAYERS = ['umum:lsd_merge_8_provinsi', 'umum:lsd_merge'];
+// Lahan Baku Sawah (LBS) dari HAR pengguna: Atlas ATR/BPN dataset 46.
+const ATLAS_LBS_WMS = 'https://atlas.atrbpn.go.id/api/public/wms/46';
+const ATLAS_LBS_LAYER = 'remote:lbs_parsial';
 
 // ── Sumber tile Bidang Tanah (persil) — rantai fallback ─────────────────────
 // Urut prioritas (riset 5 Okt 2026, rincian di endpoint.md §Sentuh Tanahku):
@@ -326,7 +329,7 @@ function relayWmsLayer(url, options, proxyBase, relayMode = 'bhumi') {
 
 const AtrbpnLayers = {
   _map: null,
-  _layers: null,   // { lsd: {...}, rtrp: {...}, rtrw: {...} }
+  _layers: null,   // { lsd: {...}, lbs: {...}, rtrp: {...}, rtrw: {...} }
 
   init() {
     this._map = MapManager.map;
@@ -503,10 +506,23 @@ const AtrbpnLayers = {
           LIGHT('atrbpnLsdPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false }))) };
     }
 
+    // ── Lahan Baku Sawah (LBS) — referensi atlas.atrbpn.go.id ─────────────
+    // HAR menunjukkan WMS /api/public/wms/46, layer remote:lbs_parsial,
+    // WMS 1.3.0, EPSG:3857, tile 256 px. Endpoint membalas image/png dan
+    // Access-Control-Allow-Origin: *, sehingga dapat dirender langsung.
+    const lbsLayer = attachTileRetry(L.tileLayer.wms(ATLAS_LBS_WMS, {
+      layers: ATLAS_LBS_LAYER, version: '1.3.0', crs: L.CRS.EPSG3857,
+      tileSize: 256, uppercase: true, tiled: true,
+      format: 'image/png', transparent: true,
+      maxZoom: 22, maxNativeZoom: 22, minZoom: 7,
+      pane: 'atrbpnLsdPane', attribution: 'Lahan Baku Sawah (ATRBPN Atlas)'
+    }));
+
     this._layers = {
       bidang: bidangEntry,
       batasPersil: batasPersilEntry,
       lsd:  lsdEntry,
+      lbs:  { label: 'Lahan Baku Sawah', on: false, opacity: 0.8, layer: lbsLayer },
       rtrp: { label: 'RTR Provinsi (RTRW)', on: false, opacity: 0.7, layer: attachTileRetry(relayWmsLayer(RTRP_URL, LIGHT('atrbpnRtrpPane', 21, {
               layers: GEOSRV_RTRP_LAYER, version: '1.1.1',
               crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true,
