@@ -249,7 +249,8 @@ const BhumiTileRelay = {
     // Probe pertama belum tentu selesai saat tile pertama dimuat → tunggu
     // maks 2,5 dtk sebelum memutuskan.
     if (sc && sc.state() === null) { try { await sc.ready(2500); } catch (e) { /* abaikan */ } }
-    if (!(sc && sc.availableSync())) {
+    const geoserver = String(url).startsWith(GEOSRV_WMS);
+    if (!(sc && (geoserver || sc.availableSync()))) {
       this._setAvail(false);
       throw Object.assign(new Error('Sidecar BHUMI tidak aktif — jalankan jalankan-auroramaps.bat.'), { relay: false });
     }
