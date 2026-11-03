@@ -253,7 +253,9 @@ const BhumiTileRelay = {
       this._setAvail(false);
       throw Object.assign(new Error('Sidecar BHUMI tidak aktif — jalankan jalankan-auroramaps.bat.'), { relay: false });
     }
-    return sc.tile(url).then(
+    const ambil = (typeof sc.proxyImage === 'function' && String(url).startsWith(GEOSRV_WMS))
+      ? sc.proxyImage(url) : sc.tile(url);
+    return ambil.then(
       (r) => { this._setAvail(true, 'sidecar lokal'); return this._remember(url, r.base64, r.mime); },
       (err) => { throw err; }
     );
@@ -333,7 +335,9 @@ const AtrbpnLayers = {
     // worker Cloudflare. Catatan 22 Okt 2026: dari jaringan cloud worker balas
     // 522 (gistaru tak terjangkau dari luar); dari PC lokal 200 — teruji di HAR.
     const gBase = this._gistaruBase();
-    const RTRP_URL = (gBase ? gBase + '/interoppublic/api/wms/' : GISTARU_WMS) + RTRP_UUID;
+    // Tile RTR Provinsi lama di GISTARU kini 404. Gunakan katalog GeoServer
+    // petabpn yang sama dengan popup, lewat /api/proksi BHUMI (image).
+    const RTRP_URL = GEOSRV_WMS;
     // WMS RTRW Kab/Kota — pola PERSIS rekaman situs BHUMI (bhumiatrbpn2.har,
     // 22 Okt 2026): UUID 78abbda6 + LAYERS rtr-online:rtrw_kabkot_1_indonesia,
     // WMS 1.3.0, TILED 512px, STYLES kosong (dipakai utk GetMap tile & GFI).
@@ -498,10 +502,10 @@ const AtrbpnLayers = {
       batasPersil: batasPersilEntry,
       lsd:  lsdEntry,
       rtrp: { label: 'RTR Provinsi (RTRW)', on: false, opacity: 0.7, layer: attachTileRetry(relayWmsLayer(RTRP_URL, LIGHT('atrbpnRtrpPane', 21, {
-              layers: RTRP_LAYER, version: '1.3.0',
+              layers: GEOSRV_RTRP_LAYER, version: '1.1.1',
               crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true,
               format: 'image/png', transparent: true, attribution: 'RTR Provinsi (gistaru-app)'
-            }), '', 'gistaru')) },
+            }), '', 'geoserver')) },
       rtrw: { label: 'RTRW Kab/Kota',     on: false, opacity: 0.7, layer: rtrwLayer },
       hutan: hutanEntry
       ,shgu: shguEntry
