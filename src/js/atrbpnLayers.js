@@ -923,14 +923,22 @@ const AtrbpnLayers = {
     if (t.charAt(0) === '{' || t.charAt(0) === '[') {
       try {
         const j = JSON.parse(t);
-        if (j && typeof j === 'object' && !Array.isArray(j)) {
-          if (j.error) return { rows: [], count: 0, error: String(j.error) };
-          if (Array.isArray(j.features)) {
-            const rows = j.features
-              .map(f => (f && f.properties) || {})
+        let v = j;
+        for (let i = 0; i < 4 && v && typeof v === 'object'; i++) {
+          if (v.error) return { rows: [], count: 0, error: String(v.error) };
+          if (Array.isArray(v)) {
+            const rows = v.map(f => (f && f.properties) || f || {})
+              .filter(o => o && Object.keys(o).length);
+            return { rows, count: rows.length };
+          }
+          if (Array.isArray(v.features)) {
+            const rows = v.features.map(f => (f && f.properties) || {})
               .filter(o => Object.keys(o).length);
             return { rows, count: rows.length };
           }
+          if (v.data && typeof v.data === 'object') { v = v.data; continue; }
+          if (v.result && typeof v.result === 'object') { v = v.result; continue; }
+          break;
         }
         return { rows: [], count: 0 };
       } catch (e) { /* bukan JSON valid → lanjut coba parser HTML */ }

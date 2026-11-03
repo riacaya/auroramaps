@@ -588,7 +588,11 @@ const BhumiIdentify = {
       url: '/expapi/getPersil',
       service: service
     };
-    const bridged = await this._requestBrowserBridge(requestBody, lat, lng);
+    // Sidecar bisa hidup (/status 200) tetapi CDP-nya sedang reconnecting.
+    // Jangan biarkan 502/timeout dari bridge mematikan jalur proxy.
+    let bridged = null;
+    try { bridged = await this._requestBrowserBridge(requestBody, lat, lng); }
+    catch (e) { bridged = null; }
     // [] dari sidecar berarti respons tidak menemukan/terbaca oleh jalur
     // bridge, bukan alasan untuk mematikan fallback proxy. Ini penting untuk
     // RTRW Pro/Kab dan juga klik bidang ketika format respons gateway berubah.
