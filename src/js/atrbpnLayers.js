@@ -210,7 +210,8 @@ const BhumiTileRelay = {
     // Setelah relai dipastikan tidak ada, coba lagi paling cepat tiap 30 detik
     // (mis. sidecar baru dinyalakan).
     const scOk = !!(window.AuroraBhumiSidecarClient && AuroraBhumiSidecarClient.availableSync());
-    if (!scOk && this._avail === false && Date.now() - this._availAt < 30000) {
+    const geoserver = String(url).startsWith(GEOSRV_WMS);
+    if (!geoserver && !scOk && this._avail === false && Date.now() - this._availAt < 30000) {
       return Promise.reject(Object.assign(new Error('Relai tile tidak aktif.'), { relay: false }));
     }
     return new Promise((resolve, reject) => {
