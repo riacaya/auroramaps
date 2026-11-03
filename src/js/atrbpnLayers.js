@@ -629,6 +629,28 @@ const AtrbpnLayers = {
     const want = { prov: true, kab: true };
     const settle = (key, res) => {
       state[key] = res || { rows: [], count: 0, error: 'gagal' };
+      // Analisa Bidang juga membawa hasil RTRW. Gunakan sebagai fallback
+      // ketika WMS GISTARU sedang timeout agar kedua tab tetap berisi data.
+      if (key === 'analisa' && state.analisa && state.analisa.data) {
+        const a = state.analisa.data;
+        const r = a.rtrw || a.rtrwPro || a.rtrwKab;
+        if (r && typeof r === 'object' && r.found !== false) {
+          const row = {
+            namobj: r.polaRuang || r.jenisPolaRuang || r.nama || r.keterangan,
+            wadmpr: r.provinsi || r.wilayahProvinsi,
+            wadmkk: r.kabupaten || r.kabKota,
+            wadmkc: r.kecamatan,
+            nothpr: r.perda || r.dasarHukum || r.nothpr,
+            meta: r.meta || r.wilayah,
+            source: 'Analisa Bidang'
+          };
+          const rows = Object.fromEntries(Object.entries(row).filter(([, v]) => v != null && String(v).trim() !== ''));
+          if (Object.keys(rows).length > 1) for (const k of ['prov', 'kab']) {
+            const old = state[k];
+            if (!old || old.pending || old.error || !(old.rows || []).length) state[k] = { rows: [rows], count: 1, fromAnalisa: true };
+          }
+        }
+      }
       // Buang hasil lama HANYA bila kartu pending sudah tidak tampil / sudah
       // diganti pihak lain (klik koordinat baru, klik fitur, atau ✕ tutup).
       // Klik UI lain tidak boleh membuang hasil — popup jangan nyangkut di
