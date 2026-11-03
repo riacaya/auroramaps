@@ -791,7 +791,10 @@ const AtrbpnLayers = {
     const sc = window.AuroraBhumiSidecarClient;
     if (!sc || sc.state() === false) return null;
     if (sc.state() === null) { try { await sc.ready(3000); } catch (e) { /* abaikan */ } }
-    if (!sc.availableSync()) return null;
+    // Jangan membatalkan jalur ini hanya karena probe latar belakang sempat
+    // menyimpan false. Browser internal/PNA dapat membuat probe awal gagal
+    // walau POST endpoint sidecar sebenarnya bisa dipakai; proxy RTRW dicoba
+    // langsung dan _post akan menangani kegagalan sebenarnya.
     if (typeof BhumiIdentify === 'undefined' || !BhumiIdentify.readLayer) return null;
     try {
       const feats = await BhumiIdentify.readLayer(lat, lng, layerName, service);
