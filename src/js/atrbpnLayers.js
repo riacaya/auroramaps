@@ -293,6 +293,10 @@ function relayWmsLayer(url, options, proxyBase, relayMode = 'bhumi') {
           // URL asli gistaru, dijalankan dari halaman BHUMI (Referer otomatis).
           const idx = direct.indexOf('/interoppublic/api/wms/');
           if (idx >= 0 && !IS_LOCAL_APP) relayUrl = GISTARU_ORIGIN + direct.slice(idx);
+        } else if (this._relayMode === 'geoserver') {
+          // GeoServer diteruskan melalui sidecar /proxy-image; jangan
+          // menambahkan host BHUMI ke URL absolut GeoServer.
+          relayUrl = direct;
         } else if (strip && direct.startsWith(strip)) {
           relayUrl = BHUMI_TILE_ORIGIN + direct.slice(strip.length);
         } else if (!direct.startsWith(BHUMI_TILE_ORIGIN)) {
