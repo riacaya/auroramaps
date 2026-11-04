@@ -1644,13 +1644,17 @@ const AtrbpnLayers = {
           <div class="atrbpn-tabpane" data-atrbpn-pane="batas"${tab === 'batas' ? '' : ' hidden'}>
             <strong>Cari batas administrasi</strong>
             <label class="prop-label">Provinsi</label>
-            <select id="atrbpn-batas-prop" class="prop-edit-val"><option value="">Memuat provinsi…</option></select>
+            <input id="atrbpn-batas-prop" class="prop-edit-val" list="atrbpn-batas-prop-list" placeholder="Ketik nama provinsi…" autocomplete="off" />
+            <datalist id="atrbpn-batas-prop-list"></datalist>
             <label class="prop-label">Kabupaten/Kota</label>
-            <select id="atrbpn-batas-kab" class="prop-edit-val" disabled><option value="">Pilih provinsi dulu…</option></select>
+            <input id="atrbpn-batas-kab" class="prop-edit-val" list="atrbpn-batas-kab-list" placeholder="Ketik nama kabupaten/kota…" autocomplete="off" disabled />
+            <datalist id="atrbpn-batas-kab-list"></datalist>
             <label class="prop-label">Kecamatan</label>
-            <select id="atrbpn-batas-kec" class="prop-edit-val" disabled><option value="">Pilih kabupaten/kota dulu…</option></select>
+            <input id="atrbpn-batas-kec" class="prop-edit-val" list="atrbpn-batas-kec-list" placeholder="Ketik nama kecamatan…" autocomplete="off" disabled />
+            <datalist id="atrbpn-batas-kec-list"></datalist>
             <label class="prop-label">Desa/Kelurahan</label>
-            <select id="atrbpn-batas-desa" class="prop-edit-val" disabled><option value="">Pilih kecamatan dulu…</option></select>
+            <input id="atrbpn-batas-desa" class="prop-edit-val" list="atrbpn-batas-desa-list" placeholder="Ketik nama desa/kelurahan…" autocomplete="off" disabled />
+            <datalist id="atrbpn-batas-desa-list"></datalist>
             <button class="btn btn-primary" id="atrbpn-batas-search">Cari Batas</button>
             <div class="atrbpn-note" id="atrbpn-batas-note">Data wilayah diambil dari BHUMI ATR/BPN.</div>
           </div>
@@ -1700,9 +1704,83 @@ const AtrbpnLayers = {
     if (!prop || !kab || !kec || !desa) return;
     const isi = (el, rows, placeholder) => {
       const arr = Array.isArray(rows) ? rows : (rows?.data || rows?.rows || []);
-      el.innerHTML = `<option value="">${placeholder}</option>` + arr.map(x => {
-        const value = x.value ?? x.id ?? x.label ?? '';
-        const label = x.label ?? x.nama ?? x.name ?? value;
+      const list = document.getElementById(el.getAttribute('list'));
+      const labelOf = x => x.label ?? x.nama ?? x.name ?? x.nama_provinsi ?? x.nama_kabkot ?? x.nama_kecamatan ?? x.nama_desa ?? x.value ?? x.id ?? '';
+      if (list) list.innerHTML = arr.map(x => {
+        const value = labelOf(x);
+        const id = x.value ?? x.id ?? x.kode ?? '';
+        return `<option value="${Utils.escapeHtml(String(value))}" label="${Utils.escapeHtml(String(id))}"></option>`;
+      }).join('');
+      el.value = '';
+      el.dataset.id = '';
+      el.placeholder = placeholder;
+      el.disabled = !arr.length;
+      return arr;
+    };
+    const pilih = (el, rows) => {
+      const raw = String(el.value || '').trim().toLowerCase();
+      const arr = Array.isArray(rows) ? rows : [];
+      const labelOf = x => String(x.label ?? x.nama ?? x.name ?? x.nama_provinsi ?? x.nama_kabkot ?? x.nama_kecamatan ?? x.nama_desa ?? x.value ?? x.id ?? '').trim();
+      const valueOf = x => String(x.value ?? x.id ?? x.kode ?? '').trim();
+      const row = arr.find(x => labelOf(x).toLowerCase() === raw || valueOf(x).toLowerCase() === raw);
+      if (!row) { el.dataset.id = ''; return null; }
+      el.dataset.id = valueOf(row);
+      return row;
+    };
+    const reset = (el, text) => { el.value = ''; el.dataset.id = ''; el.placeholder = text; el.disabled = true; const list = document.getElementById(el.getAttribute('list')); if (list) list.innerHTML = ''; };
+    const enterToChange = el => el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); el.dispatchEvent(new Event('change')); } });
+    enterToChange(prop); enterToChange(kab); enterToChange(kec); enterToChange(desa);
+    let props = [], kabs = [], kecs = [], desas = [];
+    const gagal = err => { if (note) note.textContent = err.message || String(err); Toast.show(note.textContent, 'warn'); };
+    this._batasApi('/api/propinsi').then(rows => { props = this._normalisasiWilayah(rows); isi(prop, props, 'Ketik nama provinsi…'); }).catch(gagal);
+    prop.addEventListener('change', async () => {
+      reset(kab, 'Ketik nama kabupaten/kota…'); reset(kec, 'Pilih kabupaten/kota dulu…'); reset(desa, 'Pilih kecamatan dulu…');
+      const picked = pilih(prop, props); if (!picked) return;
+      try { kabs = this._normalisasiWilayah(await this._batasApi('/api/kabkot?propinsiId=' + encodeURIComponent(picked.value ?? picked.id ?? '') + '&forBatas=true')); isi(kab, kabs, 'Ketik nama kabupaten/kota…'); }
+      catch (e) { gagal(e); reset(kab, 'Gagal memuat kabupaten/kota'); }
+    });
+    kab.addEventListener('change', async () => {
+      reset(kec, 'Ketik nama kecamatan…'); reset(desa, 'Pilih kecamatan dulu…');
+      const picked = pilih(kab, kabs); if (!picked) return;
+      try { kecs = this._normalisasiWilayah(await this._batasApi('/api/kecamatan?kabkotId=' + encodeURIComponent(picked.value ?? picked.id ?? '') + '&forBatas=true')); isi(kec, kecs, 'Ketik nama kecamatan…'); }
+      catch (e) { gagal(e); reset(kec, 'Gagal memuat kecamatan'); }
+    });
+    kec.addEventListener('change', async () => {
+      reset(desa, 'Ketik nama desa/kelurahan…');
+      const picked = pilih(kec, kecs); if (!picked) return;
+      try { desas = this._normalisasiWilayah(await this._batasApi('/api/desa?kecamatanId=' + encodeURIComponent(picked.value ?? picked.id ?? '') + '&forBatas=true')); isi(desa, desas, 'Ketik nama desa/kelurahan…'); }
+      catch (e) { gagal(e); reset(desa, 'Gagal memuat desa/kelurahan'); }
+    });
+    document.getElementById('atrbpn-batas-search')?.addEventListener('click', async () => {
+      const p = pilih(prop, props), k = pilih(kab, kabs), c = pilih(kec, kecs), d = pilih(desa, desas);
+      if (!p || !k || !c || !d) { Toast.show('Pilih atau ketik nama provinsi, kabupaten/kota, kecamatan, dan desa sampai cocok dengan saran', 'warn'); return; }
+      const btn = document.getElementById('atrbpn-batas-search');
+      if (btn) { btn.disabled = true; btn.textContent = 'Mencari…'; }
+      try {
+        const rows = await this._batasApi('/api/batas?propId=' + encodeURIComponent(p.value ?? p.id ?? '') + '&kabId=' + encodeURIComponent(k.value ?? k.id ?? '') + '&kecId=' + encodeURIComponent(c.value ?? c.id ?? '') + '&desId=' + encodeURIComponent(d.value ?? d.id ?? ''));
+        const arr = Array.isArray(rows) ? rows : (rows?.data || rows?.rows || []);
+        const features = arr.filter(x => x && x.feature && x.feature.type && x.feature.coordinates).map(x => ({ type: 'Feature', geometry: x.feature, properties: { label: x.label || desa.value, provinsi: prop.value, kabupaten: kab.value, kecamatan: kec.value, desa: desa.value } }));
+        if (!features.length) { Toast.show('Batas desa tidak ditemukan', 'warn'); return; }
+        if (this._batasResultLayer) this._map.removeLayer(this._batasResultLayer);
+        this._batasResultLayer = L.geoJSON({ type: 'FeatureCollection', features }, {
+          pane: 'bidangPane', style: { color: '#e11d48', weight: 3, opacity: 1, fillColor: '#f43f5e', fillOpacity: 0.16 }
+        }).addTo(this._map);
+        this._map.fitBounds(this._batasResultLayer.getBounds(), { padding: [24, 24], maxZoom: 17 });
+        Modal.close();
+        Toast.show('Batas ' + desa.value + ' berhasil ditampilkan', 'success');
+      } catch (e) { Toast.show(e.message || 'Gagal mencari batas', 'error'); }
+      finally { if (btn) { btn.disabled = false; btn.textContent = 'Cari Batas'; } }
+    });
+  },
+
+  _normalisasiWilayah(rows) {
+    const arr = Array.isArray(rows) ? rows : (rows?.data || rows?.rows || []);
+    return arr.map(x => ({ ...x,
+      value: x.value ?? x.id ?? x.kode ?? '',
+      label: x.label ?? x.nama ?? x.name ?? x.nama_provinsi ?? x.nama_kabkot ?? x.nama_kecamatan ?? x.nama_desa ?? x.value ?? x.id ?? ''
+    }));
+  },
+        /* const label = x.label ?? x.nama ?? x.name ?? value;
         return `<option value="${Utils.escapeHtml(String(value))}">${Utils.escapeHtml(String(label))}</option>`;
       }).join('');
       el.disabled = !arr.length;
@@ -1751,6 +1829,7 @@ const AtrbpnLayers = {
     });
   },
 
+  */
   // Form cari dgn id ber-prefix (tab Sertifikat Analok & NIB isinya sama,
   // beda label & endpoint). Prefix dipisah per tab supaya state tak bercampur.
   _cariFormHtml(p, mode) {
