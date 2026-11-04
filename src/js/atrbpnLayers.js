@@ -1760,7 +1760,16 @@ const AtrbpnLayers = {
       try {
         const rows = await this._batasApi('/api/batas?propId=' + encodeURIComponent(p.value ?? p.id ?? '') + '&kabId=' + encodeURIComponent(k.value ?? k.id ?? '') + '&kecId=' + encodeURIComponent(c.value ?? c.id ?? '') + '&desId=' + encodeURIComponent(d.value ?? d.id ?? ''));
         const arr = Array.isArray(rows) ? rows : (rows?.data || rows?.rows || []);
-        const features = arr.filter(x => x && x.feature && x.feature.type && x.feature.coordinates).map(x => ({ type: 'Feature', geometry: x.feature, properties: { label: x.label || desa.value, provinsi: prop.value, kabupaten: kab.value, kecamatan: kec.value, desa: desa.value } }));
+        const deskripsiWilayah = [
+          'Provinsi: ' + prop.value,
+          'Kabupaten/Kota: ' + kab.value,
+          'Kecamatan: ' + kec.value,
+          'Desa/Kelurahan: ' + desa.value
+        ].join('\n');
+        const features = arr.filter(x => x && x.feature && x.feature.type && x.feature.coordinates).map(x => ({
+          type: 'Feature', geometry: x.feature,
+          properties: { name: x.label || desa.value, deskripsi: deskripsiWilayah }
+        }));
         if (!features.length) { Toast.show('Batas desa tidak ditemukan', 'warn'); return; }
         if (this._batasLayerId) LayerManager.removeLayer(this._batasLayerId);
         const batasGeoJSON = { type: 'FeatureCollection', features };
