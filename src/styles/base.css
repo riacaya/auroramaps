@@ -181,7 +181,7 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
 .atrbpn-search-box #atrbpn-shm-search,
 .atrbpn-search-box #atrbpn-nib-search,
 .atrbpn-search-box #atrbpn-nibel-search { width:100%; margin-top:5px; }
-/* Tab panel Cari Bidang (Sertifikat Analok · NIB · NIBEL) */
+/* Tab panel Cari Bidang (Analog · NIB · NIBEL) */
 .atrbpn-tabs { display:flex; gap:4px; margin:2px 0 4px; }
 .atrbpn-tab { flex:1 1 0; min-width:0; padding:6px 4px; font-size:11px; line-height:1.2; border:1px solid var(--border); border-radius:6px; background:var(--bg-hover); color:var(--text); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:inherit; }
 .atrbpn-tab:hover { border-color:var(--accent); color:var(--accent); }

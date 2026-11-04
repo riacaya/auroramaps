@@ -1619,14 +1619,14 @@ const AtrbpnLayers = {
   },
 
   // ── Panel "Cari Bidang": SATU modal berisi tab pencarian ────────────────
-  // Sertifikat Analok, NIB, NIBEL, dan Cari Batas administrasi.
+  // Sertifikat Analog, NIB, NIBEL, dan Cari Batas administrasi.
   // Semua pane tetap di DOM → state tiap tab (kantor, nomor) tersimpan sendiri.
   showCariBidang(tab = 'analok') {
     if (tab !== 'nib' && tab !== 'nibel' && tab !== 'batas') tab = 'analok';
     const tabs = [
-      ['analok', 'Sertifikat Analok', 'SHM & HGU (sertifikat analok)'],
+      ['analok', 'Analog', 'SHM & HGU (sertifikat analog)'],
       ['nib', 'NIB', 'Pencarian Nomor Identifikasi Bidang'],
-      ['nibel', 'Sertifikat Elektronik', 'NIBEL (sertifikat elektronik)'],
+      ['nibel', 'NIBEL', 'Nomor Identifikasi Bidang Elektronik'],
       ['batas', 'Cari Batas', 'Cari batas administrasi desa/kelurahan']
     ];
     const tabBar = tabs.map(([id, label, title]) =>
