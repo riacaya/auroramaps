@@ -1521,15 +1521,16 @@ const AtrbpnLayers = {
     });
   },
 
-  // ── Panel "Cari Bidang": SATU modal berisi 3 tab (gaya Sentuh Tanahku) ──
-  // 1) Sertifikat Analok (SHM/HGU) 2) NIB 3) Sertifikat Elektronik (NIBEL).
+  // ── Panel "Cari Bidang": SATU modal berisi tab pencarian ────────────────
+  // Sertifikat Analok, NIB, NIBEL, dan Cari Batas administrasi.
   // Semua pane tetap di DOM → state tiap tab (kantor, nomor) tersimpan sendiri.
   showCariBidang(tab = 'analok') {
-    if (tab !== 'nib' && tab !== 'nibel') tab = 'analok';
+    if (tab !== 'nib' && tab !== 'nibel' && tab !== 'batas') tab = 'analok';
     const tabs = [
       ['analok', 'Sertifikat Analok', 'SHM & HGU (sertifikat analok)'],
       ['nib', 'NIB', 'Pencarian Nomor Identifikasi Bidang'],
-      ['nibel', 'Sertifikat Elektronik', 'NIBEL (sertifikat elektronik)']
+      ['nibel', 'Sertifikat Elektronik', 'NIBEL (sertifikat elektronik)'],
+      ['batas', 'Cari Batas', 'Cari batas administrasi desa/kelurahan']
     ];
     const tabBar = tabs.map(([id, label, title]) =>
       `<button type="button" class="atrbpn-tab${tab === id ? ' active' : ''}" data-atrbpn-tab="${id}" title="${title}">${label}</button>`).join('');
@@ -1543,6 +1544,19 @@ const AtrbpnLayers = {
             <label class="prop-label">NIBEL</label>
             <input id="atrbpn-nibel-value" class="prop-edit-val" inputmode="numeric" placeholder="Masukkan NIBEL"/>
             <button class="btn btn-primary" id="atrbpn-nibel-search">Cari NIBEL</button>
+          </div>
+          <div class="atrbpn-tabpane" data-atrbpn-pane="batas"${tab === 'batas' ? '' : ' hidden'}>
+            <strong>Cari batas administrasi</strong>
+            <label class="prop-label">Provinsi</label>
+            <select id="atrbpn-batas-prop" class="prop-edit-val"><option value="">Memuat provinsi…</option></select>
+            <label class="prop-label">Kabupaten/Kota</label>
+            <select id="atrbpn-batas-kab" class="prop-edit-val" disabled><option value="">Pilih provinsi dulu…</option></select>
+            <label class="prop-label">Kecamatan</label>
+            <select id="atrbpn-batas-kec" class="prop-edit-val" disabled><option value="">Pilih kabupaten/kota dulu…</option></select>
+            <label class="prop-label">Desa/Kelurahan</label>
+            <select id="atrbpn-batas-desa" class="prop-edit-val" disabled><option value="">Pilih kecamatan dulu…</option></select>
+            <button class="btn btn-primary" id="atrbpn-batas-search">Cari Batas</button>
+            <div class="atrbpn-note" id="atrbpn-batas-note">Data wilayah diambil dari BHUMI ATR/BPN.</div>
           </div>
         </div>`;
     Modal.open('🔎 Cari Bidang', `<div class="modal-stack">${html}</div>`, []);
@@ -1563,10 +1577,81 @@ const AtrbpnLayers = {
     body.querySelectorAll('.atrbpn-tab').forEach(b => b.addEventListener('click', () => showTab(b.dataset.atrbpnTab)));
     this._bindCariForm('atrbpn-shm', 'shm');
     this._bindCariForm('atrbpn-nib', 'nib');
+    this._bindCariBatas();
     document.getElementById('atrbpn-nibel-search')?.addEventListener('click', () => {
       const value = document.getElementById('atrbpn-nibel-value')?.value.trim();
       Modal.close();
       BhumiIdentify.searchNibel(value).then(features => Toast.show(features.length ? `${features.length} bidang ditemukan` : 'NIBEL tidak ditemukan', features.length ? 'success' : 'warn')).catch(err => Toast.show(err.message, 'error'));
+    });
+  },
+
+  _batasApi(path) {
+    const sc = window.AuroraBhumiSidecarClient;
+    if (!sc || typeof sc.batas !== 'function') return Promise.reject(new Error('Sidecar BHUMI belum aktif. Pasang/jalankan sidecar untuk memuat daftar wilayah.'));
+    const tunggu = (sc.state() === null && sc.ready) ? sc.ready(3000) : Promise.resolve(sc.state() !== false);
+    return tunggu.then(ok => {
+      if (!ok) throw new Error('Sidecar BHUMI belum aktif. Pasang/jalankan sidecar terlebih dahulu.');
+      return sc.batas('https://bhumi.atrbpn.go.id' + path).then(r => r && r.data !== undefined ? r.data : r);
+    });
+  },
+
+  _bindCariBatas() {
+    const prop = document.getElementById('atrbpn-batas-prop');
+    const kab = document.getElementById('atrbpn-batas-kab');
+    const kec = document.getElementById('atrbpn-batas-kec');
+    const desa = document.getElementById('atrbpn-batas-desa');
+    const note = document.getElementById('atrbpn-batas-note');
+    if (!prop || !kab || !kec || !desa) return;
+    const isi = (el, rows, placeholder) => {
+      const arr = Array.isArray(rows) ? rows : (rows?.data || rows?.rows || []);
+      el.innerHTML = `<option value="">${placeholder}</option>` + arr.map(x => {
+        const value = x.value ?? x.id ?? x.label ?? '';
+        const label = x.label ?? x.nama ?? x.name ?? value;
+        return `<option value="${Utils.escapeHtml(String(value))}">${Utils.escapeHtml(String(label))}</option>`;
+      }).join('');
+      el.disabled = !arr.length;
+      return arr;
+    };
+    const reset = (el, text) => { el.innerHTML = `<option value="">${text}</option>`; el.disabled = true; };
+    let props = [], kabs = [], kecs = [], desas = [];
+    const gagal = err => { if (note) note.textContent = err.message || String(err); Toast.show(note.textContent, 'warn'); };
+    this._batasApi('/api/propinsi').then(rows => { props = isi(prop, rows, 'Pilih provinsi…'); }).catch(gagal);
+    prop.addEventListener('change', async () => {
+      reset(kab, 'Memuat kabupaten/kota…'); reset(kec, 'Pilih kabupaten/kota dulu…'); reset(desa, 'Pilih kecamatan dulu…');
+      if (!prop.value) return;
+      try { kabs = isi(kab, await this._batasApi('/api/kabkot?propinsiId=' + encodeURIComponent(prop.value) + '&forBatas=true'), 'Pilih kabupaten/kota…'); }
+      catch (e) { gagal(e); reset(kab, 'Gagal memuat kabupaten/kota'); }
+    });
+    kab.addEventListener('change', async () => {
+      reset(kec, 'Memuat kecamatan…'); reset(desa, 'Pilih kecamatan dulu…');
+      if (!kab.value) return;
+      try { kecs = isi(kec, await this._batasApi('/api/kecamatan?kabkotId=' + encodeURIComponent(kab.value) + '&forBatas=true'), 'Pilih kecamatan…'); }
+      catch (e) { gagal(e); reset(kec, 'Gagal memuat kecamatan'); }
+    });
+    kec.addEventListener('change', async () => {
+      reset(desa, 'Memuat desa/kelurahan…');
+      if (!kec.value) return;
+      try { desas = isi(desa, await this._batasApi('/api/desa?kecamatanId=' + encodeURIComponent(kec.value) + '&forBatas=true'), 'Pilih desa/kelurahan…'); }
+      catch (e) { gagal(e); reset(desa, 'Gagal memuat desa/kelurahan'); }
+    });
+    document.getElementById('atrbpn-batas-search')?.addEventListener('click', async () => {
+      if (!prop.value || !kab.value || !kec.value || !desa.value) { Toast.show('Pilih provinsi, kabupaten/kota, kecamatan, dan desa dulu', 'warn'); return; }
+      const btn = document.getElementById('atrbpn-batas-search');
+      if (btn) { btn.disabled = true; btn.textContent = 'Mencari…'; }
+      try {
+        const rows = await this._batasApi('/api/batas?propId=' + encodeURIComponent(prop.value) + '&kabId=' + encodeURIComponent(kab.value) + '&kecId=' + encodeURIComponent(kec.value) + '&desId=' + encodeURIComponent(desa.value));
+        const arr = Array.isArray(rows) ? rows : (rows?.data || rows?.rows || []);
+        const features = arr.filter(x => x && x.feature && x.feature.type && x.feature.coordinates).map(x => ({ type: 'Feature', geometry: x.feature, properties: { label: x.label || desa.value, provinsi: prop.value, kabupaten: kab.value, kecamatan: kec.value, desa: desa.value } }));
+        if (!features.length) { Toast.show('Batas desa tidak ditemukan', 'warn'); return; }
+        if (this._batasResultLayer) this._map.removeLayer(this._batasResultLayer);
+        this._batasResultLayer = L.geoJSON({ type: 'FeatureCollection', features }, {
+          pane: 'bidangPane', style: { color: '#e11d48', weight: 3, opacity: 1, fillColor: '#f43f5e', fillOpacity: 0.16 }
+        }).addTo(this._map);
+        this._map.fitBounds(this._batasResultLayer.getBounds(), { padding: [24, 24], maxZoom: 17 });
+        Modal.close();
+        Toast.show('Batas ' + desa.value + ' berhasil ditampilkan', 'success');
+      } catch (e) { Toast.show(e.message || 'Gagal mencari batas', 'error'); }
+      finally { if (btn) { btn.disabled = false; btn.textContent = 'Cari Batas'; } }
     });
   },
 
@@ -1688,6 +1773,6 @@ const AtrbpnLayers = {
 
   showSearchPanel(type) {
     // Semua jenis pencarian kini membuka panel tab yang sama.
-    this.showCariBidang(type === 'nib' ? 'nib' : type === 'nibel' ? 'nibel' : 'analok');
+    this.showCariBidang(type === 'nib' ? 'nib' : type === 'nibel' ? 'nibel' : type === 'batas' ? 'batas' : 'analok');
   }
 };

@@ -156,6 +156,10 @@ const AuroraBhumiSidecarClient = {
   proxyImage(url) {
     return this._post('/proxy-image', { url }, 30000);
   },
+  // → {data:[...]} — dropdown wilayah + GeoJSON batas administrasi BHUMI.
+  batas(url) {
+    return this._post('/batas', { url }, 30000);
+  },
   // → {data: GeoJSON} — proxy GeoServer BHUMI untuk RTRW terbaru.
   // → {features:[...]}
   search(path, body) {
