@@ -458,7 +458,8 @@ body.is-admin #mm-admin { display: flex; }
 }
 .about-guide-link:hover { text-decoration: underline; }
 .guide-card.about-card {
-  width: min(1040px, calc(100% - 24px));
+  /* panel panduan juga dirampingkan 25% (1040 → 780) agar sejalan dengan panel tengah lain */
+  width: min(780px, calc(100% - 24px));
   max-width: none;
   height: calc(100% - 24px);
   max-height: none;
@@ -1625,7 +1626,7 @@ input[type="range"].style-input { padding: 0; height: 4px; cursor: pointer; }
 
 /* ===== UI REFINEMENT =====
    Tampilan ringkas dan ringan untuk modal, panel, dan kontrol aplikasi. */
-:root { --ui-font-size: 12px; --ui-radius: 7px; --modal-w: 440px; }
+:root { --ui-font-size: 12px; --ui-radius: 7px; --modal-w: 330px; }
 button, input, select, textarea { font-weight: 400; }
 .panel-title, .sidebar-tab, .field-label, .prop-label,
 .modal-label, .exp-field-label, .stat-title {
@@ -1646,7 +1647,7 @@ button, input, select, textarea { font-weight: 400; }
   min-height: 0;
   height: auto; /* tinggi menyesuaikan isi, mis. panel Open URL */
   max-width: min(var(--modal-w), calc(100vw - 24px));
-  max-height: min(86vh, calc(var(--modal-w) * 1.5)); /* proporsi 4 × 6 */
+  max-height: min(86vh, 660px); /* tinggi tidak lagi terikat lebar panel */
 }
 .modal.modal-narrow { width: min(var(--modal-w), calc(100vw - 24px)); max-width: min(var(--modal-w), calc(100vw - 24px)); }
 .modal-header { margin-bottom: 14px; }
@@ -1681,10 +1682,20 @@ button, input, select, textarea { font-weight: 400; }
 .atrbpn-name { font-size: 11px; font-weight: 400; }
 .atrbpn-val { font-size: 10px; }
 .atrbpn-note { font-size: 9px; }
+/* Panel tengah (ATRBPN, Cari Bidang, Export, dll) dirampingkan 25%
+   (--modal-w 440 → 330): tab pencarian boleh dua baris dan grid formulir
+   dibatasi supaya tidak ada isi yang terpotong di lebar baru. */
+.atrbpn-tabs { flex-wrap: wrap; }
+.atrbpn-tab { font-size: 10px; line-height: 1.25; white-space: normal; padding: 6px 3px; }
+.atrbpn-search-box { grid-template-columns: minmax(0, 1fr); }
+.atrbpn-search-box > * { min-width: 0; }
+.atrbpn-search-box select, .atrbpn-search-box input { max-width: 100%; }
+.modal { padding: 14px; }
+.modal-body { font-size: 12px; }
 .toast { font-size: 11px; padding: 9px 11px; }
 .toast-icon { font-size: 13px; }
 @media (max-width: 600px) {
-  .modal { padding: 16px; width: calc(100vw - 24px); max-width: calc(100vw - 24px); min-height: 0; height: auto; max-height: min(88vh, calc(var(--modal-w) * 1.5)); }
+  .modal { padding: 16px; width: calc(100vw - 24px); max-width: calc(100vw - 24px); min-height: 0; height: auto; max-height: min(88vh, 660px); }
   .modal-footer { flex-wrap: wrap; }
   .modal-footer .btn { flex: 1 1 120px; }
   .atrbpn-row { min-height: 34px; }
