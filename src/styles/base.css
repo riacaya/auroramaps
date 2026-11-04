@@ -170,8 +170,6 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
   flex: 1 1 300px;
   transition: border-color .15s;
 }
-.header-search-menu { border:1px solid var(--border); border-radius:6px; background:var(--bg-hover); color:var(--text); cursor:pointer; padding:5px 9px; min-width:112px; font-size:11px; white-space:nowrap; font-family:inherit; }
-.header-search-menu:hover { border-color:var(--accent); color:var(--accent); }
 .header-search-dropdown { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:3000; min-width:260px; padding:10px; border:1px solid var(--border); border-radius:12px; background:var(--bg-panel); box-shadow:0 18px 50px #0008; }
 .header-search-dropdown::before { content:'Pencarian Bidang ATR/BPN'; display:block; padding:8px 10px 10px; color:var(--text); font-weight:700; font-size:14px; }
 .header-search-dropdown button { display:block; width:100%; border:0; border-radius:7px; background:transparent; color:var(--text); text-align:left; padding:9px 10px; cursor:pointer; }
@@ -1986,7 +1984,7 @@ input[type="range"]:focus-visible { outline: none; }
   #toolbar, #sidebar-left, #sidebar-right,
   #bottom-panel, #bp-resize-handle,
   #statusbar, .resize-handle,
-  #header-search-menu, #btn-logout-pc, #btn-admin-pc, #btn-settings-pc { display: none !important; }
+  #btn-logout-pc, #btn-admin-pc, #btn-settings-pc { display: none !important; }
 
   /* ── HEADER ── */
   #header { flex-shrink: 0; height: 54px; padding: 0 10px; gap: 6px; }

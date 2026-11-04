@@ -240,9 +240,10 @@ const App = {
     bindClick('tb-screenshot', () => Exporter.showPrintPanel());
 
     Search.init();
-    const searchMenu = document.getElementById('header-search-menu');
-    // Tombol "Cari Bidang" → SATU panel tab (Sertifikat Analok · NIB · NIBEL).
-    searchMenu?.addEventListener('click', () => AtrbpnLayers.showSearchPanel('shm'));
+    // Tombol "Cari Bidang" ada di toolbar (antara ATRBPN dan File) dan memakai
+    // gaya tombol kelompok yang sama; membuka SATU panel tab (Sertifikat
+    // Analok · NIB · NIBEL · Cari Batas).
+    bindClick('tb-atr-search', () => AtrbpnLayers.showSearchPanel('shm'));
     const searchInput = document.getElementById('search-input');
     searchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); Search.search(e.target.value); }
