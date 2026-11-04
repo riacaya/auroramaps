@@ -464,13 +464,13 @@ const AtrbpnLayers = {
       // 6.728 byte — bukan karena URL salah (URL & nama layer persis entri
       // Directus `Kawasan Hutan` yang published) maupun karena TILED (diuji juga
       // tanpa TILED → sama), juga bukan karena WFS (semua rute 404).
-      // HAR hutan.har (4 Nov 2026) membuktikan tile berisi data pada z14–z16;
-      // z17 dari server sering kosong. Pakai z16 sebagai native maximum agar
-      // zoom besar tetap memakai tile berisi, bukan tile kosong z17+.
+      // HAR hutan.har (4 Nov 2026) membuktikan tile image/png berhasil sampai
+      // z22. Sebagian tile di level tinggi memang abort/500, tetapi jangan
+      // membatasi layer ke z16 karena server masih menyediakan tile detail.
       hutanEntry.layer = attachTileRetry(relayWmsLayer(bhumiBase + '/expapi/bhumigeos/umum/wms', {
         layers: 'umum:penunjukan_kawasan_hutan', format: 'image/png',
         transparent: true, version: '1.3.0', uppercase: true, tiled: true, tileSize: 512,
-        crs: L.CRS.EPSG3857, srs: 'EPSG:3857', maxZoom: 17, maxNativeZoom: 16,
+        crs: L.CRS.EPSG3857, srs: 'EPSG:3857', maxZoom: 22, maxNativeZoom: 22,
         minZoom: 3, pane: 'atrbpnHutanPane', attribution: 'ATR/BPN — Kawasan Hutan'
       }, bhumiBase));
     } else hutanEntry.layer = null;
