@@ -398,6 +398,7 @@ function relayWmsLayer(url, options, proxyBase, relayMode = 'bhumi') {
 const AtrbpnLayers = {
   _map: null,
   _layers: null,   // { lsd, lbs, rtrp (RTRWN), rtrwp (RTRW provinsi), rtrw, ... }
+  _batasLayerId: null,
 
   init() {
     this._map = MapManager.map;
@@ -1761,13 +1762,19 @@ const AtrbpnLayers = {
         const arr = Array.isArray(rows) ? rows : (rows?.data || rows?.rows || []);
         const features = arr.filter(x => x && x.feature && x.feature.type && x.feature.coordinates).map(x => ({ type: 'Feature', geometry: x.feature, properties: { label: x.label || desa.value, provinsi: prop.value, kabupaten: kab.value, kecamatan: kec.value, desa: desa.value } }));
         if (!features.length) { Toast.show('Batas desa tidak ditemukan', 'warn'); return; }
-        if (this._batasResultLayer) this._map.removeLayer(this._batasResultLayer);
-        this._batasResultLayer = L.geoJSON({ type: 'FeatureCollection', features }, {
-          pane: 'bidangPane', style: { color: '#e11d48', weight: 3, opacity: 1, fillColor: '#f43f5e', fillOpacity: 0.16 }
-        }).addTo(this._map);
-        this._map.fitBounds(this._batasResultLayer.getBounds(), { padding: [24, 24], maxZoom: 17 });
+        if (this._batasLayerId) LayerManager.removeLayer(this._batasLayerId);
+        const batasGeoJSON = { type: 'FeatureCollection', features };
+        this._batasLayerId = LayerManager.addLayer(
+          'Batas Desa — ' + desa.value, batasGeoJSON, '#e11d48',
+          { source: 'BHUMI ATR/BPN', format: 'GeoJSON', wilayah: {
+            provinsi: prop.value, kabupaten: kab.value, kecamatan: kec.value, desa: desa.value
+          }, created: new Date().toISOString() }
+        );
+        const batasEntry = State.layers.find(x => x.id === this._batasLayerId);
+        const batasLayer = batasEntry && batasEntry.leafletLayer;
+        if (batasLayer) this._map.fitBounds(batasLayer.getBounds(), { padding: [24, 24], maxZoom: 17 });
         Modal.close();
-        Toast.show('Batas ' + desa.value + ' berhasil ditampilkan', 'success');
+        Toast.show('Batas ' + desa.value + ' disimpan sebagai layer', 'success');
       } catch (e) { Toast.show(e.message || 'Gagal mencari batas', 'error'); }
       finally { if (btn) { btn.disabled = false; btn.textContent = 'Cari Batas'; } }
     });
