@@ -778,7 +778,14 @@ const BhumiIdentify = {
           return img;
         }
       });
-      const layer = new Tile({ tileSize: 512, maxZoom: 22, maxNativeZoom: 20, opacity: 0.6, pane: 'bidangPane' }).addTo(map);
+      // Highlight klik hanya perlu mengikuti viewport; jangan mengambil
+      // tile tambahan saat pan/zoom dan upscale setelah z18 agar respons
+      // tetap ringan seperti relay layer ATR/BPN lainnya.
+      const layer = new Tile({
+        tileSize: 512, maxZoom: 22, maxNativeZoom: 18, keepBuffer: 0,
+        updateWhenIdle: true, updateWhenZooming: false,
+        opacity: 0.6, pane: 'bidangPane'
+      }).addTo(map);
       this._hlLayers.push(layer);
     });
   },
