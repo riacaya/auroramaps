@@ -11,6 +11,25 @@ const LayerManager = {
     const id = Utils.id();
     const c = color || Utils.nextColor();
 
+    // Migrasi hasil Cari Batas versi lama: wilayah dulu disimpan sebagai
+    // properti bebas (label/provinsi/kabupaten/kecamatan/desa). Satukan ke
+    // field sistem Deskripsi supaya tidak muncul lagi sebagai Field Tambahan.
+    if (meta?.source === 'BHUMI ATR/BPN' && geoJSON?.features) {
+      geoJSON.features.forEach(feature => {
+        const p = feature.properties || (feature.properties = {});
+        const wilayah = [
+          ['Provinsi', p.provinsi], ['Kabupaten/Kota', p.kabupaten],
+          ['Kecamatan', p.kecamatan], ['Desa/Kelurahan', p.desa]
+        ].filter(([, v]) => v != null && String(v).trim() !== '')
+          .map(([k, v]) => k + ': ' + v).join('\n');
+        if (wilayah && !String(p.deskripsi || '').includes('Provinsi:')) {
+          p.deskripsi = p.deskripsi ? String(p.deskripsi) + '\n' + wilayah : wilayah;
+        }
+        if (!p.name && p.label) p.name = p.label;
+        ['label', 'provinsi', 'kabupaten', 'kecamatan', 'desa'].forEach(key => delete p[key]);
+      });
+    }
+
     // Hitung pengukuran (luas/keliling) dulu agar popup & label langsung lengkap
     this._enrichFeaturesWithMeasurements(geoJSON, c);
 

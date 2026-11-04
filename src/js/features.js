@@ -154,6 +154,26 @@ const FeatureEditor = {
     State.selectedFeature = feature;
     State.selectedFeatureLayer = layerId;
     normalizeFeatureAreaProps(feature);
+    // Migrasikan hasil Cari Batas versi lama ke field sistem Deskripsi.
+    // Layer lama masih menyimpan wilayah sebagai Field Tambahan.
+    const boundaryLayer = State.layers.find(layer => layer.id === layerId);
+    const isBoundaryLayer = boundaryLayer?.meta?.source === 'BHUMI ATR/BPN'
+      || /^Batas Desa\s+—/.test(boundaryLayer?.name || '');
+    if (isBoundaryLayer && feature.properties) {
+      const p = feature.properties;
+      const wilayah = [
+        ['Provinsi', p.provinsi],
+        ['Kabupaten/Kota', p.kabupaten],
+        ['Kecamatan', p.kecamatan],
+        ['Desa/Kelurahan', p.desa]
+      ].filter(([, value]) => value != null && String(value).trim() !== '')
+        .map(([key, value]) => `${key}: ${value}`).join('\n');
+      if (wilayah && !String(p.deskripsi || '').includes('Provinsi:')) {
+        p.deskripsi = p.deskripsi ? `${p.deskripsi}\n${wilayah}` : wilayah;
+      }
+      if (!p.name && p.label) p.name = p.label;
+      ['label', 'provinsi', 'kabupaten', 'kecamatan', 'desa'].forEach(key => delete p[key]);
+    }
     const props = feature.properties || {};
     const geomType = feature.geometry?.type || '';
     const m = Utils.calcFeatureMeasurements(feature);
