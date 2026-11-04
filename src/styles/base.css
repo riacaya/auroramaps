@@ -31,7 +31,7 @@
   --success-light: rgba(34,197,94,0.15);
   --header-bg: linear-gradient(120deg,#020617,#172554);
   --header-h: 48px;
-  --toolbar-h: 40px;
+  --toolbar-h: 34px;
   --statusbar-h: 26px;
   --sidebar-w: 270px;
   --bottom-h: 180px;
@@ -972,7 +972,7 @@ body.is-admin #mm-admin { display: flex; }
   flex-shrink: 0; overflow: hidden;
 }
 .toolbar-btn {
-  height: 30px;
+  height: 28px;
   background: transparent; border: 1px solid transparent;
   border-radius: var(--radius); cursor: pointer;
   display: flex; align-items: center; gap: 5px;
@@ -994,7 +994,7 @@ body.is-admin #mm-admin { display: flex; }
 .toolbar-btn svg, .toolbar-btn .tb-icon { font-size: 13px; }
 .tb-icon svg, .toolbar-btn svg { width: 14px; height: 14px; display: block; }
 .mobile-map-action { display: none; }
-.toolbar-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
+.toolbar-sep { width: 1px; height: 18px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
 .toolbar-spacer { flex: 1; }
 
 
