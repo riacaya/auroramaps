@@ -623,11 +623,13 @@ const AtrbpnLayers = {
 
   // ── Klik peta → popup baca layer ATR/BPN ──
   // Aturan (5 Okt 2026):
+  //   • Klik peta selalu membaca bidang ATR/BPN dan zona (layer Bidang tidak
+  //     perlu dicentang); layer aktif tetap ikut menentukan overlay visual.
   //   • Ada layer ATR/BPN aktif → klik membaca layer tsb (GetFeatureInfo
   //     GISTARU, pola acuan HAR) dan popup menampilkan keterangan zona
   //     RTR Provinsi & RTRW Kab/Kota.
-  //   • Tidak ada yang aktif → klik dibiarkan; yang dibaca adalah poligon
-  //     manual / layer fitur (handler fitur berhenti di sini via stopPropagation).
+  //   • Klik poligon gambar manual tetap ditangani handler fitur lebih dulu
+  //     (stopPropagation), sehingga popup poligon pengguna tetap utama.
   //   • Layer Bidang Tanah aktif → TAB "Bidang" di popup INI yang diisi
   //     (POST /expapi/getPersil sesuai rekaman situs bidang.har 5 Okt 2026),
   //     berdampingan dengan tab RTRW Pro/Kab, LSD, KP2B (penggabungan popup
@@ -637,21 +639,17 @@ const AtrbpnLayers = {
     if (State.activeDrawType) return;   // mode menggambar → klik dipakai vertex
     if (MapManager.isMeasuring) return; // mode pengukuran
     const active = this._activeKeys();
-    if (!active.length) {
-      // Invalsidasi hasil yang masih melayang (GFI/persil) supaya kartu yang
-      // baru saja ditutup tidak dibuka lagi oleh balasan telat.
-      this._clickSeq = (this._clickSeq || 0) + 1;
-      MapPopup.hide();
-      return; // klik baca poligon manual (perilaku lama)
-    }
+    // Klik poligon gambar manual tidak mencapai handler ini karena
+    // L.DomEvent.stopPropagation dipanggil oleh handler fitur. Jadi ketika
+    // handler ini berjalan, aman untuk selalu meminta bidang di titik klik.
+    // Jika tidak ada overlay aktif, sisipkan bidang sebagai tab utama virtual.
+    const popupActive = active.includes('bidang') ? active : ['bidang', ...active];
     const { lat, lng } = e.latlng;
     // Tab Bidang (25 Okt 2026): persil di titik klik diambil paralel dengan
     // GFI zona, hasilnya masuk ke state.bidang → tab pertama di popup ini.
     const state0 = {};
-    if (active.includes('bidang')) {
-      const canId = typeof BhumiIdentify !== 'undefined' && BhumiIdentify._clickIdentifyEnabled;
-      state0.bidang = canId ? { pending: true } : { error: 'modul identifikasi belum termuat' };
-    }
+    const canId = typeof BhumiIdentify !== 'undefined' && BhumiIdentify._clickIdentifyEnabled;
+    state0.bidang = canId ? { pending: true } : { error: 'modul identifikasi belum termuat' };
     // Info zona RTRW SELALU dibaca — seperti tab Analisa (keputusan 29 Okt
     // 2026): tanpa perlu mencentang layer di panel ATRBPN. Centang RTRW
     // Pro/Kab kini hanya mengatur tampilan layer TILE, bukan akses data
@@ -675,7 +673,7 @@ const AtrbpnLayers = {
     const awal = Object.assign({ pending: true }, state0);
     if (adaAnalisa) awal.analisa = { pending: true };
     MapPopup.show(this._zonePopupHtml(
-      active, (want.prov || want.kab || state0.bidang || adaAnalisa) ? awal : null, lat, lng));
+      popupActive, (want.prov || want.kab || state0.bidang || adaAnalisa) ? awal : null, lat, lng));
     // Render bertahap (14 Okt 2026): tiap GFI berjalan paralel TETAPI kartu
     // popup diperbarui setiap hasil masuk — bagian RTRW (WMS bhumi via worker,
     // ±2–4 dtk) langsung tampil tanpa menunggu rantai GISTARU (bisa 15+15 dtk
@@ -684,7 +682,7 @@ const AtrbpnLayers = {
     const state = Object.assign({}, state0);
     if (want.prov) state.prov = { pending: true };
     if (want.kab) state.kab = { pending: true };
-    const settle = this._refreshZones(active, state, lat, lng, seq);
+    const settle = this._refreshZones(popupActive, state, lat, lng, seq);
     if (adaAnalisa) {
       state.analisa = { pending: true };
       // Langsung dengan luas 0 supaya tab cepat terisi (±1,8 dtk); saat bidang
