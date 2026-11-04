@@ -75,8 +75,7 @@ const Config = {
   baseLayers: {
     // ── Probe 5 Okt 2026 (tile nyata vs placeholder, 2 lokasi) ──────────────
     // OSM: konten s/d z19 (z20+ server balas 400). Esri World_Imagery &
-    // World_Topo_Map: konten s/d z19 (z20+ = placeholder 2521B).
-    // Semua provider di bawah GRATIS tanpa API key.
+    // Semua provider di bawah tidak memerlukan API key.
     //
     // Peta jalan (street): OpenStreetMap standard — data asli s/d z19,
     // z20-22 di-upscale Leaflet. Kunci lama 'osm' masih diterima (alias di
@@ -95,14 +94,15 @@ const Config = {
       // citra detail; z20+ = tile placeholder kosong 2521B).
       maxNativeZoom: 19
     },
-    // Peta topo: Esri World Topographic Map (endpoint yang sama dipakai
-    // basemap GISTARU di data/gistaru.atrbpn.go.id.har). Data asli s/d z19 —
-    // pengganti OpenTopoMap yang berhenti di z17 (z18+ = tile kosong 4343B).
-    topo: {
-      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
-      attribution: '© Esri, HERE, Garmin, FAO, NOAA, USGS, OpenStreetMap contributors',
-      maxZoom: 22,
-      maxNativeZoom: 19
+    // Street alternatif: CARTO Voyager berbasis OpenStreetMap.
+    // Dipakai sebagai pengganti Topographic; raster langsung kompatibel dengan
+    // Leaflet tanpa API key. Attribution wajib tetap terlihat.
+    voyager: {
+      url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+      attribution: '© OpenStreetMap contributors © CARTO',
+      subdomains: 'abcd',
+      maxZoom: 20,
+      maxNativeZoom: 20
     },
     // Tombol Dark Maps memakai Rupabumi Indonesia (BIG) WMTS GoogleMapsCompatible.
     dark: {

@@ -115,8 +115,9 @@ const MapManager = {
   },
 
   switchBasemap(key) {
-    // Alias lama: 'osm' kini menunjuk 'street' (OpenStreetMap)
+    // Alias lama tetap diterima agar proyek tersimpan tidak rusak.
     if (key === 'osm') key = 'street';
+    if (key === 'topo') key = 'voyager';
     if (!this.baseLayers[key]) return;
     // Mode 3D: ganti citra globe Cesium
     if (this._cesiumViewer) {
@@ -671,7 +672,7 @@ const MapManager = {
     });
   },
 
-  // Ganti/muat citra globe Cesium sesuai basemap yang dipilih (osm/satellite/topo/dark)
+  // Ganti/muat citra globe Cesium sesuai basemap yang dipilih.
   _add3DBaseLayer(key) {
     const C = window.Cesium;
     const viewer = this._cesiumViewer;
@@ -694,10 +695,11 @@ const MapManager = {
         maximumLevel: 19,
         credit: '© Esri'
       }),
-      topo: new C.UrlTemplateImageryProvider({
-        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+      voyager: new C.UrlTemplateImageryProvider({
+        url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
         maximumLevel: 19,
-        credit: '© Esri'
+        credit: '© OpenStreetMap contributors © CARTO',
+        subdomains: 'abcd'
       }),
       // Dark Gray Esri digunakan langsung, sama dengan basemap 2D. Bila tile
       // ditolak, handler errorEvent di bawah
