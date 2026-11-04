@@ -16,11 +16,11 @@
 // Event tileerror hanya terpicu untuk kegagalan sungguhan (network error /
 // timeout / 404) — tile 200 tapi kosong (data memang tidak ada di kabupaten
 // itu) tidak memicu error, jadi tidak ikut di-retry.
-// Jeda naik: 1.2s lalu 2.4s (maxRetries 2) agar tidak menghantam server.
+// Satu retry singkat agar tile macet tidak menahan tampilan terlalu lama.
 // PENTING: request ulang memakai cache-buster (&r=ts), BUKAN reset src='' —
 // reset src='' memicu event error lagi yang bikin loop retry tak terbatas
 // untuk tile yang gagal permanen (terbukti: 310 error dalam 4 detik).
-function attachTileRetry(layer, maxRetries = 2, baseDelay = 1200) {
+function attachTileRetry(layer, maxRetries = 1, baseDelay = 800) {
   const attempts = new Map(); // tile element -> jumlah percobaan
   layer.on('tileerror', (e) => {
     const tile = e.tile;
@@ -176,9 +176,12 @@ const GISTARU_ORIGIN = 'https://gistaru-app.atrbpn.go.id';
 // sudah membalas 200 (Referer bhumi di-inject di sana), tanpa putaran relay.
 const IS_LOCAL_APP = location.protocol === 'http:' &&
   (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+const RELAY_NATIVE_ZOOM_CAP = 18;
 const BhumiTileRelay = {
   _cache: new Map(),    // url → object URL (dibatasi supaya hemat memori)
   _order: [],
+  _pending: new Map(),  // URL → Promise; cegah request tile duplikat bersamaan
+  _dbP: null,
   _queue: [],
   _active: 0,
   _maxActive: 4,        // jangan membanjiri sidecar
@@ -198,16 +201,48 @@ const BhumiTileRelay = {
 
   // URL object untuk bytes tile, disimpan per URL agar pan/zoom bolak-balik
   // tidak mengulang jaringan. Cache maksimum 200 tile; yang terbuang dicabut.
-  _objectUrl(base64, mime) {
+  _blob(base64, mime) {
     const bin = atob(base64);
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return URL.createObjectURL(new Blob([bytes], { type: mime || 'image/png' }));
+    return new Blob([bytes], { type: mime || 'image/png' });
   },
-  _remember(url, base64, mime) {
+  _openDb() {
+    if (this._dbP) return this._dbP;
+    this._dbP = new Promise(resolve => {
+      if (!window.indexedDB) return resolve(null);
+      try {
+        const req = indexedDB.open('auroramaps-atrbpn-tiles-v1', 1);
+        req.onupgradeneeded = () => {
+          if (!req.result.objectStoreNames.contains('tiles')) req.result.createObjectStore('tiles');
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(null);
+      } catch (e) { resolve(null); }
+    });
+    return this._dbP;
+  },
+  async _diskGet(url) {
+    const db = await this._openDb();
+    if (!db) return null;
+    return new Promise(resolve => {
+      try {
+        const req = db.transaction('tiles', 'readonly').objectStore('tiles').get(url);
+        req.onsuccess = () => resolve(req.result instanceof Blob ? req.result : null);
+        req.onerror = () => resolve(null);
+      } catch (e) { resolve(null); }
+    });
+  },
+  _diskPut(url, blob) {
+    this._openDb().then(db => {
+      if (!db) return;
+      try { db.transaction('tiles', 'readwrite').objectStore('tiles').put(blob, url); } catch (e) { /* cache opsional */ }
+    });
+  },
+  _rememberBlob(url, blob) {
     const hit = url && this._cache.get(url);
     if (hit) return hit;
-    const objectUrl = this._objectUrl(base64, mime);
+    const objectUrl = URL.createObjectURL(blob);
     if (!url) return objectUrl;
     this._cache.set(url, objectUrl);
     this._order.push(url);
@@ -220,10 +255,15 @@ const BhumiTileRelay = {
     }
     return objectUrl;
   },
+  _remember(url, base64, mime) {
+    return this._rememberBlob(url, this._blob(base64, mime));
+  },
 
   get(url) {
     const cached = this._cache.get(url);
     if (cached) return Promise.resolve(cached);
+    const running = this._pending.get(url);
+    if (running) return running;
     // Setelah relai dipastikan tidak ada, coba lagi paling cepat tiap 30 detik
     // (mis. sidecar baru dinyalakan).
     const scOk = !!(window.AuroraBhumiSidecarClient && AuroraBhumiSidecarClient.availableSync());
@@ -231,9 +271,12 @@ const BhumiTileRelay = {
     if (!geoserver && !scOk && this._avail === false && Date.now() - this._availAt < 30000) {
       return Promise.reject(Object.assign(new Error('Relai tile tidak aktif.'), { relay: false }));
     }
-    return new Promise((resolve, reject) => {
+    const promise = (async () => {
+      const disk = await this._diskGet(url);
+      if (disk) return this._rememberBlob(url, disk);
+      return new Promise((resolve, reject) => {
       // Galat sementara dari relay (mis. WAF ATR/BPN membalas 500 saat burst
-      // halaman BHUMI) dicoba ulang sekali lewat relai SELAMA 1.5 dtk sebelum
+      // halaman BHUMI) dicoba ulang sekali lewat relai setelah 0,8 dtk sebelum
       // tile jatuh ke basis URL langsung. Galat relay:false (sidecar tidak
       // aktif) tidak diulang — memang tidak akan beda.
       const attempt = (sisa) => {
@@ -249,7 +292,12 @@ const BhumiTileRelay = {
         this._pump();
       };
       attempt(1);
-    });
+      });
+    })();
+    this._pending.set(url, promise);
+    promise.then(() => { if (this._pending.get(url) === promise) this._pending.delete(url); },
+      () => { if (this._pending.get(url) === promise) this._pending.delete(url); });
+    return promise;
   },
   _pump() {
     while (this._active < this._maxActive && this._queue.length) {
@@ -275,7 +323,12 @@ const BhumiTileRelay = {
     const ambil = (typeof sc.proxyImage === 'function' && String(url).startsWith(GEOSRV_WMS))
       ? sc.proxyImage(url) : sc.tile(url);
     return ambil.then(
-      (r) => { this._setAvail(true, 'sidecar lokal'); return this._remember(url, r.base64, r.mime); },
+      async (r) => {
+        this._setAvail(true, 'sidecar lokal');
+        const blob = this._blob(r.base64, r.mime);
+        this._diskPut(url, blob);
+        return this._rememberBlob(url, blob);
+      },
       (err) => { throw err; }
     );
   }
@@ -286,6 +339,7 @@ const BhumiTileRelay = {
 // sehingga tanpa sidecar perilaku layer tidak berubah.
 let _RelayWmsClass = null;
 function relayWmsLayer(url, options, proxyBase, relayMode = 'bhumi') {
+  options = { ...options, maxNativeZoom: Math.min(Number(options.maxNativeZoom || 22), RELAY_NATIVE_ZOOM_CAP) };
   if (!_RelayWmsClass) {
     // Leaflet 1.9.4: createTile menyetel tile.src LANGSUNG (metode _loadTile
     // sudah tidak ada di build ini) → override createTile, bukan _loadTile.

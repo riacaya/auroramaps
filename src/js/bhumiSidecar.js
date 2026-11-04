@@ -143,7 +143,7 @@ const AuroraBhumiSidecarClient = {
 
   // → {base64, mime}
   tile(url) {
-    return this._post('/tile', { url }, 30000);
+    return this._post('/tile', { url }, 15000);
   },
   // → {text} — GetFeatureInfo zona RTRW, dijalankan di halaman BHUMI pendamping
   // (Referer asli) sehingga lolos WAF yang menolak fetch dari halaman app.
@@ -154,7 +154,7 @@ const AuroraBhumiSidecarClient = {
     return this._post('/proxy', { url }, 30000);
   },
   proxyImage(url) {
-    return this._post('/proxy-image', { url }, 30000);
+    return this._post('/proxy-image', { url }, 15000);
   },
   // → {data:[...]} — dropdown wilayah + GeoJSON batas administrasi BHUMI.
   batas(url) {

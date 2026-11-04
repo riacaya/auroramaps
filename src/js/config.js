@@ -56,7 +56,7 @@ window.LOGIN_SESSION_MINUTES = 60;
 window.USER_ADMIN_API_URL = 'https://script.google.com/macros/s/AKfycbw87Ek_iPxSRwdHV79wImgpNbYPAbja47pAjSB54_exMLxYCX2aobWZz-lBCT8Ctqy6uA/exec';
 
 const Config = {
-  version: '1.0.0',
+  version: '1.0.1',
   defaultCenter: [20, 0],
   defaultZoom: 3,
   maxHistorySize: 50,
