@@ -579,7 +579,7 @@ const AtrbpnLayers = {
   //     (POST /expapi/getPersil sesuai rekaman situs bidang.har 5 Okt 2026),
   //     berdampingan dengan tab RTRW Pro/Kab, LSD, KP2B (penggabungan popup
   //     25 Okt 2026) sehingga tidak ada lagi dua popup balapan.
-  //   • Kawasan hutan masih DIABAIKAN (server sumbernya mati).
+  //   • Kawasan Hutan aktif → tab Hutan membaca atribut lewat getPersil.
   _onMapClick(e) {
     if (State.activeDrawType) return;   // mode menggambar → klik dipakai vertex
     if (MapManager.isMeasuring) return; // mode pengukuran
@@ -595,6 +595,7 @@ const AtrbpnLayers = {
     // Tab Bidang (25 Okt 2026): persil di titik klik diambil paralel dengan
     // GFI zona, hasilnya masuk ke state.bidang → tab pertama di popup ini.
     const state0 = {};
+    if (active.includes('hutan')) state0.hutan = { pending: true };
     if (active.includes('bidang')) {
       const canId = typeof BhumiIdentify !== 'undefined' && BhumiIdentify._clickIdentifyEnabled;
       state0.bidang = canId ? { pending: true } : { error: 'modul identifikasi belum termuat' };
@@ -643,6 +644,15 @@ const AtrbpnLayers = {
     // Tab Bidang: getPersil ECDH di titik klik → hasil + overlay transparan
     // diserahkan ke BhumiIdentify.adopt (AutoSave & tombol bagikan/gambar
     // di tab tetap berfungsi), lalu tabnya dirender lewat settle.
+    if (state0.hutan && state0.hutan.pending) {
+      BhumiIdentify.readLayer(lat, lng, 'umum:penunjukan_kawasan_hutan').then(
+        features => settle('hutan', {
+          rows: (features || []).map(f => f && f.properties ? f.properties : f).filter(Boolean),
+          count: (features || []).length
+        }),
+        err => settle('hutan', { error: (err && err.message) || 'gagal' })
+      );
+    }
     if (state0.bidang && state0.bidang.pending) {
       BhumiIdentify.readBidang(lat, lng).then(
         features => {
@@ -1162,14 +1172,19 @@ const AtrbpnLayers = {
       zoneRes && (zoneRes.pending ? zoneRes : zoneRes.kab),
       [['namobj', 'Jenis Kawasan'], ['jnsrpr', 'Kategori'], ['wadmpr', 'Provinsi'],
        ['wadmkk', 'Kab/Kota'], ['wadmkc', 'Kecamatan'], ['nothpr', 'Dasar Perda'], ['meta', 'Wilayah']]);
+    const hutanSection = section('Kawasan Hutan',
+      zoneRes && (zoneRes.pending ? zoneRes : zoneRes.hutan),
+      [['fungsi_kaw', 'Fungsi Kawasan'], ['fungsikws', 'Fungsi Kawasan'],
+       ['kodefungsi', 'Kode Fungsi'], ['wadmpr', 'Provinsi'], ['wadmkk', 'Kab/Kota'],
+       ['luas', 'Luas'], ['luasha', 'Luas (ha)'], ['keterangan', 'Keterangan']]);
     // Tab LSD & KP2B DIHAPUS dari popup (kesepakatan 25 Okt 2026, ditegaskan
     // lagi 28 Okt): keduanya visual-only — KP2B berasal dari TMS gisliner
     // '235_kp2b' yang tidak punya antarmuka query sama sekali. Rekaman HAR
     // 27 Okt memang menunjukkan situs membaca properti LSD & Kawasan Hutan
     // lewat getPersil (query_layers umum:lsd_merge[,_8_provinsi] &
-    // umum:penunjukan_kawasan_hutan — teruji live, jalur ada), TETAPI tabnya
-    // tetap tidak dipasang sesuai kesepakatan: hanya Bidang, RTRW Pro, RTRW
-    // Kab yang tampil. Layer LSD tetap bisa dicentang di panel ATRBPN, sedang
+    // umum:penunjukan_kawasan_hutan — teruji live, jalur ada). Kawasan Hutan
+    // kini punya tab sendiri saat layernya aktif. Layer LSD tetap visual-only,
+    // sedang
     // baris KP2B di panel DIHAPUS 31 Okt 2026 (tile '235_kp2b' kosong terus —
     // lihat komentar KP2B di init; zona KP2B masih terbaca via RTRW Kab/Kota).
 
@@ -1308,6 +1323,7 @@ const AtrbpnLayers = {
       { id: 'bidang', label: 'Bidang', title: 'Bidang Tanah (SHM: NIB & luas)', content: bidangPane() },
       { id: 'rtrp', label: 'RTRW', title: 'Zona RTRW Provinsi / RTR Nasional (sesuai sumber yang menjawab)', content: provSection || `<div class="mp-zone-col"><div class="mp-cand">RTRW Provinsi</div><div class="mp-zone-note">Layer RTRW Provinsi belum aktif.</div></div>` },
       { id: 'rtrw', label: 'RTRW Kab', title: 'RTRW Kab/Kota', content: kabSection || `<div class="mp-zone-col"><div class="mp-cand">RTRW Kab/Kota</div><div class="mp-zone-note">Layer RTRW Kab/Kota belum aktif.</div></div>` },
+      { id: 'hutan', label: 'Hutan', title: 'Atribut Kawasan Hutan', content: hutanSection || `<div class="mp-zone-col"><div class="mp-cand">Kawasan Hutan</div><div class="mp-zone-note">Layer Kawasan Hutan belum aktif.</div></div>` },
       { id: 'analisa', label: 'Analisa', title: 'Analisa Bidang (RTRW, Zona Nilai Tanah, Ketetapan Khusus)', content: analisaPane() },
     ];
     const activeTab = tabDefs.find(tab => active.includes(tab.id) || (tab.id === 'rtrp' && active.includes('rtrwp')))?.id || 'rtrw';
