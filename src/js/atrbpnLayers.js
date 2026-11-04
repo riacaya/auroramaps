@@ -1,6 +1,6 @@
 // =====================================================
 // AuroraMaps · atrbpnLayers.js — Layer referensi ATR/BPN
-// LSD (Lahan Sawah Dilindungi) · Lahan Baku Sawah · RTR Provinsi · RTRW Kabupaten/Kota
+// LSD (Lahan Sawah Dilindungi) · Lahan Baku Sawah · RTR Nasional · RTRW Provinsi/Kabupaten
 // Bidang Tanah / persil (bhumi mprx via proxy lokal /bhumi-proxy)
 // Sumber: GISLINER TMS (RTRW Kab/Kota dari HAR pengguna), GISTARU WMS
 // /expapi/rtrw/wms (merge), bhumi /expapi/bhumigeos/umum/wms (LSD, gisliner
@@ -101,7 +101,21 @@ const BHUMI_RTRW_STYLE = 'petabpn:highlight_rtrw_kabkot';
 // Diakses melalui /api/proksi BHUMI karena geosrv tidak boleh dipanggil
 // langsung dari halaman AuroraMaps.
 const GEOSRV_WMS = 'https://geosrv-app.atrbpn.go.id/geoserver/petabpn/wms';
-const GEOSRV_RTRP_LAYER = 'rtrwn_2025';
+// ⚠ 4 Nov 2026: `rtrwn_2025` adalah RTRWN (PP No. 13 Tahun 2017) — rencana
+// NASIONAL dengan kelas makro (Kawasan Budidaya / Kawasan Lindung), BUKAN
+// RTRW provinsi. Dulu layer ini dipakai untuk slot "RTR Provinsi (RTRW)"
+// sehingga tampilannya nyaris seluruhnya ungu (kelas Kawasan Budidaya) dan
+// popup menjawab "Kawasan Budidaya … PP No. 13 Tahun 2017".
+// Sumber provinsi yang sah (Perda provinsi) di server ini hanya tersedia
+// untuk sebagian wilayah — uji GetLegendGraphic 4 Nov 2026: `rtrw_jateng`
+// ADA (16 kelas: Permukiman, Pertanian Pangan, Hutan Produksi, Industri,
+// rawan bencana, dll); `rtrw_jabar/jatim/dki/banten/diy/bali/sumut/sumbar/
+// riau/kalsel/sulsel/papua/aceh` → LayerNotDefined. Sumber provinsi
+// nasional (gistaru uuid ed3223bb, rtr-online:rtrw_provinsi_1_indonesia)
+// kini 404 → layer provinsi Jateng dipakai bila titik berada di wilayah itu,
+// selebihnya RTRWN dengan label apa adanya.
+const GEOSRV_RTRWN_LAYER = 'rtrwn_2025';      // RTR Nasional (PP 13/2017)
+const GEOSRV_RTRWP_LAYER = 'rtrw_jateng';     // RTRW Provinsi Jawa Tengah
 const GEOSRV_RTRW_LAYER = 'rtrw_kabkot_merge';
 
 // ── Layer LSD via WMS Geoserver BHUMI (22 Okt 2026) ──────────────────────────
@@ -329,7 +343,7 @@ function relayWmsLayer(url, options, proxyBase, relayMode = 'bhumi') {
 
 const AtrbpnLayers = {
   _map: null,
-  _layers: null,   // { lsd: {...}, lbs: {...}, rtrp: {...}, rtrw: {...} }
+  _layers: null,   // { lsd, lbs, rtrp (RTRWN), rtrwp (RTRW provinsi), rtrw, ... }
 
   init() {
     this._map = MapManager.map;
@@ -360,6 +374,8 @@ const AtrbpnLayers = {
     this._map.getPane('atrbpnLsdPane').style.zIndex = 300;
     this._map.createPane('atrbpnRtrpPane');
     this._map.getPane('atrbpnRtrpPane').style.zIndex = 305;
+    this._map.createPane('atrbpnRtrwpPane');
+    this._map.getPane('atrbpnRtrwpPane').style.zIndex = 306;
     this._map.createPane('atrbpnRtrwPane');
     this._map.getPane('atrbpnRtrwPane').style.zIndex = 310;
     this._map.createPane('atrbpnHutanPane');
@@ -523,10 +539,19 @@ const AtrbpnLayers = {
       batasPersil: batasPersilEntry,
       lsd:  lsdEntry,
       lbs:  { label: 'Lahan Baku Sawah', on: false, opacity: 0.8, layer: lbsLayer },
-      rtrp: { label: 'RTR Provinsi (RTRW)', on: false, opacity: 0.7, layer: attachTileRetry(relayWmsLayer(RTRP_URL, LIGHT('atrbpnRtrpPane', 21, {
-              layers: GEOSRV_RTRP_LAYER, version: '1.1.1',
+      // RTR Nasional (RTRWN 2025) — label jujur: kelasnya makro, bukan RTRW
+      // provinsi (lihat catatan konstanta GEOSRV_RTRWN_LAYER).
+      rtrp: { label: 'RTR Nasional (RTRWN 2025)', on: false, opacity: 0.7, layer: attachTileRetry(relayWmsLayer(RTRP_URL, LIGHT('atrbpnRtrpPane', 21, {
+              layers: GEOSRV_RTRWN_LAYER, version: '1.1.1',
               crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true,
-              format: 'image/png', transparent: true, attribution: 'RTR Provinsi (gistaru-app)'
+              format: 'image/png', transparent: true, attribution: 'RTR Nasional (RTRWN 2025)'
+            }), '', 'geoserver')) },
+      // RTRW Provinsi yang sah (Perda provinsi). Hanya Jawa Tengah yang
+      // layer-nya tersedia di GeoServer petabpn; di luar bbox-nya tile kosong.
+      rtrwp: { label: 'RTRW Provinsi (Jawa Tengah)', on: false, opacity: 0.7, layer: attachTileRetry(relayWmsLayer(RTRP_URL, LIGHT('atrbpnRtrwpPane', 21, {
+              layers: GEOSRV_RTRWP_LAYER, version: '1.1.1',
+              crs: L.CRS.EPSG3857, tileSize: 512, uppercase: true, tiled: true,
+              format: 'image/png', transparent: true, attribution: 'RTRW Provinsi Jawa Tengah'
             }), '', 'geoserver')) },
       rtrw: { label: 'RTRW Kab/Kota',     on: false, opacity: 0.7, layer: rtrwLayer },
       hutan: hutanEntry
@@ -836,8 +861,12 @@ const AtrbpnLayers = {
   // dulu, URL asli sebagai cadangan (worker belum ter-deploy / WAF longgar).
   async _gfiZone(uuid, layerName, lat, lng, skipPersil) {
     if (!skipPersil && uuid === RTRP_UUID) {
-      const gs = await this._geoServerGfi(GEOSRV_RTRP_LAYER, lat, lng);
-      if (gs && gs.count > 0) return gs;
+      // RTRW provinsi yang sah (Perda) lebih dulu; RTRWN hanya dipakai bila
+      // titik berada di luar wilayah yang layer provinsinya tersedia.
+      const wp = await this._geoServerGfi(GEOSRV_RTRWP_LAYER, lat, lng);
+      if (wp && wp.count > 0) return Object.assign(wp, { title: 'RTRW Provinsi Jawa Tengah' });
+      const gs = await this._geoServerGfi(GEOSRV_RTRWN_LAYER, lat, lng);
+      if (gs && gs.count > 0) return Object.assign(gs, { title: 'RTR Nasional (RTRWN 2025)' });
     }
     // Jalur utama: getPersil di server GISTARU (lihat _zoneViaPersil).
     if (!skipPersil) {
@@ -918,6 +947,19 @@ const AtrbpnLayers = {
       const parsed = this._parseGfiBody(JSON.stringify(j || {}));
       if (parsed.rows && parsed.rows.length) {
         parsed.rows = parsed.rows.map(o => o.namobj ? o : Object.assign({ namobj: o.keterangan || '' }, o));
+        // Layer provinsi (rtrw_jateng) membawa kolom teknis (shape_*, objectid)
+        // — sisakan yang informatif saja agar popup tetap terbaca.
+        if (layerName === GEOSRV_RTRWP_LAYER) {
+          parsed.rows = parsed.rows.map(o => {
+            const out = {};
+            if (o.namobj) out.namobj = o.namobj;
+            if (o.reklas_1 && o.reklas_1 !== o.namobj) out.reklas_1 = o.reklas_1;
+            if (o.luas) out.luas = Math.round(Number(o.luas)).toLocaleString('id-ID') + ' m²';
+            const src = o.sumber_12 || o.sumber;
+            if (src) out.sumber = src;
+            return Object.keys(out).length ? out : o;
+          });
+        }
       }
       return parsed;
     } catch (e) { return null; }
@@ -1073,6 +1115,7 @@ const AtrbpnLayers = {
       namobj: 'Jenis Kawasan', keterangan: 'Keterangan', jnsrpr: 'Kategori',
       wadmpr: 'Provinsi', wadmkk: 'Kab/Kota', wadmkc: 'Kecamatan',
       nothpr: 'Dasar Perda', meta: 'Wilayah',
+      reklas_1: 'Klasifikasi', luas: 'Luas', sumber: 'Sumber Data',
       perda: 'Peraturan Daerah', no_perda: 'Nomor Perda',
       nomor_perda: 'Nomor Perda', tahun_perda: 'Tahun Perda',
       dasar_hukum: 'Dasar Hukum', undang_undang: 'Undang-Undang',
@@ -1083,10 +1126,13 @@ const AtrbpnLayers = {
       key.replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     const section = (title, res, fields) => {
       if (!res) return '';
+      // Judul kartu mengikuti sumber yang benar-benar menjawab (RTRW provinsi
+      // vs RTRWN) supaya tidak lagi menamai data nasional sebagai RTRW provinsi.
+      const judul = res.title || title;
       // Pesan tunggal untuk semua kasus kosong/gagal — hindari crash & tabel
       // kosong saat kabupaten/tsb tidak punya data atau server tak merespons.
-      const unavailable = (why) => `<div class="mp-zone-col"><div class="mp-cand">${title}</div><div class="mp-zone-note">⚠ ${why}</div></div>`;
-      if (res.pending) return `<div class="mp-zone-col"><div class="mp-cand">${title} — membaca…</div></div>`;
+      const unavailable = (why) => `<div class="mp-zone-col"><div class="mp-cand">${judul}</div><div class="mp-zone-note">⚠ ${why}</div></div>`;
+      if (res.pending) return `<div class="mp-zone-col"><div class="mp-cand">${judul} — membaca…</div></div>`;
       if (res.error) return unavailable(`Gagal membaca: ${esc(res.error)}`);
       const f = (res.rows || [])[0];
       if (!f) return unavailable('Data tidak tersedia di titik ini');
@@ -1098,7 +1144,7 @@ const AtrbpnLayers = {
         .join('');
       if (!rows) return unavailable('Data tidak tersedia di titik ini');
       const more = res.count > 1 ? `<div class="mp-detail"><div class="mp-detail-label">Zona lain</div><div class="mp-detail-value">+${res.count - 1}</div></div>` : '';
-      return `<div class="mp-zone-col"><div class="mp-cand">${title}</div><div class="mp-fields">${rows}${more}</div></div>`;
+      return `<div class="mp-zone-col"><div class="mp-cand">${judul}</div><div class="mp-fields">${rows}${more}</div></div>`;
     };
 
     // Kolom zona RTRW SELALU tampil seperti tab Analisa (keputusan 29 Okt
@@ -1260,11 +1306,11 @@ const AtrbpnLayers = {
     // muncul setelah hasil GFI provinsi & kabupaten masuk.
     const tabDefs = [
       { id: 'bidang', label: 'Bidang', title: 'Bidang Tanah (SHM: NIB & luas)', content: bidangPane() },
-      { id: 'rtrp', label: 'RTRW Pro', title: 'RTRW Provinsi', content: provSection || `<div class="mp-zone-col"><div class="mp-cand">RTRW Provinsi</div><div class="mp-zone-note">Layer RTRW Provinsi belum aktif.</div></div>` },
+      { id: 'rtrp', label: 'RTRW', title: 'Zona RTRW Provinsi / RTR Nasional (sesuai sumber yang menjawab)', content: provSection || `<div class="mp-zone-col"><div class="mp-cand">RTRW Provinsi</div><div class="mp-zone-note">Layer RTRW Provinsi belum aktif.</div></div>` },
       { id: 'rtrw', label: 'RTRW Kab', title: 'RTRW Kab/Kota', content: kabSection || `<div class="mp-zone-col"><div class="mp-cand">RTRW Kab/Kota</div><div class="mp-zone-note">Layer RTRW Kab/Kota belum aktif.</div></div>` },
       { id: 'analisa', label: 'Analisa', title: 'Analisa Bidang (RTRW, Zona Nilai Tanah, Ketetapan Khusus)', content: analisaPane() },
     ];
-    const activeTab = tabDefs.find(tab => active.includes(tab.id))?.id || 'rtrw';
+    const activeTab = tabDefs.find(tab => active.includes(tab.id) || (tab.id === 'rtrp' && active.includes('rtrwp')))?.id || 'rtrw';
     const tabButtons = tabDefs.map(tab => `<button type="button" class="mp-tab${tab.id === activeTab ? ' active' : ''}" data-mp-tab="${tab.id}" role="tab" aria-selected="${tab.id === activeTab}" title="${tab.title}">${tab.label}</button>`).join('');
     const tabPanes = tabDefs.map(tab => `<div class="mp-tabpane" data-mp-pane="${tab.id}" role="tabpanel"${tab.id === activeTab ? '' : ' hidden'}>${tab.content}</div>`).join('');
     const zones = `<div class="mp-tabs" role="tablist" aria-label="Informasi ATRBPN">${tabButtons}</div><div class="mp-tabpanes">${tabPanes}</div>`;
