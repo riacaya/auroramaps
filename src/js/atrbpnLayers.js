@@ -1733,7 +1733,17 @@ const AtrbpnLayers = {
     enterToChange(prop); enterToChange(kab); enterToChange(kec); enterToChange(desa);
     let props = [], kabs = [], kecs = [], desas = [];
     const gagal = err => { if (note) note.textContent = err.message || String(err); Toast.show(note.textContent, 'warn'); };
-    this._batasApi('/api/propinsi').then(rows => { props = this._normalisasiWilayah(rows); isi(prop, props, 'Ketik nama provinsi…'); }).catch(gagal);
+    this._batasApi('/api/propinsi').then(rows => {
+      props = this._normalisasiWilayah(rows);
+      isi(prop, props, 'Ketik nama provinsi…');
+    }).catch(async () => {
+      try {
+        const lokal = await this._snapshot('pro.json');
+        props = this._normalisasiWilayah(lokal);
+        if (props.length) isi(prop, props, 'Ketik nama provinsi…');
+        else throw new Error('Asset provinsi kosong');
+      } catch (e) { gagal(e); }
+    });
     prop.addEventListener('change', async () => {
       reset(kab, 'Ketik nama kabupaten/kota…'); reset(kec, 'Pilih kabupaten/kota dulu…'); reset(desa, 'Pilih kecamatan dulu…');
       const picked = pilih(prop, props); if (!picked) return;
