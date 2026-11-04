@@ -30,8 +30,8 @@
   --danger-light: rgba(239,68,68,0.15);
   --success-light: rgba(34,197,94,0.15);
   --header-bg: linear-gradient(120deg,#020617,#172554);
-  --header-h: 48px;
-  --toolbar-h: 34px;
+  --header-h: 38px;
+  --toolbar-h: 38px;
   --statusbar-h: 26px;
   --sidebar-w: 270px;
   --bottom-h: 180px;
