@@ -94,16 +94,6 @@ const Config = {
       // citra detail; z20+ = tile placeholder kosong 2521B).
       maxNativeZoom: 19
     },
-    // Street alternatif: CARTO Voyager berbasis OpenStreetMap.
-    // Dipakai sebagai pengganti Topographic; raster langsung kompatibel dengan
-    // Leaflet tanpa API key. Attribution wajib tetap terlihat.
-    voyager: {
-      url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-      attribution: '© OpenStreetMap contributors © CARTO',
-      subdomains: 'abcd',
-      maxZoom: 20,
-      maxNativeZoom: 20
-    },
     // Tombol Dark Maps memakai Rupabumi Indonesia (BIG) WMTS GoogleMapsCompatible.
     dark: {
       url: 'https://geoservices.big.go.id/rbi/rest/services/BASEMAP/Rupabumi_Indonesia/MapServer/WMTS/tile/1.0.0/BASEMAP_Rupabumi_Indonesia/default/GoogleMapsCompatible/{z}/{y}/{x}.png',

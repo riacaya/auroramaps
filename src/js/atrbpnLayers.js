@@ -456,7 +456,7 @@ const AtrbpnLayers = {
 
     const hutanEntry = {
       label: 'Kawasan Hutan', on: false, opacity: 0.7,
-      note: bhumiBase ? 'data sumber tersedia sampai zoom 5 — zoom out untuk melihat' : 'perlu proxy — lihat README'
+      note: bhumiBase ? 'data sumber tersedia sampai zoom 16' : 'perlu proxy — lihat README'
     };    if (bhumiBase) {
       // Server WMS bhumi HANYA menggambar layer ini pada skala nasional
       // (terukur 26 Okt 2026): tile z3–z5 berisi poligon hutan (z5 terkaya,
@@ -464,13 +464,13 @@ const AtrbpnLayers = {
       // 6.728 byte — bukan karena URL salah (URL & nama layer persis entri
       // Directus `Kawasan Hutan` yang published) maupun karena TILED (diuji juga
       // tanpa TILED → sama), juga bukan karena WFS (semua rute 404).
-      // Karena itu: minZoom 3 (mulai dari tampilan nasional, data z3–z5 ada)
-      // dan maxZoom 5. Jangan meng-overzoom tile z5: hasilnya hanya buram
-      // dan memberi kesan data masih tersedia pada skala yang tidak didukung.
+      // HAR hutan.har (4 Nov 2026) membuktikan tile berisi data pada z14–z16;
+      // z17 dari server sering kosong. Pakai z16 sebagai native maximum agar
+      // zoom besar tetap memakai tile berisi, bukan tile kosong z17+.
       hutanEntry.layer = attachTileRetry(relayWmsLayer(bhumiBase + '/expapi/bhumigeos/umum/wms', {
         layers: 'umum:penunjukan_kawasan_hutan', format: 'image/png',
         transparent: true, version: '1.3.0', uppercase: true, tiled: true, tileSize: 512,
-        crs: L.CRS.EPSG3857, maxZoom: 5,
+        crs: L.CRS.EPSG3857, srs: 'EPSG:3857', maxZoom: 17, maxNativeZoom: 16,
         minZoom: 3, pane: 'atrbpnHutanPane', attribution: 'ATR/BPN — Kawasan Hutan'
       }, bhumiBase));
     } else hutanEntry.layer = null;

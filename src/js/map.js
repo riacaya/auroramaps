@@ -117,7 +117,7 @@ const MapManager = {
   switchBasemap(key) {
     // Alias lama tetap diterima agar proyek tersimpan tidak rusak.
     if (key === 'osm') key = 'street';
-    if (key === 'topo') key = 'voyager';
+    if (key === 'topo' || key === 'voyager') key = 'street';
     if (!this.baseLayers[key]) return;
     // Mode 3D: ganti citra globe Cesium
     if (this._cesiumViewer) {
@@ -694,12 +694,6 @@ const MapManager = {
         url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         maximumLevel: 19,
         credit: '© Esri'
-      }),
-      voyager: new C.UrlTemplateImageryProvider({
-        url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-        maximumLevel: 19,
-        credit: '© OpenStreetMap contributors © CARTO',
-        subdomains: 'abcd'
       }),
       // Dark Gray Esri digunakan langsung, sama dengan basemap 2D. Bila tile
       // ditolak, handler errorEvent di bawah
