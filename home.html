@@ -68,7 +68,7 @@
 
 <div class="am-land">
   <div class="am-land-head">
-    <img class="am-land-logo" src="https://riacaya.github.io/auroramaps/assets/auroramaps-192.png" alt="Logo aplikasi AuroraMaps" width="72" height="72"/>
+    <img class="am-land-logo" src="https://riacaya.github.io/auroramaps/app/assets/auroramaps-192.png" alt="Logo aplikasi AuroraMaps" width="72" height="72"/>
     <div>
       <h1 class="am-land-title"><span>AuroraMaps</span></h1>
       <p class="am-land-sub">RiaCaya GIS Viewer</p>
@@ -118,5 +118,18 @@
       Email: <a href="mailto:riacaya99@gmail.com">riacaya99@gmail.com</a></span>
   </div>
 </div>
+<script>
+// Beranda ini dulu aplikasi penuh (service worker scope /auroramaps/).
+// Lepaskan registrasi lama itu supaya pengunjung lama tidak tersaji cache app.
+try {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function (rs) {
+      rs.forEach(function (r) {
+        try { if (new URL(r.scope).pathname === '/auroramaps/') r.unregister(); } catch (e) {}
+      });
+    }).catch(function () {});
+  }
+} catch (e) {}
+</script>
 </body>
 </html>

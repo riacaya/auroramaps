@@ -139,7 +139,7 @@ const ATLAS_LBS_WMS = 'https://atlas.atrbpn.go.id/api/public/wms/46';
 const ATLAS_LBS_LAYER = 'remote:lbs_parsial';
 
 // ── Sumber tile Bidang Tanah (persil) — rantai fallback ─────────────────────
-// Urut prioritas (riset 5 Okt 2026, rincian di endpoint.md §Sentuh Tanahku):
+// Urut prioritas (riset 5 Okt 2026, rincian di Har/endpoint.md §Sentuh Tanahku):
 //   1) /expapi/bhumigeos/umum/wms + umum:Persil — TERVERIFIKASI LIVE:
 //      200 PNG konten nyata (Jakarta 144 KB, Yogyakarta 139 KB per tile 512px;
 //      md5 stabil & beda antar lokasi, layer lain di path sama = kosong).
