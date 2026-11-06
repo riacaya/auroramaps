@@ -19,21 +19,20 @@ function updateFPS() {
 }
 
 // =====================================================
-// TOMBOL PASANG SIDECAR (khusus halaman web GitHub/Blogger)
+// TOMBOL UNDUH PAKET WINDOWS (khusus halaman web GitHub/Blogger)
 // =====================================================
-// Jalur ekstensi DIHAPUS dari situs (30 Okt 2026) — kini yang dipakai
-// adalah sidecar. Klik tombol = unduh Pasang-Sidecar.exe (pemasang
-// berjendela) dari folder
-// sidecar/ di GitHub Pages; file itu mengunduh paket zip sendiri
-// (termasuk node.exe portabel), mengekstrak, lalu pemasang berjalan:
-// sidecar hidden + startup Windows + pintasan aplikasi AuroraMaps.
+// Jalur sidecar Node (Pasang-Sidecar.exe) DIHAPUS 6 Nov 2026 — penggantinya
+// AuroraShell, cangkang WebView2 tanpa Node. Klik tombol = unduh
+// AuroraShell-Windows.zip dari folder downloads/ di GitHub Pages. Isinya
+// AuroraShell.exe + DLL WebView2 + runtimes + sidecar-inject.js, ditambah
+// setup.exe yang memasang pintasan Desktop/Start Menu.
 // Versi PC lokal (127.0.0.1) dan Android tidak memakai tombol ini →
 // tetap tersembunyi.
 function initTombolEkstensi() {
   const btn = document.getElementById('btn-install-ext');
   if (!btn) return;
   // APK Android sudah menyertakan sidecar bawaan (BhumiBridge + SidecarServer
-  // di 127.0.0.1:8322) → unduhan Pasang-Sidecar.exe tidak relevan di sana.
+  // di 127.0.0.1:8322) → unduhan paket Windows tidak relevan di sana.
   // Paksa tersembunyi berdasarkan interface Android (bukan hostname — di APK
   // hostname kosong, dan kalau kelak app memuat situs langsung pun ikon ini
   // tetap tidak boleh muncul).
@@ -49,13 +48,10 @@ function initTombolEkstensi() {
     // URL absolut: di GitHub Pages = origin sendiri; di Blogger = AURORA_ASSET_BASE_URL
     const base = window.AURORA_ASSET_BASE_URL || (location.origin + location.pathname.replace(/[^/]*$/, ''));
     const a = document.createElement('a');
-    // Pemasang .exe (WinRAR SFX) berjendela GUI: ikon AuroraMaps, judul,
-    // teks panduan, progress bar ekstraksi lengkap dengan %, dan dialog
-    // penutup "Pemasangan selesai" (tombol OK). Isinya paket sidecar
-    // lengkap termasuk node.exe portabel (±26 MB) — SATU-satunya berkas
-    // unduhan di situs (file .bat sudah dihapus 30 Okt 2026).
-    a.href = base.replace(/\/+$/, '') + '/sidecar/Pasang-Sidecar.exe';
-    a.download = 'Pasang-Sidecar.exe';
+    // Berkas zip dibuat deploy.ps1 dari windows-app/ — EXE tidak bisa
+    // berdiri sendiri karena butuh DLL WebView2 + runtimes.
+    a.href = base.replace(/\/+$/, '') + '/downloads/AuroraShell-Windows.zip';
+    a.download = 'AuroraShell-Windows.zip';
     a.target = '_blank';
     a.rel = 'noopener';
     document.body.appendChild(a);
@@ -67,7 +63,7 @@ function initTombolEkstensi() {
   // halaman web; tidak ada lagi status "terpasang & sehat" yang
   // menyembunyikannya.
   btn.hidden = false;
-  btn.title = 'Pasang sidecar AuroraMaps — klik untuk unduh Pasang-Sidecar.exe, lalu dobel-klik file itu di folder Download. Jendela pemasang terbuka dengan panduan dan progress; klik Install, tunggu 100%, lalu OK. Sidecar terpasang tersembunyi + startup Windows + pintasan AuroraMaps. Bila Windows menampilkan "Windows protected your PC", klik Info lainnya lalu Jalankan saja.';
+  btn.title = 'Unduh AuroraShell untuk Windows — klik untuk mengunduh AuroraShell-Windows.zip, ekstrak, lalu dobel-klik setup.exe (memasang pintasan Desktop + Start Menu) atau AuroraShell.exe untuk langsung menjalankan. Tanpa Node.js; hanya perlu runtime Microsoft Edge WebView2 yang sudah tersedia di Windows 10/11. Login BHUMI sekali lewat "AuroraShell.exe --show". Bila muncul "Windows protected your PC", pilih Info lainnya lalu Jalankan saja.';
 }
 
 // =====================================================

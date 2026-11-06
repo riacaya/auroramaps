@@ -111,7 +111,7 @@ const AuroraBhumiSidecarClient = {
       const diHP = !apk && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
       this._hint = diHP
         ? 'Fitur cek bidang/zona/Analisa butuh sidecar: di HP/iPhone hanya tersedia lewat APK AuroraMaps, bukan browser biasa — di sini fitur memang nonaktif (bukan rusak). Layer ATR/BPN tetap bisa dibuka.'
-        : 'Sidecar BHUMI tidak terjangkau — pasang via tombol Pasang sidecar di situs (Pasang-Sidecar.exe), atau jalankan jalankan-auroramaps.bat di PC.';
+        : 'Sidecar BHUMI tidak terjangkau — di PC jalankan AuroraShell.exe (unduh AuroraShell-Windows.zip lewat tombol unduh di header situs).';
       if (typeof AppConsole !== 'undefined') AppConsole.log(this._hint, 'warn');
     }
   },

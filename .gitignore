@@ -3,6 +3,6 @@
 .chrome-bhumi-profile/
 *.log
 *.exe
-# Pemasang sidecar BUKAN biner lokal — wajib ikut ke situs
-!sidecar/Pasang-Sidecar.exe
+# Unduhan Windows berupa ZIP paket AuroraShell (downloads/*.zip) — *.exe di
+# atas tetap diabaikan agar biner hasil kompilasi tidak ikut ke situs.
 .tmp-*

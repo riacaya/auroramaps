@@ -1806,56 +1806,7 @@ const AtrbpnLayers = {
       label: x.label ?? x.nama ?? x.name ?? x.nama_provinsi ?? x.nama_kabkot ?? x.nama_kecamatan ?? x.nama_desa ?? x.value ?? x.id ?? ''
     }));
   },
-        /* const label = x.label ?? x.nama ?? x.name ?? value;
-        return `<option value="${Utils.escapeHtml(String(value))}">${Utils.escapeHtml(String(label))}</option>`;
-      }).join('');
-      el.disabled = !arr.length;
-      return arr;
-    };
-    const reset = (el, text) => { el.innerHTML = `<option value="">${text}</option>`; el.disabled = true; };
-    let props = [], kabs = [], kecs = [], desas = [];
-    const gagal = err => { if (note) note.textContent = err.message || String(err); Toast.show(note.textContent, 'warn'); };
-    this._batasApi('/api/propinsi').then(rows => { props = isi(prop, rows, 'Pilih provinsi…'); }).catch(gagal);
-    prop.addEventListener('change', async () => {
-      reset(kab, 'Memuat kabupaten/kota…'); reset(kec, 'Pilih kabupaten/kota dulu…'); reset(desa, 'Pilih kecamatan dulu…');
-      if (!prop.value) return;
-      try { kabs = isi(kab, await this._batasApi('/api/kabkot?propinsiId=' + encodeURIComponent(prop.value) + '&forBatas=true'), 'Pilih kabupaten/kota…'); }
-      catch (e) { gagal(e); reset(kab, 'Gagal memuat kabupaten/kota'); }
-    });
-    kab.addEventListener('change', async () => {
-      reset(kec, 'Memuat kecamatan…'); reset(desa, 'Pilih kecamatan dulu…');
-      if (!kab.value) return;
-      try { kecs = isi(kec, await this._batasApi('/api/kecamatan?kabkotId=' + encodeURIComponent(kab.value) + '&forBatas=true'), 'Pilih kecamatan…'); }
-      catch (e) { gagal(e); reset(kec, 'Gagal memuat kecamatan'); }
-    });
-    kec.addEventListener('change', async () => {
-      reset(desa, 'Memuat desa/kelurahan…');
-      if (!kec.value) return;
-      try { desas = isi(desa, await this._batasApi('/api/desa?kecamatanId=' + encodeURIComponent(kec.value) + '&forBatas=true'), 'Pilih desa/kelurahan…'); }
-      catch (e) { gagal(e); reset(desa, 'Gagal memuat desa/kelurahan'); }
-    });
-    document.getElementById('atrbpn-batas-search')?.addEventListener('click', async () => {
-      if (!prop.value || !kab.value || !kec.value || !desa.value) { Toast.show('Pilih provinsi, kabupaten/kota, kecamatan, dan desa dulu', 'warn'); return; }
-      const btn = document.getElementById('atrbpn-batas-search');
-      if (btn) { btn.disabled = true; btn.textContent = 'Mencari…'; }
-      try {
-        const rows = await this._batasApi('/api/batas?propId=' + encodeURIComponent(prop.value) + '&kabId=' + encodeURIComponent(kab.value) + '&kecId=' + encodeURIComponent(kec.value) + '&desId=' + encodeURIComponent(desa.value));
-        const arr = Array.isArray(rows) ? rows : (rows?.data || rows?.rows || []);
-        const features = arr.filter(x => x && x.feature && x.feature.type && x.feature.coordinates).map(x => ({ type: 'Feature', geometry: x.feature, properties: { label: x.label || desa.value, provinsi: prop.value, kabupaten: kab.value, kecamatan: kec.value, desa: desa.value } }));
-        if (!features.length) { Toast.show('Batas desa tidak ditemukan', 'warn'); return; }
-        if (this._batasResultLayer) this._map.removeLayer(this._batasResultLayer);
-        this._batasResultLayer = L.geoJSON({ type: 'FeatureCollection', features }, {
-          pane: 'bidangPane', style: { color: '#e11d48', weight: 3, opacity: 1, fillColor: '#f43f5e', fillOpacity: 0.16 }
-        }).addTo(this._map);
-        this._map.fitBounds(this._batasResultLayer.getBounds(), { padding: [24, 24], maxZoom: 17 });
-        Modal.close();
-        Toast.show('Batas ' + desa.value + ' berhasil ditampilkan', 'success');
-      } catch (e) { Toast.show(e.message || 'Gagal mencari batas', 'error'); }
-      finally { if (btn) { btn.disabled = false; btn.textContent = 'Cari Batas'; } }
-    });
-  },
 
-  */
   // Form cari dgn id ber-prefix (tab Sertifikat Analok & NIB isinya sama,
   // beda label & endpoint). Prefix dipisah per tab supaya state tak bercampur.
   _cariFormHtml(p, mode) {

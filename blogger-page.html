@@ -4,8 +4,8 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="theme-color" content="#0a0a1a"/>
-<meta name="description" content="AuroraMaps — peta interaktif GIS Indonesia dengan layer ATR/BPN (Bidang Tanah, LSD, RTRW). Unduh APK Android dan pemasang sidecar Windows."/>
-<title>AuroraMaps — Unduh APK &amp; Sidecar</title>
+<meta name="description" content="AuroraMaps — peta interaktif GIS Indonesia dengan layer ATR/BPN (Bidang Tanah, LSD, RTRW). Unduh APK Android dan paket AuroraShell untuk Windows."/>
+<title>AuroraMaps — Unduh APK &amp; AuroraShell</title>
 </head>
 <body>
 <!-- =====================================================
@@ -13,8 +13,8 @@
   Template STATIS — tidak diturunkan dari index.html, sehingga
   perubahan format halaman utama tidak pernah menggagalkan deploy.
   Diganti otomatis oleh build-blogger.mjs:
-    1.0.0   → Config.version (src/js/config.js)
-    4 November 2026 → tanggal build (Asia/Jakarta)
+    1.0.1   → Config.version (src/js/config.js)
+    6 November 2026 → tanggal build (Asia/Jakarta)
   ===================================================== -->
 <style>
   html, body { margin: 0; padding: 0; background: #171a20; }
@@ -88,9 +88,9 @@
       <span class="am-btn-ico">📲</span>
       <span class="am-btn-txt"><b>Download For Android</b><small>±7 MB · cangkang yang memuat situs dari GitHub Pages</small></span>
     </a>
-    <a class="am-btn" href="https://riacaya.github.io/auroramaps/sidecar/Pasang-Sidecar.exe">
+    <a class="am-btn" href="https://riacaya.github.io/auroramaps/downloads/AuroraShell-Windows.zip">
       <span class="am-btn-ico">🖥️</span>
-      <span class="am-btn-txt"><b>Download For Windows</b><small>±25 MB · Windows — syarat fitur cek bidang &amp; analisa</small></span>
+      <span class="am-btn-txt"><b>Download For Windows</b><small>±4 MB · tanpa Node.js — syarat fitur cek bidang &amp; analisa</small></span>
     </a>
   </div>
 
@@ -104,11 +104,11 @@
     </div>
     <div class="am-card">
       <ol>
-        <li>Dobel-klik <b>Pasang-Sidecar.exe</b> → klik <b>Install</b>.</li>
-        <li>Tunggu 100%, lalu <b>OK</b> — pemasang tertutup sendiri.</li>
-        <li>Sidecar berjalan tersembunyi, hidup otomatis saat login Windows, dan pintasan <b>AuroraMaps</b> muncul di Desktop/menu Mulai.</li>
+        <li>Unduh <b>AuroraShell-Windows.zip</b> lewat tombol di atas, lalu ekstrak.</li>
+        <li>Dobel-klik <b>setup.exe</b> untuk memasang pintasan Desktop/Start Menu — atau <b>AuroraShell.exe</b> untuk langsung menjalankan.</li>
+        <li>Login BHUMI sekali: jalankan <b>AuroraShell.exe --show</b>. Setelah itu cek bidang, zona RTRW, dan analisa aktif.</li>
       </ol>
-      <p>Windows menampilkan “Windows protected your PC”? Pilih <b>Info lainnya → Jalankan</b>.</p>
+      <p>Tanpa Node.js — hanya butuh runtime Microsoft Edge WebView2 yang sudah ada di Windows 10/11. Windows menampilkan “Windows protected your PC”? Pilih <b>Info lainnya → Jalankan</b>.</p>
     </div>
   </div>
 
