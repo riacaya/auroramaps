@@ -71,7 +71,7 @@ const BhumiIdentify = {
   // request dari DALAM halaman BHUMI pendamping (tools/bhumi-bridge).
   _wafMessage(path) {
     return `Layanan ${path} BHUMI sedang ditutup untuk akses langsung (WAF ATR/BPN). ` +
-      'Pastikan sidecar BHUMI berjalan (jalankan-auroramaps.bat atau jalankan-sidecar.bat) supaya klik & cari bidang tetap berfungsi.';
+      'Pastikan AuroraShell berjalan (relai BHUMI di 127.0.0.1:8322) supaya klik & cari bidang tetap berfungsi.';
   },
 
   // ── Pencarian bidang: getBidang / getBidang2 ──
@@ -99,7 +99,7 @@ const BhumiIdentify = {
     const res = await fetch(this._proxyBase + path, { method: 'POST', headers, body: JSON.stringify(body) });
     if (!res.ok) {
       if (bridgeErr) throw bridgeErr; // sidecar ada tapi sesi/tab bermasalah → pesan spesifik
-      if (res.status === 401) throw new Error('Pencarian bidang butuh sesi BHUMI — pastikan sidecar berjalan (jalankan-auroramaps.bat) lalu coba lagi.');
+      if (res.status === 401) throw new Error('Pencarian bidang butuh sesi BHUMI — pastikan AuroraShell berjalan lalu login lewat "AuroraShell.exe --show".');
       if (res.status === 403 || res.status === 404) throw new Error(this._wafMessage(path));
       throw new Error('Pencarian bidang gagal: HTTP ' + res.status);
     }

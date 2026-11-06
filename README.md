@@ -6,46 +6,47 @@
 - Alamat GitHub Pages yang dipakai untuk Blogger: https://riacaya.github.io/auroramaps/
 
 Isi repo ini murni **situs web** (`index.html`, `src/`, `assets/`,
-`sidecar/`, `.nojekyll`) — berkas proyek Windows/Node lama sudah tidak ada;
-`sidecar/` hanya berisi satu berkas unduhan: `Pasang-Sidecar.exe`
-(pemasang berjendela). Jika Pages
-belum aktif, buka **Settings → Pages**, pilih **Deploy from a branch**,
-branch `main`, folder `/(root)`, lalu simpan.
+`downloads/`, `.nojekyll`). Unduhan Windows berupa satu ZIP
+`downloads/AuroraShell-Windows.zip`; unduhan Android
+`downloads/AuroraMaps.apk`. Jika Pages belum aktif, buka
+**Settings → Pages**, pilih **Deploy from a branch**, branch `main`,
+folder `/(root)`, lalu simpan.
 
-## Fitur cek bidang, zona RTRW & Analisa: pasang sidecar (sekali klik)
+## Fitur cek bidang, zona RTRW & Analisa: jalankan AuroraShell
 
 Supaya **komputer mana pun** bisa memakai fitur cek bidang (NIB/luas), zona
-RTRW Pro/Kab, dan Analisa dari halaman ini — tanpa memasang aplikasi PC,
-tanpa Node.js, tanpa ekstensi peramban — pasang **sidecar AuroraMaps**
-sekali di tiap komputer:
+RTRW Pro/Kab, dan Analisa dari halaman ini — tanpa memasang Node.js dan
+tanpa ekstensi peramban — pasang **paket AuroraShell** sekali di tiap
+komputer:
 
-1. Klik ikon di header aplikasi — file **`Pasang-Sidecar.exe`** (±26 MB)
-   terunduh ke folder Download.
-2. **DOBEL-KLIK `Pasang-Sidecar.exe`** — jendela pemasang terbuka dengan
-   ikon AuroraMaps, judul "Pemasang Sidecar AuroraMaps", teks panduan,
-   dan progress bar ekstraksi lengkap dengan persentase. Klik **Install**,
-   tunggu progress 100%, lalu klik **OK** pada dialog "Pemasangan
-   selesai". Sidecar terpasang di `%LOCALAPPDATA%\AuroraMapsSidecar`,
-   berjalan **tersembunyi**, dan hidup lagi otomatis tiap login Windows.
-   Pintasan **AuroraMaps** (jendela aplikasi tanpa bar browser) muncul di
-   Desktop dan menu Mulai.
+1. Klik ikon unduh di header aplikasi (atau tombol **Download For Windows**
+   di halaman Blogger) — `AuroraShell-Windows.zip` (±1,3 MB) terunduh.
+2. Ekstrak zip-nya, lalu **dobel-klik `setup.exe`** untuk memasang pintasan
+   Desktop/Start Menu — atau `AuroraShell.exe` untuk langsung menjalankan
+   tanpa memasang. Satu EXE memuat cangkang situs ini, pendamping BHUMI
+   tersembunyi, dan relai `127.0.0.1:8322`.
+   - Syaratnya hanya runtime **Microsoft Edge WebView2**, yang sudah
+     terpasang bawaan Windows 11 dan hampir semua Windows 10.
    - Bila Windows menampilkan **"Windows protected your PC"**: klik
      **Info lainnya** lalu **Jalankan saja**. File belum ditandatangani
      sehingga Windows meminta konfirmasi sekali di tiap komputer.
-3. Login BHUMI biasanya terjadi otomatis; bila belum, jalankan
-   `Login-BHUMI.bat` sekali lalu klik "Saya Setuju".
+3. Login BHUMI sekali: `AuroraShell.exe --show`, lalu login di jendela
+   pendamping yang terbuka. Sesi tersimpan di
+   `%LOCALAPPDATA%\AuroraMaps\Bhumi`.
 
 Setelah itu semua peramban di komputer itu (Chrome/Edge/Firefox) bisa cek
 bidang, zona RTRW, dan Analisa dari halaman ini — tanpa ekstensi apa pun
 di peramban. Fitur dasar peta (tampilan wilayah, pencarian umum, panduan)
-tetap jalan tanpa sidecar.
+tetap jalan tanpa AuroraShell.
 
 ## Menampilkan di Blogger
 
-`blogger-page.html` adalah dokumen aplikasi penuh untuk template Blogger:
-semua CSS dan modul JavaScript lokal diarahkan ke repo Pages
-`riacaya/auroramaps`. Halaman Blogger juga mendapat fitur cek bidang
-selama sidecar terpasang di komputer itu.
+`blogger-page.html` adalah **halaman landing/unduhan** untuk Blogger —
+bukan salinan aplikasi. Isinya dua tombol unduhan: APK Android dan
+AuroraShell untuk Windows. Halaman ini dihasilkan dari template statis
+`blogger-landing.html` oleh `build-blogger.mjs` setiap deploy, lalu isinya
+disalin ke editor HTML halaman/post di Blogger
+(https://auroramaps.blogspot.com/).
 
 ## Isi folder
 
@@ -53,27 +54,29 @@ selama sidecar terpasang di komputer itu.
 - `src/`: modul CSS dan JavaScript (termasuk `src/js/panduan.js` — konten
   panduan yang mengikuti tema aktif).
 - `assets/`: data wilayah dalam JavaScript.
-- `blogger-page.html`: versi dokumen aplikasi yang merujuk ke file di GitHub Pages.
+- `downloads/AuroraShell-Windows.zip`: paket Windows (EXE cangkang WebView2
+  + DLL + runtimes + `sidecar-inject.js` + `setup.exe`), dirakit otomatis
+  oleh `deploy.ps1` dari `windows-app/`.
+- `downloads/AuroraMaps.apk`: cangkang Android.
+- `blogger-page.html`: halaman unduhan untuk Blogger.
 - `service-worker.js`, `manifest.webmanifest`: dukungan PWA (mode standalone).
-- `sidecar/`: satu berkas unduhan saja — `Pasang-Sidecar.exe` (±26 MB,
-  pemasang berjendela GUI: ikon, judul, panduan, progress %, dialog
-  penutup; sudah termasuk semua skrip + node.exe portabel).
 - `.nojekyll`: mencegah GitHub Pages memproses folder aset melalui Jekyll.
 
 Yang **tidak ada lagi** di repo ini (dihapus, bekas alur lama): berkas
 `.bat` di root, `local-server.mjs`, `cloudflare-worker.js`, folder `tools/`,
-dan folder `ekstensi/` (jalur ekstensi diganti `sidecar/`).
+folder `ekstensi/`, dan `sidecar/Pasang-Sidecar.exe` (jalur sidecar Node
+diganti paket AuroraShell, 6 Nov 2026).
 
-## Versi PC, Android, dan sidecar
+## Versi PC, Android, dan paket Windows
 
 Ada di repo sumber (bukan repo ini):
 
-- `windows-app/` — paket Windows (setup + sidecar lokal port 8322).
+- `windows-app/` — satu-satunya paket Windows: `AuroraShell.exe` (cangkang
+  WebView2 tanpa Node), `setup.exe`, dan sumber `tools/`.
 - `android-app/` — build APK.
-- `sidecar-installer/` + `sfx-build/` — paket sidecar untuk halaman
-  GitHub/Blogger ini; `sfx-build\bangun-sfx.ps1` membangun
-  `sidecar/Pasang-Sidecar.exe` (modul SFX berikon + script teks) setiap
-  deploy.
+
+Paket sidecar Node lama (`sidecar-installer/`, `sfx-build/`,
+`Pasang-Sidecar.exe`) sudah dihapus dan tidak dibangun lagi.
 
 ## Panduan aplikasi
 

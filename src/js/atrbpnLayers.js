@@ -318,7 +318,7 @@ const BhumiTileRelay = {
     const geoserver = String(url).startsWith(GEOSRV_WMS);
     if (!(sc && (geoserver || sc.availableSync()))) {
       this._setAvail(false);
-      throw Object.assign(new Error('Sidecar BHUMI tidak aktif — jalankan jalankan-auroramaps.bat.'), { relay: false });
+      throw Object.assign(new Error('Sidecar BHUMI tidak aktif — jalankan AuroraShell.exe (unduh AuroraShell-Windows.zip dari tombol unduh di situs).'), { relay: false });
     }
     const ambil = (typeof sc.proxyImage === 'function' && String(url).startsWith(GEOSRV_WMS))
       ? sc.proxyImage(url) : sc.tile(url);
