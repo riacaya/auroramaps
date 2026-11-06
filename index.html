@@ -9,11 +9,12 @@
 </head>
 <body>
 <!-- =====================================================
-  Template STATIS — halaman terpisah (home.html) dihapus, index.html tetap yang dilayani.
+  Halaman landing Blogger (blogger-landing.html).
+  Template STATIS — tidak diturunkan dari index.html, sehingga
   perubahan format halaman utama tidak pernah menggagalkan deploy.
   Diganti otomatis oleh build-blogger.mjs:
     1.0.1   → Config.version (src/js/config.js)
-    6 November 2026 → tanggal build (Asia/Jakarta)
+    7 November 2026 → tanggal build (Asia/Jakarta)
   ===================================================== -->
 <style>
   html, body { margin: 0; padding: 0; background: #171a20; }
@@ -36,22 +37,21 @@
   .am-chip { font-size: 11px; padding: 5px 11px; border-radius: 0;
     border: 1px solid rgba(237,216,165,.24); color: #e4d9c1; background: rgba(201,164,95,.07); }
   .am-section-label { color: var(--gold-soft); text-transform: uppercase; letter-spacing: .14em; font-size: 10px; font-weight: 800; margin: 0 0 9px; }
-  .am-cta { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+  .am-downloads { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .am-download-option { overflow: hidden; border: 1px solid rgba(255,255,255,.10);
+    background: rgba(255,255,255,.04); }
+  .am-download-option-utama { border-color: rgba(237,216,165,.24); }
   .am-btn { display: flex; align-items: center; gap: 12px; text-decoration: none;
-    padding: 15px 16px; border-radius: 0; border: 1px solid rgba(255,255,255,.12);
-    background: rgba(255,255,255,.045); transition: transform .15s, border-color .15s, background .15s; }
-  .am-btn:hover { transform: translateY(-2px); border-color: var(--gold); background: rgba(201,164,95,.1); }
-  .am-btn-utama { background: rgba(201,164,95,.10);
-    border: 1px solid rgba(237,216,165,.24); color: #f6f2ea; font-weight: 700; }
+    padding: 15px 16px; border-radius: 0; border: 0;
+    background: rgba(255,255,255,.045); transition: background .15s; }
+  .am-btn:hover { background: rgba(201,164,95,.1); }
+  .am-btn-utama { background: rgba(201,164,95,.10); color: #f6f2ea; font-weight: 700; }
   .am-btn-utama:hover { background: rgba(201,164,95,.16); }
   .am-btn-ico { font-size: 22px; line-height: 1; flex: 0 0 auto; }
   .am-btn-txt { display: flex; flex-direction: column; min-width: 0; }
   .am-btn-txt b { font-size: 15px; }
   .am-btn-txt small { font-size: 11px; opacity: .78; font-weight: 400; }
-  .am-grid { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; margin-top: 18px; }
-  @media (min-width: 620px) { .am-grid { grid-template-columns: 1fr 1fr; } }
-  .am-card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.10);
-    border-radius: 0; padding: 17px; }
+  .am-card { border-top: 1px solid rgba(255,255,255,.10); padding: 17px; }
   .am-card h3 { margin: 0 0 10px; font-size: 14px; display: flex; align-items: center; gap: 8px; color: var(--gold-soft); }
   .am-card ol, .am-card ul { margin: 0; padding-left: 18px; font-size: 13px; color: #c3cce0; }
   .am-card li { margin-bottom: 5px; }
@@ -62,7 +62,7 @@
     display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
     font-size: 11.5px; color: #7f8aa3; }
   .am-foot a { color: var(--gold-soft); text-decoration: none; }
-  @media (max-width: 600px) { .am-land { margin: 10px auto; padding: 24px 18px 18px; border-radius: 0; } .am-cta, .am-grid { grid-template-columns: 1fr; } .am-land-logo { width: 60px; height: 60px; flex-basis: 60px; border-radius: 0; } }
+  @media (max-width: 600px) { .am-land { margin: 10px auto; padding: 24px 18px 18px; border-radius: 0; } .am-downloads { grid-template-columns: 1fr; } .am-land-logo { width: 60px; height: 60px; flex-basis: 60px; border-radius: 0; } }
 </style>
 
 <div class="am-land">
@@ -82,32 +82,33 @@
     <span class="am-chip">Analisa bidang</span>
   </div>
 
-  <div class="am-cta">
-    <a class="am-btn am-btn-utama" href="https://riacaya.github.io/auroramaps/downloads/AuroraMaps.apk">
-      <span class="am-btn-ico">📲</span>
-      <span class="am-btn-txt"><b>Download For Android</b><small>±7 MB · cangkang yang memuat situs dari GitHub Pages</small></span>
-    </a>
-    <a class="am-btn" href="https://riacaya.github.io/auroramaps/downloads/AuroraShell-Windows.zip">
-      <span class="am-btn-ico">🖥️</span>
-      <span class="am-btn-txt"><b>Download For Windows</b><small>±4 MB · tanpa Node.js — syarat fitur cek bidang &amp; analisa</small></span>
-    </a>
-  </div>
-
-  <div class="am-grid">
-    <div class="am-card">
+  <div class="am-downloads">
+    <div class="am-download-option am-download-option-utama">
+      <a class="am-btn am-btn-utama" href="https://riacaya.github.io/auroramaps/downloads/AuroraMaps.apk">
+        <span class="am-btn-ico">📲</span>
+        <span class="am-btn-txt"><b>Download For Android</b><small>±7 MB · selalu memuat versi terbaru dari GitHub Pages</small></span>
+      </a>
+      <div class="am-card">
       <ol>
         <li>Unduh <b>AuroraMaps.apk</b> lewat tombol di atas.</li>
         <li>Buka file-nya, izinkan pemasangan dari sumber tidak dikenal bila diminta.</li>
       </ol>
-      <p>APK hanyalah cangkang: seluruh isi aplikasi dimuat dari GitHub Pages, jadi perubahan situs langsung terbawa tanpa build ulang.</p>
+      <p>Seluruh aplikasi dimuat dari GitHub Pages, sehingga setiap pembaruan situs langsung tersedia tanpa perlu memasang ulang APK.</p>
+      </div>
     </div>
-    <div class="am-card">
+    <div class="am-download-option">
+      <a class="am-btn" href="https://riacaya.github.io/auroramaps/downloads/AuroraShell-Windows.zip">
+        <span class="am-btn-ico">🖥️</span>
+        <span class="am-btn-txt"><b>Download For Windows</b><small>±4 MB · tanpa Node.js — syarat fitur cek bidang &amp; analisa</small></span>
+      </a>
+      <div class="am-card">
       <ol>
         <li>Unduh <b>AuroraShell-Windows.zip</b> lewat tombol di atas, lalu ekstrak.</li>
         <li>Dobel-klik <b>setup.exe</b> untuk memasang pintasan Desktop/Start Menu — atau <b>AuroraShell.exe</b> untuk langsung menjalankan.</li>
         <li>Login BHUMI sekali: jalankan <b>AuroraShell.exe --show</b>. Setelah itu cek bidang, zona RTRW, dan analisa aktif.</li>
       </ol>
       <p>Tanpa Node.js — hanya butuh runtime Microsoft Edge WebView2 yang sudah ada di Windows 10/11. Windows menampilkan “Windows protected your PC”? Pilih <b>Info lainnya → Jalankan</b>.</p>
+      </div>
     </div>
   </div>
 

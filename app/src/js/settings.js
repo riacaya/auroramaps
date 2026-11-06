@@ -84,7 +84,8 @@ const SettingsPanel = {
             <button class="btn btn-secondary" id="set-offline-dl">⬇ ${t('set-offline-dl')}</button>
           </div>`)}
         ${section(t('set-info'),
-          `<div class="set-note">${t('set-layers-count')}: ${layerCount} · ${t('set-features-count')}: ${featureCount}</div>`)}
+          `<div class="set-note">${t('set-layers-count')}: ${layerCount} · ${t('set-features-count')}: ${featureCount}</div>
+${window.AuroraInstall?.canOffer() ? `<div class="set-actions"><button class="btn btn-secondary" id="set-install">📲 ${t('set-install')}</button></div>` : ''}`)}
       </div>`;
 
     // Tanpa tombol footer — panel sudah punya ikon X di kanan atas.
@@ -129,6 +130,7 @@ const SettingsPanel = {
     $('set-offline-dl')?.addEventListener('click', () => { Modal.close(); OfflineManager.downloadCurrentArea(); });
     $('set-gps-nobase')?.addEventListener('change', e => Storage.save('gps-coordinate-only', e.target.checked));
     // Info - About & Logout tetap di header PC (#btn-about-pc / #btn-logout-pc).
+    $('set-install')?.addEventListener('click', () => window.AuroraInstall?.trigger());
 
     this._tileCount().then(n => {
       const el = $('set-tile-count');
