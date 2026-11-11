@@ -157,7 +157,7 @@ const BhumiIdentify = {
           const nibCari = String(main?.properties?.nib || '').trim();
           const cocok = nibCari ? enriched.find(x => String(x?.properties?.nib || '').trim() === nibCari) : null;
           feats = enriched;
-          main = cocok || enriched.find(x => x?.properties?.nib) || enriched[0] || main;
+          main = cocok || (nibCari ? main : (enriched.find(x => x?.properties?.nib) || enriched[0] || main));
         }
       } catch (e) { /* fallback ke hasil pencarian */ }
     }
