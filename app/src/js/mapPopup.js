@@ -39,9 +39,19 @@ const MapPopup = {
    * Tampilkan popup — atau refresh isi popup yang sedang tampil
    * (konten lama langsung diganti, jadi klik koordinat lain = popup baru).
    * @param {string} html — konten HTML
+   * @param {boolean} [refresh] — true: perbarui isi saja TANPA animasi masuk.
+   *   Dipakai AtrbpnLayers._refreshZones saat hasil GFI/persil masuk
+   *   bertahap; tanpa ini kartu berkedip (opacity 0→1) tiap hasil masuk.
    */
-  show(html) {
+  show(html, refresh) {
     this._ensureEl();
+    if (refresh && this._el.style.display === '') {
+      // Kartu sudah tampil → ganti isi saja, pertahankan keadaan & posisi.
+      this._el.innerHTML = html;
+      this._bindTabs();
+      this._fitBetweenBars();
+      return;
+    }
     this._el.innerHTML = html;
     this._bindTabs();
     this._fitBetweenBars();

@@ -184,7 +184,11 @@ const BhumiTileRelay = {
   _dbP: null,
   _queue: [],
   _active: 0,
-  _maxActive: 4,        // jangan membanjiri sidecar
+  // Naik dari 4 → 8 (11 Nov 2026): sidecar memproses tiap koneksi lewat
+  // Task.Run terpisah dan CDP membalas berdasarkan ID, jadi 8 request
+  // bersamaan aman — ini yang membuat tile ATRBPN terasa berat saat zoom
+  // (antrean 4 slot cepat penuh lalu tile berikutnya menunggu).
+  _maxActive: 8,
   _avail: null,         // null = belum tahu, false = sidecar tidak aktif
   _availAt: 0,
   _logged: false,
@@ -272,27 +276,54 @@ const BhumiTileRelay = {
       return Promise.reject(Object.assign(new Error('Relai tile tidak aktif.'), { relay: false }));
     }
     const promise = (async () => {
-      const disk = await this._diskGet(url);
-      if (disk) return this._rememberBlob(url, disk);
-      return new Promise((resolve, reject) => {
-      // Galat sementara dari relay (mis. WAF ATR/BPN membalas 500 saat burst
-      // halaman BHUMI) dicoba ulang sekali lewat relai setelah 0,8 dtk sebelum
-      // tile jatuh ke basis URL langsung. Galat relay:false (sidecar tidak
-      // aktif) tidak diulang — memang tidak akan beda.
-      const attempt = (sisa) => {
-        this._queue.push({
-          url,
-          resolve,
-          reject: (err) => {
-            if (sisa > 0 && !(err && err.relay === false)) {
-              setTimeout(() => attempt(sisa - 1), 1500);
-            } else reject(err);
-          }
-        });
-        this._pump();
+      // Baca disk & antre jaringan paralel dengan grace period: hit disk
+      // langsung dipakai tanpa menyentuh jaringan; bila IndexedDB lambat
+      // (>30 ms), jaringan tetap dijalankan supaya tile tidak menunggu cache.
+      const TUNGGU = {};
+      let timer = 0;
+      let batal = false;
+      let jaringan = null;
+      const mulaiJaringan = () => {
+        if (!jaringan) {
+          jaringan = new Promise((resolve, reject) => {
+            const attempt = (sisa) => {
+              this._queue.push({
+                url,
+                batal: () => batal,
+                resolve,
+                reject: (err) => {
+                  if (sisa > 0 && !(err && err.relay === false)) {
+                    setTimeout(() => attempt(sisa - 1), 1500);
+                  } else reject(err);
+                }
+              });
+              this._pump();
+            };
+            attempt(1);
+          });
+          jaringan.catch(() => {}); // disk bisa menang lebih dulu → cegah unhandled
+        }
+        return jaringan;
       };
-      attempt(1);
-      });
+
+      const diskP = this._diskGet(url);
+      const hasil = await Promise.race([
+        diskP,
+        new Promise(r => { timer = setTimeout(() => r(TUNGGU), 30); })
+      ]);
+      clearTimeout(timer);
+
+      if (hasil === TUNGGU) {
+        // Disk lambat → jaringan jalan paralel; bila disk ternyata berisi,
+        // hasil disk dipakai dan tugas jaringan yang belum terkirim dibatalkan.
+        const netP = mulaiJaringan();
+        const disk = await diskP;
+        if (disk) { batal = true; return this._rememberBlob(url, disk); }
+        return netP;
+      }
+      if (hasil) return this._rememberBlob(url, hasil);
+      // Disk miss cepat → jaringan dimulai sekarang.
+      return mulaiJaringan();
     })();
     this._pending.set(url, promise);
     promise.then(() => { if (this._pending.get(url) === promise) this._pending.delete(url); },
@@ -302,6 +333,7 @@ const BhumiTileRelay = {
   _pump() {
     while (this._active < this._maxActive && this._queue.length) {
       const task = this._queue.shift();
+      if (task.batal && task.batal()) continue; // sudah terjawab dari disk
       this._active++;
       const settle = () => { this._active--; this._pump(); };
       this._send(task.url).then(task.resolve, task.reject).then(settle, settle);
@@ -399,6 +431,7 @@ const AtrbpnLayers = {
   _map: null,
   _layers: null,   // { lsd, lbs, rtrp (RTRWN), rtrwp (RTRW provinsi), rtrw, ... }
   _batasLayerId: null,
+  _gfiCache: new Map(), // "prov|kab|lat,lng" → { at, hasil } (TTL 30 dtk) — cache GFI per koordinat
 
   init() {
     this._map = MapManager.map;
@@ -684,12 +717,22 @@ const AtrbpnLayers = {
     if (want.prov) state.prov = { pending: true };
     if (want.kab) state.kab = { pending: true };
     const settle = this._refreshZones(popupActive, state, lat, lng, seq);
+
+    // Analisa dipanggil SEKALI per klik (11 Nov 2026): tunggu luas bidang
+    // (maks 4 dtk) agar memakai luas asli bila tersedia; bila bidang lambat/
+    // gagal → jalan dengan luas 0. Menghapus panggilan kedua menghemat
+    // request sidecar analisa (±1,8 dtk / timeout 45 dtk) per klik.
+    let analisaDipanggil = false;
+    const jalanAnalisa = (luas) => {
+      if (!adaAnalisa || analisaDipanggil) return;
+      analisaDipanggil = true;
+      this._fetchAnalisa(lat, lng, isFinite(luas) && luas > 0 ? luas : 0).then(r => settle('analisa', r));
+    };
     if (adaAnalisa) {
       state.analisa = { pending: true };
-      // Langsung dengan luas 0 supaya tab cepat terisi (±1,8 dtk); saat bidang
-      // masuk dan luas diketahui, hasilnya diperbarui dengan luas asli (echo
-      // znt.luas di balasan server).
-      this._fetchAnalisa(lat, lng, 0).then(r => settle('analisa', r));
+      setTimeout(() => {
+        if (MapPopup._el && MapPopup._el.style.display === '') jalanAnalisa(0);
+      }, 4000);
     }
 
     // Tab Bidang: getPersil ECDH di titik klik → hasil + overlay transparan
@@ -703,17 +746,16 @@ const AtrbpnLayers = {
           // (document capture), jadi guard-nya harus memakai _stillOurCard
           // seperti settle — kalau tidak, tab bisa nyangkut di "membaca…".
           if (seq !== this._clickSeq && !this._stillOurCard(lat)) return;
-          if (!features || !features.length) { settle('bidang', { empty: true }); return; }
+          if (!features || !features.length) { settle('bidang', { empty: true }); jalanAnalisa(0); return; }
           const main = BhumiIdentify.adopt(features, lat, lng);
           settle('bidang', { features, main, count: features.length });
-          // Analisa: perbarui dengan luas bidang yang sebenarnya bila ada.
           const luas = Number(main && main.properties && main.properties.luas);
-          if (adaAnalisa && isFinite(luas) && luas > 0) {
-            this._fetchAnalisa(lat, lng, luas).then(r => settle('analisa', r));
-          }
+          jalanAnalisa(luas);
         },
-        err => settle('bidang', { error: (err && err.message) || 'gagal' })
+        err => { settle('bidang', { error: (err && err.message) || 'gagal' }); jalanAnalisa(0); }
       );
+    } else if (adaAnalisa) {
+      // Tidak ada tab Bidang → analisa tetap dipanggil (timer fallback).
     }
   },
 
@@ -766,7 +808,9 @@ const AtrbpnLayers = {
       // "membaca…" selamanya (tanpa auto-hide lagi).
       if (seq !== this._clickSeq && !this._stillOurCard(lat)) return;
       try {
-        MapPopup.show(this._zonePopupHtml(active, state, lat, lng));
+        // refresh=true: perbarui isi tanpa animasi masuk agar kartu tidak
+        // berkedip setiap kali satu hasil zona masuk bertahap.
+        MapPopup.show(this._zonePopupHtml(active, state, lat, lng), true);
       } catch (err) {
         // Gagal menyusun popup (data tak terduga) → tetap tampilkan kartu tanpa crash.
         MapPopup.show(`
@@ -776,12 +820,45 @@ const AtrbpnLayers = {
           </div>
           <div class="mp-cand">⚠ Data tidak tersedia</div>
           <div class="mp-coord">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
-        `);
+        `, true);
       }
     };
-    if (want.prov) this._gfiZone(RTRP_UUID, RTRP_LAYER, lat, lng).then(r => settle('prov', r));
-    if (want.kab) this._gfiKabZone(lat, lng).then(r => settle('kab', r));
+    // Hasil zona dibaca lewat cache per koordinat (TTL 30 dtk) supaya klik
+    // berulang di titik yang sama tidak mengulang rantai GFI.
+    if (want.prov) this._zoneCached('prov', lat, lng, () => this._gfiZone(RTRP_UUID, RTRP_LAYER, lat, lng)).then(r => settle('prov', r));
+    if (want.kab) this._zoneCached('kab', lat, lng, () => this._gfiKabZone(lat, lng)).then(r => settle('kab', r));
     return settle;
+  },
+
+  // Cache hasil baca zona per koordinat (TTL 30 dtk): klik berulang di titik
+  // yang sama tidak mengulang rantai GFI yang mahal. Hanya hasil TANPA galat
+  // yang disimpan; permintaan yang masih berjalan dibagikan (dedupe).
+  _zoneCached(jenis, lat, lng, baca) {
+    const key = jenis + '|' + lat.toFixed(6) + ',' + lng.toFixed(6);
+    const kini = this._gfiCache.get(key);
+    if (kini) {
+      if (kini.proses && !kini.selesai) return kini.proses; // masih berjalan
+      if (kini.hasil && Date.now() - kini.at < 30000) return Promise.resolve(kini.hasil);
+    }
+    const entri = { proses: null, selesai: false, hasil: null, at: 0 };
+    entri.proses = Promise.resolve().then(baca).then(hasil => {
+      entri.selesai = true;
+      if (hasil && !hasil.error) {
+        entri.hasil = hasil;
+        entri.at = Date.now();
+        // Batasi ukuran cache: buang entri paling lama bila melebihi 60.
+        while (this._gfiCache.size > 60) {
+          const lawas = this._gfiCache.keys().next().value;
+          if (lawas === key) break;
+          this._gfiCache.delete(lawas);
+        }
+      } else {
+        this._gfiCache.delete(key); // galat → jangan simpan, klik berikutnya coba lagi
+      }
+      return hasil;
+    }, err => { this._gfiCache.delete(key); throw err; });
+    this._gfiCache.set(key, entri);
+    return entri.proses;
   },
 
   // ── Popup gabungan dipanggil dari BhumiIdentify ──────────────────────
@@ -915,9 +992,13 @@ const AtrbpnLayers = {
     if (!skipPersil && uuid === RTRP_UUID) {
       // RTRW provinsi yang sah (Perda) lebih dulu; RTRWN hanya dipakai bila
       // titik berada di luar wilayah yang layer provinsinya tersedia.
-      const wp = await this._geoServerGfi(GEOSRV_RTRWP_LAYER, lat, lng);
+      // Kedua GFI GeoServer dibaca PARALEL (11 Nov 2026): hasil dinilai sesuai
+      // urutan prioritas (Jateng → RTRWN) tanpa menunggu berurutan.
+      const [wp, gs] = await Promise.all([
+        this._geoServerGfi(GEOSRV_RTRWP_LAYER, lat, lng),
+        this._geoServerGfi(GEOSRV_RTRWN_LAYER, lat, lng)
+      ]);
       if (wp && wp.count > 0) return Object.assign(wp, { title: 'RTRW Provinsi Jawa Tengah' });
-      const gs = await this._geoServerGfi(GEOSRV_RTRWN_LAYER, lat, lng);
       if (gs && gs.count > 0) return Object.assign(gs, { title: 'RTR Nasional (RTRWN 2025)' });
     }
     // Jalur utama: getPersil di server GISTARU (lihat _zoneViaPersil).
@@ -963,17 +1044,23 @@ const AtrbpnLayers = {
     return last;
   },
 
-  // Zona RTRW Kab/Kota — getPersil GISTARU (layer rtrw_kabkot_1: field utuh)
-  // dulu; gagal → WMS bhumi merge (lengkapnya terbatas: objectid+keterangan);
-  // itu pun gagal → GFI GISTARU lama.
+  // Zona RTRW Kab/Kota — dua putaran paralel (11 Nov 2026): putaran 1
+  // GeoServer petabpn + getPersil GISTARU (field utuh), putaran 2 WMS bhumi
+  // merge (objectid+keterangan) + GFI GISTARU cadangan. Prioritas lama
+  // dipertahankan: geoserver → persil → bhumi → gistaru.
   async _gfiKabZone(lat, lng) {
-    const gs = await this._geoServerGfi(GEOSRV_RTRW_LAYER, lat, lng);
+    const [gs, p] = await Promise.all([
+      this._geoServerGfi(GEOSRV_RTRW_LAYER, lat, lng),
+      this._zoneViaPersil(lat, lng, RTRW_LAYER, GISTARU_WMS + RTRW_UUID)
+    ]);
     if (gs && gs.count > 0) return gs;
-    const p = await this._zoneViaPersil(lat, lng, RTRW_LAYER, GISTARU_WMS + RTRW_UUID);
     if (p) return p;
-    const b = await this._gfiBhumiRtrw(lat, lng);
+    const [b, g] = await Promise.all([
+      this._gfiBhumiRtrw(lat, lng),
+      this._gfiZone(RTRW_UUID, RTRW_LAYER, lat, lng, true)
+    ]);
     if (b && !b.error && b.count > 0) return b;
-    return this._gfiZone(RTRW_UUID, RTRW_LAYER, lat, lng, true);
+    return g || b || { rows: [], count: 0, error: 'gagal' };
   },
 
   // GFI GeoServer terbaru melalui proxy internal BHUMI. Respons proxy berupa
