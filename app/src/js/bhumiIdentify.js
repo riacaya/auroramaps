@@ -129,10 +129,11 @@ const BhumiIdentify = {
   },
 
   // Sorot hasil pencarian: pasang view (HGU/HPL tetap setView, sisanya
-  // fitBounds), lalu popup + overlay bidang langsung dari fitur hasil.
-  // getPersil TIDAK dipanggil ulang — respons getBidang sudah membawa
-  // geometry, jadi putaran jaringan kedua (yang ikut kena WAF) dihindari.
-  _focusSearchResult(features, tipehak = '') {
+  // fitBounds), lalu popup + overlay bidang (WMS) seperti klik bidang.
+  // Hasil getBidang/getBidang2 kadang tak membawa persilpasifid (dipakai
+  // _drawPolygon untuk gambar WMS bidang), jadi bila hilang coba perkaya via
+  // getPersil di titik pusat agar gambar bidang tetap muncul.
+  async _focusSearchResult(features, tipehak = '') {
     if (this._searchLayer) { this._searchLayer.remove(); this._searchLayer = null; }
     const first = features.find(f => f?.geometry && f.geometry.coordinates);
     if (!first) return;
@@ -145,9 +146,21 @@ const BhumiIdentify = {
       MapManager.map.setView(center, Math.max(MapManager.map.getZoom(), 17));
     }
     else MapManager.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 20 });
-    const main = features.find(x => x?.properties?.nib) || first;
-    this._showInfo(main, features.length, center.lat, center.lng);
-    this._drawPolygon(features, center.lat, center.lng);
+
+    let feats = features;
+    let main = features.find(x => x?.properties?.nib) || first;
+    const hasPid = features.some(f => f?.properties?.persilpasifid);
+    if (!hasPid) {
+      try {
+        const enriched = await this.readBidang(center.lat, center.lng);
+        if (enriched && enriched.length) {
+          feats = enriched;
+          main = enriched.find(x => x?.properties?.nib) || enriched[0] || main;
+        }
+      } catch (e) { /* fallback ke hasil pencarian */ }
+    }
+    this._showInfo(main, feats.length, center.lat, center.lng);
+    this._drawPolygon(feats, center.lat, center.lng);
   },
 
   // ── MD5 (exact copy from nib.html) ──
@@ -307,7 +320,7 @@ const BhumiIdentify = {
     const features = await this._searchFeatures('/expapi/getBidang',
       { desaId, nomor: value, search: 'nomorhak', tipehak });
     if (!features.length) return [];
-    this._focusSearchResult(features, tipehak);
+    await this._focusSearchResult(features, tipehak);
     return features;
   },
 
@@ -320,7 +333,7 @@ const BhumiIdentify = {
       const features = await this._searchFeatures('/expapi/getBidang',
         { desaId: '0', nomor: raw, search: 'nib', tipehak });
       if (!features.length) return [];
-      this._focusSearchResult(features, tipehak);
+      await this._focusSearchResult(features, tipehak);
       return features;
     }
     if (!desaId) throw new Error('Pilih kabupaten dulu');
@@ -329,7 +342,7 @@ const BhumiIdentify = {
     const features = await this._searchFeatures('/expapi/getBidang',
       { desaId, nomor: value, search: 'nib', tipehak });
     if (!features.length) return [];
-    this._focusSearchResult(features, tipehak);
+    await this._focusSearchResult(features, tipehak);
     return features;
   },
 
@@ -339,7 +352,7 @@ const BhumiIdentify = {
     if (!value) throw new Error('NIBEL wajib diisi');
     const features = await this._searchFeatures('/expapi/getBidang2', { nibel: value });
     if (!features.length) return [];
-    this._focusSearchResult(features, '1');
+    await this._focusSearchResult(features, '1');
     return features;
   },
 
