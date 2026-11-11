@@ -825,10 +825,16 @@ const AtrbpnLayers = {
     };
     // Hasil zona dibaca lewat cache per koordinat (TTL 30 dtk) supaya klik
     // berulang di titik yang sama tidak mengulang rantai GFI.
-    if (want.prov) this._zoneCached('prov', lat, lng, () => this._gfiZone(RTRP_UUID, RTRP_LAYER, lat, lng))
-      .then(r => settle('prov', r), e => settle('prov', { rows: [], count: 0, error: (e && e.message) || 'gagal' }));
-    if (want.kab) this._zoneCached('kab', lat, lng, () => this._gfiKabZone(lat, lng))
-      .then(r => settle('kab', r), e => settle('kab', { rows: [], count: 0, error: (e && e.message) || 'gagal' }));
+    // Batas waktu paksa agar tab tidak nyangkut "membaca" bila sumber hang.
+    const batas = (ms) => new Promise(res => setTimeout(() => res({ rows: [], count: 0, error: 'timeout' }), ms));
+    if (want.prov) Promise.race([
+      this._zoneCached('prov', lat, lng, () => this._gfiZone(RTRP_UUID, RTRP_LAYER, lat, lng)),
+      batas(25000)
+    ]).then(r => settle('prov', r), e => settle('prov', { rows: [], count: 0, error: (e && e.message) || 'gagal' }));
+    if (want.kab) Promise.race([
+      this._zoneCached('kab', lat, lng, () => this._gfiKabZone(lat, lng)),
+      batas(25000)
+    ]).then(r => settle('kab', r), e => settle('kab', { rows: [], count: 0, error: (e && e.message) || 'gagal' }));
     return settle;
   },
 
