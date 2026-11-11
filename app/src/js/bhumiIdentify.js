@@ -110,11 +110,22 @@ const BhumiIdentify = {
   // ditemukan' disaring) ATAU FeatureCollection tunggal → samakan menjadi
   // array fitur datar. Wrapper null dulu pernah membuat L.geoJSON crash.
   _flattenSearch(data) {
+    let features;
     if (Array.isArray(data)) {
-      return data.flatMap(x => (x == null ? [] :
+      features = data.flatMap(x => (x == null ? [] :
         (Array.isArray(x.features) ? x.features : (x.type === 'FeatureCollection' ? [] : x))));
+    } else {
+      features = (data && Array.isArray(data.features)) ? data.features : [];
     }
-    return (data && Array.isArray(data.features)) ? data.features : [];
+    // Respons getBidang/getBidang2 bisa membawa poligon di field "bbox"
+    // (geometry GeoJSON, bukan array bbox standar) sementara geometry null —
+    // sama seperti getPersil. Normalisasi agar fokus/popup/WMS bidang jalan.
+    return features.map(f => {
+      if (f && (!f.geometry || !f.geometry.coordinates) && f.bbox && f.bbox.coordinates) {
+        return Object.assign({}, f, { geometry: f.bbox });
+      }
+      return f;
+    });
   },
 
   // Sorot hasil pencarian: pasang view (HGU/HPL tetap setView, sisanya
