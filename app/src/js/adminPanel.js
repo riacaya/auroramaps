@@ -120,13 +120,17 @@ const AdminPanel = {
       const id = this._esc(u.id);
       const status = this._esc(u.status || 'User');
       const admin = /^(administrator|admin)$/i.test(String(u.status || ''));
-      const badge = status + (u.hasKey ? '' : ' · tanpa password');
-      return '<div class="atrbpn-row admin-user-row" data-id="' + id + '">' +
+      const blocked = String(u.access || 'active').toLowerCase() === 'block';
+      const badge = status + (u.hasKey ? '' : ' · tanpa password') + (blocked ? ' · diblokir' : '');
+      const blockLabel = blocked ? 'Buka blokir' : 'Blokir';
+      const blockTitle = blocked ? 'Izinkan user ini login kembali' : 'Blokir user ini agar tidak bisa login';
+      return '<div class="atrbpn-row admin-user-row" data-id="' + id + '" data-access="' + (blocked ? 'block' : 'active') + '">' +
         '<div class="admin-user-info">' +
           '<span class="atrbpn-name">' + id + '</span>' +
-          '<span class="admin-user-badge' + (admin ? ' is-admin' : '') + '">' + badge + '</span>' +
+          '<span class="admin-user-badge' + (admin ? ' is-admin' : '') + (blocked ? ' is-blocked' : '') + '">' + badge + '</span>' +
         '</div>' +
         '<div class="admin-user-actions">' +
+          '<button type="button" class="admin-act admin-act-access" data-act="access" title="' + blockTitle + '">' + blockLabel + '</button>' +
           '<button type="button" class="admin-act admin-act-reset" data-act="reset" title="Ganti password id ini">Reset sandi</button>' +
           '<button type="button" class="admin-act admin-act-del" data-act="delete" title="Hapus id ini dari sheet">Hapus</button>' +
         '</div>' +
@@ -144,12 +148,18 @@ const AdminPanel = {
     const act = btn.dataset.act;
     let params;
     if (act === 'reset') {
-      // Tidak ada sandi default hardcode — admin mengetik sandi baru sendiri.
+      // Tidak ada sandi default hardcode - admin mengetik sandi baru sendiri.
       const np = (window.prompt('Sandi baru untuk "' + id + '" (min. 4 karakter):', '') || '').trim();
       if (!np) return; // dibatalkan
       if (np.length < 4) { Toast.show('Sandi minimal 4 karakter.', 'warn'); return; }
       if (!confirm('Ganti password "' + id + '" ke sandi baru ini?')) return;
       params = { id: id, key: np };
+    } else if (act === 'access') {
+      const blocked = row?.dataset?.access === 'block';
+      const next = blocked ? 'active' : 'block';
+      const label = blocked ? 'membuka blokir' : 'memblokir';
+      if (!confirm((blocked ? 'Buka blokir' : 'Blokir') + ' user "' + id + '"? ' + (blocked ? 'User akan bisa login kembali.' : 'User tidak akan bisa login.'))) return;
+      params = { id: id, access: next };
     } else {
       if (!confirm('Hapus id "' + id + '" dari sheet login? Tidak bisa dibatalkan.')) return;
       params = { id: id };
