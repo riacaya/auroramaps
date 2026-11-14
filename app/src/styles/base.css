@@ -352,6 +352,10 @@ body.is-admin #btn-admin-pc { display: flex; }
 body.is-admin #mm-admin { display: flex; }
 #mm-logout { color: var(--danger); }
 .admin-user-list { display: flex; flex-direction: column; gap: 6px; max-height: 55vh; overflow-y: auto; padding-right: 2px; }
+.modal.admin-modal { width: min(100vw, 1100px); height: min(100dvh, 820px); max-width: none; max-height: none; display: flex; flex-direction: column; }
+.modal.admin-modal .modal-body { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.modal.admin-modal .admin-user-list { flex: 1 1 auto; max-height: none; min-height: 0; }
+.modal.admin-modal .modal-footer { flex: 0 0 auto; }
 .admin-user-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .admin-user-info { display: flex; align-items: center; gap: 7px; min-width: 0; flex-wrap: wrap; }
 .admin-user-badge { font-size: 10px; padding: 2px 6px; border-radius: 10px; background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-secondary); white-space: nowrap; }

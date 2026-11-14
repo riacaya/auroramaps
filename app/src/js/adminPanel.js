@@ -77,6 +77,23 @@ const AdminPanel = {
       { label: 'Muat ulang', cls: 'btn-secondary', action: () => this.refresh() },
       { label: 'Tutup', cls: 'btn-secondary', action: () => Modal.close() }
     ]);
+    const modal = document.querySelector('#modal-container .modal');
+    if (modal) {
+      modal.classList.add('admin-modal');
+      const map = document.getElementById('map-container');
+      if (map) {
+        const rect = map.getBoundingClientRect();
+        modal.style.position = 'fixed';
+        modal.style.left = rect.left + 'px';
+        modal.style.top = rect.top + 'px';
+        modal.style.width = rect.width + 'px';
+        modal.style.height = rect.height + 'px';
+        modal.style.maxWidth = 'none';
+        modal.style.maxHeight = 'none';
+        modal.style.transform = 'none';
+        modal.style.margin = '0';
+      }
+    }
     this.refresh();
   },
 
