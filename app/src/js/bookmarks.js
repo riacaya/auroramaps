@@ -68,6 +68,24 @@ const ContextMenuManager = {
         UI.updateStats();
         FeatureSelect.select(marker.feature, marker, newId);
         AppConsole.log(`Marker otomatis diberi nama ${feat.properties.name}`, 'success');
+        if (typeof Elevation !== 'undefined') {
+          Elevation.annotatePointFeature(feat, lat, lng).then(mdpl => {
+            if (mdpl == null) return;
+            try {
+              if (marker.feature && marker.feature.properties) {
+                marker.feature.properties.mdpl = feat.properties.mdpl;
+                marker.feature.properties.elevation = feat.properties.elevation;
+              }
+              const entry = State.layers.find(l => l.id === newId);
+              if (entry && entry.geoJSON && entry.geoJSON.features) {
+                const f = entry.geoJSON.features.find(x => x === feat || x === marker.feature) || entry.geoJSON.features[entry.geoJSON.features.length - 1];
+                if (f && f.properties) { f.properties.mdpl = feat.properties.mdpl; f.properties.elevation = feat.properties.elevation; }
+              }
+              if (typeof AutoSave !== 'undefined' && AutoSave.save) AutoSave.save();
+              if (typeof AttrTable !== 'undefined' && AttrTable.render) AttrTable.render();
+            } catch (_) {}
+          });
+        }
       }},
       { label: '🔖 Add Bookmark Here', action: () => {
         const name = prompt('Bookmark name:') || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;

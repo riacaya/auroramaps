@@ -165,12 +165,24 @@ const MapManager = {
     // Keep the SHM area supplied by the popup; only initialize it for manual draws.
     if (gj.properties.luas === undefined) gj.properties.luas = '';
 
+    // Titik: catat mdpl (elevasi) ke atribut secara async
+    const isPointType = (type === 'marker' || type === 'point' || (gj.geometry && gj.geometry.type === 'Point'));
+    let pointLatLng = null;
+    if (isPointType) {
+      try {
+        if (typeof layer.getLatLng === 'function') pointLatLng = layer.getLatLng();
+        else if (gj.geometry && gj.geometry.coordinates) pointLatLng = { lat: gj.geometry.coordinates[1], lng: gj.geometry.coordinates[0] };
+      } catch (_) {}
+    }
+
     this.drawnItems.addLayer(layer);
     layer.on('click', (ev) => this._onDrawnItemClick(ev));
     this._stopDrawTool();
 
+    let addedLayerId = null;
     if (targetEntry) {
       LayerManager.addFeatureToLayer(targetLayerId, layer, gj);
+      addedLayerId = targetLayerId;
       State.selectedLayer = targetLayerId;
       State.expandedLayers[targetLayerId] = true;
       UI.renderLayerList();
@@ -179,11 +191,33 @@ const MapManager = {
       FeatureSelect.select(gj, layer, targetLayerId);
     } else {
       const newId = LayerManager.addDrawnLayer(layer, gj, type, color);
+      addedLayerId = newId;
       History.push({ type: 'draw_create', layerId: newId });
       UI.renderLayerList();
       UI.updateStats();
-      AppConsole.log(`Drew ${type} — otomatis diberi nama ${gj.properties.name}`, 'success');
+      AppConsole.log(`Drew ${type} - otomatis diberi nama ${gj.properties.name}`, 'success');
       FeatureSelect.select(layer.feature, layer, newId);
+    }
+
+    if (isPointType && pointLatLng && typeof Elevation !== 'undefined') {
+      Elevation.annotatePointFeature(gj, pointLatLng.lat, pointLatLng.lng).then(mdpl => {
+        if (mdpl == null) return;
+        try {
+          if (layer.feature && layer.feature.properties) {
+            layer.feature.properties.mdpl = gj.properties.mdpl;
+            layer.feature.properties.elevation = gj.properties.elevation;
+          }
+          // sinkronkan ke geoJSON layer
+          const entry = State.layers.find(l => l.id === addedLayerId);
+          if (entry && entry.geoJSON && entry.geoJSON.features) {
+            const f = entry.geoJSON.features.find(x => x === gj || x === layer.feature) || (gj.geometry && gj.geometry.type === 'Point' ? entry.geoJSON.features[entry.geoJSON.features.length - 1] : null);
+            if (f && f.properties) { f.properties.mdpl = gj.properties.mdpl; f.properties.elevation = gj.properties.elevation; }
+          }
+          if (typeof UI !== 'undefined' && UI.renderLayerList) UI.renderLayerList();
+          if (typeof AutoSave !== 'undefined' && AutoSave.save) AutoSave.save();
+          if (typeof AttrTable !== 'undefined' && AttrTable.render) AttrTable.render();
+        } catch (_) {}
+      });
     }
   },
 

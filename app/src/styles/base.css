@@ -263,7 +263,8 @@ html, body { width: 100%; min-width: 0; height: 100dvh; }
 }
 .map-popup-panel td { padding: 5px 12px; color: var(--text-primary); font-weight: 600; overflow-wrap: anywhere; vertical-align: top; }
 .map-popup-panel tr + tr { border-top: 1px solid var(--border); }
-.map-popup-panel .mp-coord { padding: 4px 12px 6px; font-size: 10px; color: var(--text-muted); }
+.map-popup-panel .mp-coord { padding: 4px 12px 2px; font-size: 10px; color: var(--text-muted); }
+.map-popup-panel .mp-coord-mdpl { padding: 0 12px 6px; font-size: 10px; color: var(--text-muted); }
 .map-popup-panel .mp-cand { padding: 4px 12px; font-size: 11px; color: var(--text-accent); background: var(--accent-light); }
 .map-popup-panel .mp-share {
   display: block; width: calc(100% - 24px); margin: 6px 12px 10px; padding: 6px 9px;

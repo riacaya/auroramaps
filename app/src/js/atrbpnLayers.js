@@ -818,6 +818,7 @@ const AtrbpnLayers = {
         // refresh=true: perbarui isi tanpa animasi masuk agar kartu tidak
         // berkedip setiap kali satu hasil zona masuk bertahap.
         MapPopup.show(this._zonePopupHtml(active, state, lat, lng), true);
+        if (typeof Elevation !== 'undefined' && MapPopup._el) Elevation.fillPopupCoord(MapPopup._el, lat, lng);
       } catch (err) {
         // Gagal menyusun popup (data tak terduga) → tetap tampilkan kartu tanpa crash.
         MapPopup.show(`
@@ -828,6 +829,7 @@ const AtrbpnLayers = {
           <div class="mp-cand">⚠ Data tidak tersedia</div>
           <div class="mp-coord">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
         `, true);
+        if (typeof Elevation !== 'undefined' && MapPopup._el) Elevation.fillPopupCoord(MapPopup._el, lat, lng);
       }
     };
     // Hasil zona dibaca lewat cache per koordinat (TTL 30 dtk) supaya klik
@@ -896,6 +898,7 @@ const AtrbpnLayers = {
     const seq = (this._clickSeq = (this._clickSeq || 0) + 1);
     MapPopup._activeTab = null; // kartu baru → tab default (lihat _onMapClick)
     MapPopup.show(this._zonePopupHtml(active, state, lat, lng));
+    if (typeof Elevation !== 'undefined' && MapPopup._el) Elevation.fillPopupCoord(MapPopup._el, lat, lng);
     const settle = this._refreshZones(active, state, lat, lng, seq);
     if (adaAnalisa) {
       const luas = Number(bidang.main && bidang.main.properties && bidang.main.properties.luas);
