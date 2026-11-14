@@ -1,14 +1,13 @@
 'use strict';
 
 /**
- * Elevation (mdpl) lookup via OpenTopoData (gratis).
- * - Default: SRTM 30m, fallback dataset bila null/gagal.
- * - Cache & in-flight dedupe per koordinat (dibulatkan).
+ * Elevation (mdpl) lookup (gratis).
+ * Coba beberapa sumber (CORS-friendly) + fallback dataset.
+ * - Open-Meteo Elevation, Open-Elevation, OpenTopoData (srtm30m/aster30m/etopo1)
  */
 window.Elevation = {
   _cache: new Map(),      // key -> meters|null
   _inflight: new Map(),   // key -> Promise
-  _datasets: ['srtm30m', 'aster30m', 'etopo1'],
   _key(lat, lng) {
     return `${Number(lat).toFixed(5)},${Number(lng).toFixed(5)}`;
   },
@@ -18,19 +17,53 @@ window.Elevation = {
     return Number.isInteger(r) ? String(r) : r.toFixed(1);
   },
 
-  async _fetchDataset(dataset, lat, lng) {
-    const url = `https://api.opentopodata.org/v1/${dataset}?locations=${lat.toFixed(6)},${lng.toFixed(6)}`;
+  async _fetchJson(url) {
     const ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     const to = ctl ? setTimeout(() => ctl.abort(), 10000) : null;
     try {
       const res = await fetch(url, { signal: ctl ? ctl.signal : undefined });
       if (!res.ok) throw new Error('http ' + res.status);
-      const data = await res.json();
-      const m = data && data.results && data.results[0] ? data.results[0].elevation : null;
-      return (m == null || !isFinite(Number(m))) ? null : Number(m);
+      return await res.json();
     } finally {
       if (to) clearTimeout(to);
     }
+  },
+
+  async _tryAll(lat, lng) {
+    const tries = [
+      async () => {
+        const d = await this._fetchJson(`https://api.open-meteo.com/v1/elevation?latitude=${lat.toFixed(6)}&longitude=${lng.toFixed(6)}`);
+        const m = d && d.elevation && d.elevation.length ? d.elevation[0] : null;
+        return (m == null || !isFinite(Number(m))) ? null : Number(m);
+      },
+      async () => {
+        const d = await this._fetchJson(`https://api.open-elevation.com/api/v1/lookup?locations=${lat.toFixed(6)},${lng.toFixed(6)}`);
+        const m = d && d.results && d.results[0] ? d.results[0].elevation : null;
+        return (m == null || !isFinite(Number(m))) ? null : Number(m);
+      },
+      async () => {
+        const d = await this._fetchJson(`https://api.opentopodata.org/v1/srtm30m?locations=${lat.toFixed(6)},${lng.toFixed(6)}`);
+        const m = d && d.results && d.results[0] ? d.results[0].elevation : null;
+        return (m == null || !isFinite(Number(m))) ? null : Number(m);
+      },
+      async () => {
+        const d = await this._fetchJson(`https://api.opentopodata.org/v1/aster30m?locations=${lat.toFixed(6)},${lng.toFixed(6)}`);
+        const m = d && d.results && d.results[0] ? d.results[0].elevation : null;
+        return (m == null || !isFinite(Number(m))) ? null : Number(m);
+      },
+      async () => {
+        const d = await this._fetchJson(`https://api.opentopodata.org/v1/etopo1?locations=${lat.toFixed(6)},${lng.toFixed(6)}`);
+        const m = d && d.results && d.results[0] ? d.results[0].elevation : null;
+        return (m == null || !isFinite(Number(m))) ? null : Number(m);
+      }
+    ];
+    for (let i = 0; i < tries.length; i++) {
+      try {
+        const v = await tries[i]();
+        if (v != null) return v;
+      } catch (e) { /* coba sumber berikutnya */ }
+    }
+    return null;
   },
 
   async get(lat, lng) {
@@ -40,16 +73,7 @@ window.Elevation = {
     if (this._cache.has(k)) return this._cache.get(k);
     if (this._inflight.has(k)) return this._inflight.get(k);
     const p = (async () => {
-      let val = null;
-      for (let i = 0; i < this._datasets.length; i++) {
-        try {
-          val = await this._fetchDataset(this._datasets[i], lat, lng);
-          if (val != null) break;
-        } catch (e) {
-          // coba dataset/fallback berikutnya
-        }
-      }
-      // cache hasil final (termasuk null) agar tidak memukul API berulang; popup bisa coba lagi saat buka baru
+      const val = await this._tryAll(lat, lng);
       this._cache.set(k, val);
       this._inflight.delete(k);
       return val;
@@ -64,7 +88,6 @@ window.Elevation = {
     return f == null ? null : (f + ' m dpl');
   },
 
-  /** Isi properties.mdpl (+elevation) untuk feature Point jika belum ada. */
   async annotatePointFeature(feature, lat, lng) {
     try {
       if (!feature || !feature.properties) return null;
@@ -80,7 +103,7 @@ window.Elevation = {
       if (m == null) return null;
       const f = this._fmt(m);
       feature.properties.mdpl = f;
-      feature.properties.elevation = m; // kompatibilitas (angka meter)
+      feature.properties.elevation = m;
       if (g && g.type === 'Point' && Array.isArray(g.coordinates) && g.coordinates.length >= 2) {
         g.coordinates[2] = m;
       }
@@ -88,7 +111,6 @@ window.Elevation = {
     } catch (e) { return null; }
   },
 
-  /** Tambah baris mdpl di bawah .mp-coord pada elemen popup (async). */
   fillPopupCoord(container, lat, lng) {
     if (!container || lat == null || lng == null) return;
     const nodes = container.querySelectorAll ? container.querySelectorAll('.mp-coord') : [container];
@@ -101,7 +123,6 @@ window.Elevation = {
         node.insertAdjacentElement('afterend', line);
       }
       line.textContent = 'mdpl: memuat…';
-      // hapus cache null agar klik/popup baru bisa coba ulang
       try {
         const k = this._key(lat, lng);
         if (this._cache.has(k) && this._cache.get(k) == null) this._cache.delete(k);
