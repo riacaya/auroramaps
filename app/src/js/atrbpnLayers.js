@@ -572,9 +572,16 @@ const AtrbpnLayers = {
     }));
     else shguEntry.note = 'perlu auth key — gunakan ?shguAuthKey=...';
 
-    // ── RTRW Kab/Kota: TMS GISLINER sesuai HAR pengguna ────────────────────
-    const rtrwLayer = attachTileRetry(L.tileLayer(xyz('212_rtrwkbpt', 1024),
-      LIGHT('atrbpnRtrwPane', 18, { tileSize: 1024, zoomOffset: -2, updateWhenIdle: false })));
+    // -- RTRW Kab/Kota: WMS GISTARU (sama dengan situs BHUMI, HAR rtrw kab kota)
+    // UUID 78abbda6 + LAYERS rtr-online:rtrw_kabkot_1_indonesia agar symbologi
+    // (mis. kawasan industri merah tua, Kendal) identik; lewat proxy/relai gistaru.
+    const rtrwLayer = attachTileRetry(relayWmsLayer(RTRW_URL, {
+      layers: RTRW_LAYER, version: '1.3.0', crs: L.CRS.EPSG3857,
+      tiled: true, tileSize: 512, uppercase: true,
+      format: 'image/png', transparent: true, styles: '',
+      pane: 'atrbpnRtrwPane', maxZoom: 22, maxNativeZoom: 22, minZoom: 7,
+      attribution: 'RTRW Kab/Kota (GISTARU/ATR BPN)'
+    }, gBase, 'gistaru'));
     // ── KP2B DIHAPUS dari panel (31 Okt 2026) ──────────────────────────────
     // Kolom TMS '235_kp2b' membalas 200 OK tetapi tile transparan 235 B di
     // semua titik uji (Semarang, Wonogiri, Sukoharjo, Sleman, Klaten,
